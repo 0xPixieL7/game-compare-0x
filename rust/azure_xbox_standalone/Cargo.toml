@@ -1,0 +1,42 @@
+[package]
+name = "azure-xbox-standalone"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+dotenv = "0.15"
+urlencoding = "2.1"
+psstore-client = { path = "../psstore_client" }
+
+[[bin]]
+name = "azure_token"
+path = "src/azure_token.rs"
+
+[[bin]]
+name = "xbox_store_prices"
+path = "src/xbox_store_prices.rs"
+
+[[bin]]
+name = "find_products"
+path = "src/find_products.rs"
+
+[[bin]]
+name = "browse_releases"
+path = "src/browse_releases.rs"
+
+[[bin]]
+name = "explore_api"
+path = "src/explore_api.rs"
+
+[[bin]]
+name = "browse_collections"
+path = "src/browse_collections.rs"
+
+[[bin]]
+name = "genre_toplists"
+path = "src/genre_toplists.rs"

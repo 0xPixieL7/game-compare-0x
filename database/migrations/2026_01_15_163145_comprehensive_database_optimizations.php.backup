@@ -1,0 +1,408 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    // Disable transactions for CONCURRENTLY index creation
+    public $withinTransaction = false;
+
+    public function up(): void
+    {
+        // 1. PRODUCTS TABLE OPTIMIZATIONS
+        Schema::table('products', function (Blueprint $table) {
+            // Fast type-based queries
+            $table->index('type', 'products_type_idx');
+
+            // Text search optimization for names/titles
+            $table->index('name', 'products_name_idx');
+            $table->index('title', 'products_title_idx');
+
+            // Slug lookups for routing
+            $table->index('slug', 'products_slug_idx');
+
+            // Composite for type + normalized_title filtering
+            $table->index(['type', 'normalized_title'], 'products_type_normalized_idx');
+
+            // Created/modified time sorting
+            $table->index('created_at', 'products_created_at_idx');
+            $table->index('updated_at', 'products_updated_at_idx');
+        });
+
+        // 2. VIDEO_GAMES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('video_games')) {
+            Schema::table('video_games', function (Blueprint $table) {
+                // Rating-based sorting and filtering
+                if (!Schema::hasIndex('video_games', 'video_games_rating_idx')) {
+                    $table->index('rating', 'video_games_rating_idx');
+                }
+
+                // Name search
+                if (!Schema::hasIndex('video_games', 'video_games_name_idx')) {
+                    $table->index('name', 'video_games_name_idx');
+                }
+
+                // Release date queries
+                $table->index('release_date', 'video_games_release_date_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'video_games_created_at_idx');
+                $table->index('updated_at', 'video_games_updated_at_idx');
+            });
+        }
+
+        // 3. VIDEO_GAME_TITLES TABLE OPTIMIZATIONS
+        Schema::table('video_game_titles', function (Blueprint $table) {
+            // Name search performance
+            $table->index('name', 'video_game_titles_name_idx');
+
+            // Composite for product + name lookups
+            $table->index(['product_id', 'name'], 'vgt_product_name_idx');
+
+            // Slug routing
+            if (!Schema::hasIndex('video_game_titles', 'vgt_slug_idx')) {
+                $table->index('slug', 'vgt_slug_idx');
+            }
+
+            // Time-based queries
+            $table->index('created_at', 'vgt_created_at_idx');
+            $table->index('updated_at', 'vgt_updated_at_idx');
+        });
+
+        // 4. VIDEO_GAME_PRICES TABLE OPTIMIZATIONS
+        Schema::table('video_game_prices', function (Blueprint $table) {
+            // Currency-based filtering
+            $table->index('currency', 'vgp_currency_idx');
+
+            // Price range queries
+            $table->index('amount_minor', 'vgp_amount_minor_idx');
+
+            // Time-based price history
+            $table->index('recorded_at', 'vgp_recorded_at_idx');
+
+            // Retailer filtering
+            $table->index('retailer', 'vgp_retailer_idx');
+
+            // Tax filtering
+            $table->index('tax_inclusive', 'vgp_tax_inclusive_idx');
+
+            // Region/country filtering
+            $table->index('region_code', 'vgp_region_code_idx');
+
+            // Product-based price lookups
+            $table->index('product_id', 'vgp_product_id_idx');
+
+            // SKU lookups
+            $table->index('sku', 'vgp_sku_idx');
+
+            // Active price filtering
+            $table->index('is_active', 'vgp_is_active_idx');
+
+            // Composite indexes for common query patterns
+            $table->index(['video_game_id', 'currency'], 'vgp_game_currency_idx');
+            $table->index(['video_game_id', 'recorded_at'], 'vgp_game_recorded_idx');
+            $table->index(['currency', 'amount_minor'], 'vgp_currency_amount_idx');
+            $table->index(['retailer', 'currency'], 'vgp_retailer_currency_idx');
+            $table->index(['product_id', 'currency', 'is_active'], 'vgp_product_currency_active_idx');
+
+            // Best price queries
+            $table->index(['video_game_id', 'currency', 'amount_minor'], 'vgp_best_price_idx');
+        });
+
+        // 5. VIDEO_GAME_SOURCES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('video_game_sources')) {
+            Schema::table('video_game_sources', function (Blueprint $table) {
+                // Name/provider lookups
+                $table->index('name', 'vgs_name_idx');
+                $table->index('provider', 'vgs_provider_idx');
+
+                // URL lookups
+                $table->index('url', 'vgs_url_idx');
+
+                // Active source filtering
+                $table->index('is_active', 'vgs_is_active_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'vgs_created_at_idx');
+                $table->index('updated_at', 'vgs_updated_at_idx');
+            });
+        }
+
+        // 6. USERS TABLE OPTIMIZATIONS
+        Schema::table('users', function (Blueprint $table) {
+            // Email verification
+            $table->index('email_verified_at', 'users_email_verified_at_idx');
+
+            // Name search
+            $table->index('name', 'users_name_idx');
+
+            // Time-based queries
+            $table->index('created_at', 'users_created_at_idx');
+            $table->index('updated_at', 'users_updated_at_idx');
+        });
+
+        // 7. CURRENCIES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('currencies')) {
+            Schema::table('currencies', function (Blueprint $table) {
+                // Code lookups (should already be unique)
+                $table->index('code', 'currencies_code_idx');
+
+                // Name search
+                $table->index('name', 'currencies_name_idx');
+
+                // Active currency filtering
+                $table->index('is_active', 'currencies_is_active_idx');
+            });
+        }
+
+        // 8. EXCHANGE_RATES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('exchange_rates')) {
+            Schema::table('exchange_rates', function (Blueprint $table) {
+                // Currency pair lookups
+                $table->index(['from_currency', 'to_currency'], 'exchange_rates_pair_idx');
+
+                // Date-based rate lookups
+                $table->index('effective_date', 'exchange_rates_date_idx');
+
+                // Latest rates
+                $table->index(['from_currency', 'to_currency', 'effective_date'], 'exchange_rates_latest_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'exchange_rates_created_at_idx');
+            });
+        }
+
+        // 9. COUNTRIES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('countries')) {
+            Schema::table('countries', function (Blueprint $table) {
+                // Code lookups
+                $table->index('code', 'countries_code_idx');
+
+                // Name search
+                $table->index('name', 'countries_name_idx');
+
+                // Currency lookups
+                $table->index('currency_code', 'countries_currency_code_idx');
+
+                // Active country filtering
+                $table->index('is_active', 'countries_is_active_idx');
+            });
+        }
+
+        // 10. RETAILERS TABLE OPTIMIZATIONS
+        if (Schema::hasTable('retailers')) {
+            Schema::table('retailers', function (Blueprint $table) {
+                // Name search
+                $table->index('name', 'retailers_name_idx');
+
+                // URL lookups
+                $table->index('website_url', 'retailers_website_url_idx');
+
+                // Country filtering
+                $table->index('country_code', 'retailers_country_code_idx');
+
+                // Active retailer filtering
+                $table->index('is_active', 'retailers_is_active_idx');
+
+                // Composite for country + active
+                $table->index(['country_code', 'is_active'], 'retailers_country_active_idx');
+            });
+        }
+
+        // 11. IMAGES TABLE OPTIMIZATIONS
+        if (Schema::hasTable('images')) {
+            Schema::table('images', function (Blueprint $table) {
+                // Video game relationship
+                $table->index('video_game_id', 'images_video_game_id_idx');
+
+                // File name/path lookups
+                $table->index('file_name', 'images_file_name_idx');
+                $table->index('file_path', 'images_file_path_idx');
+
+                // Size filtering
+                $table->index(['width', 'height'], 'images_dimensions_idx');
+
+                // Type filtering
+                $table->index('mime_type', 'images_mime_type_idx');
+
+                // File size queries
+                $table->index('file_size', 'images_file_size_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'images_created_at_idx');
+            });
+        }
+
+        // 12. VIDEOS TABLE OPTIMIZATIONS
+        if (Schema::hasTable('videos')) {
+            Schema::table('videos', function (Blueprint $table) {
+                // Video game relationship
+                $table->index('video_game_id', 'videos_video_game_id_idx');
+
+                // File name/path lookups
+                $table->index('file_name', 'videos_file_name_idx');
+                $table->index('file_path', 'videos_file_path_idx');
+
+                // Duration filtering
+                $table->index('duration', 'videos_duration_idx');
+
+                // Resolution filtering
+                $table->index(['width', 'height'], 'videos_dimensions_idx');
+
+                // Type filtering
+                $table->index('mime_type', 'videos_mime_type_idx');
+
+                // File size queries
+                $table->index('file_size', 'videos_file_size_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'videos_created_at_idx');
+            });
+        }
+
+        // 13. PERSONAL_ACCESS_TOKENS TABLE OPTIMIZATIONS
+        if (Schema::hasTable('personal_access_tokens')) {
+            Schema::table('personal_access_tokens', function (Blueprint $table) {
+                // Tokenable relationship
+                $table->index(['tokenable_type', 'tokenable_id'], 'pat_tokenable_idx');
+
+                // Name filtering
+                $table->index('name', 'pat_name_idx');
+
+                // Last used tracking
+                $table->index('last_used_at', 'pat_last_used_at_idx');
+
+                // Expiration queries
+                $table->index('expires_at', 'pat_expires_at_idx');
+
+                // Time-based queries
+                $table->index('created_at', 'pat_created_at_idx');
+            });
+        }
+
+        // 14. ADD POSTGRESQL-SPECIFIC OPTIMIZATIONS
+        if (DB::getDriverName() === 'pgsql') {
+            // Full-text search indexes
+            DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS products_name_gin_idx ON products USING GIN (to_tsvector(\'english\', name))');
+            DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS products_title_gin_idx ON products USING GIN (to_tsvector(\'english\', title))');
+
+            if (Schema::hasTable('video_games')) {
+                DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS video_games_name_gin_idx ON video_games USING GIN (to_tsvector(\'english\', name))');
+            }
+
+            DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS vgt_name_gin_idx ON video_game_titles USING GIN (to_tsvector(\'english\', name))');
+
+            // JSONB indexes for metadata columns
+            if (Schema::hasColumn('video_game_prices', 'metadata')) {
+                DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS vgp_metadata_gin_idx ON video_game_prices USING GIN (metadata)');
+            }
+
+            if (Schema::hasColumn('video_game_titles', 'providers')) {
+                DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS vgt_providers_gin_idx ON video_game_titles USING GIN (providers)');
+            }
+
+            // Partial indexes for active records only
+            DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS vgp_active_prices_idx ON video_game_prices (video_game_id, currency, amount_minor) WHERE is_active = true');
+
+            if (Schema::hasTable('retailers')) {
+                DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS retailers_active_idx ON retailers (name, country_code) WHERE is_active = true');
+            }
+
+            if (Schema::hasTable('currencies')) {
+                DB::statement('CREATE INDEX CONCURRENTLY IF NOT EXISTS currencies_active_idx ON currencies (code) WHERE is_active = true');
+            }
+        }
+    }
+
+    public function down(): void
+    {
+        // Drop all created indexes
+
+        // Products indexes
+        Schema::table('products', function (Blueprint $table) {
+            $table->dropIndex('products_type_idx');
+            $table->dropIndex('products_name_idx');
+            $table->dropIndex('products_title_idx');
+            $table->dropIndex('products_slug_idx');
+            $table->dropIndex('products_type_normalized_idx');
+            $table->dropIndex('products_created_at_idx');
+            $table->dropIndex('products_updated_at_idx');
+        });
+
+        // Video games indexes
+        if (Schema::hasTable('video_games')) {
+            Schema::table('video_games', function (Blueprint $table) {
+                $table->dropIndex('video_games_rating_idx');
+                $table->dropIndex('video_games_name_idx');
+                $table->dropIndex('video_games_release_date_idx');
+                $table->dropIndex('video_games_created_at_idx');
+                $table->dropIndex('video_games_updated_at_idx');
+            });
+        }
+
+        // Video game titles indexes
+        Schema::table('video_game_titles', function (Blueprint $table) {
+            $table->dropIndex('video_game_titles_name_idx');
+            $table->dropIndex('vgt_product_name_idx');
+            $table->dropIndex('vgt_slug_idx');
+            $table->dropIndex('vgt_created_at_idx');
+            $table->dropIndex('vgt_updated_at_idx');
+        });
+
+        // Video game prices indexes
+        Schema::table('video_game_prices', function (Blueprint $table) {
+            $table->dropIndex('vgp_currency_idx');
+            $table->dropIndex('vgp_amount_minor_idx');
+            $table->dropIndex('vgp_recorded_at_idx');
+            $table->dropIndex('vgp_retailer_idx');
+            $table->dropIndex('vgp_tax_inclusive_idx');
+            $table->dropIndex('vgp_region_code_idx');
+            $table->dropIndex('vgp_product_id_idx');
+            $table->dropIndex('vgp_sku_idx');
+            $table->dropIndex('vgp_is_active_idx');
+            $table->dropIndex('vgp_game_currency_idx');
+            $table->dropIndex('vgp_game_recorded_idx');
+            $table->dropIndex('vgp_currency_amount_idx');
+            $table->dropIndex('vgp_retailer_currency_idx');
+            $table->dropIndex('vgp_product_currency_active_idx');
+            $table->dropIndex('vgp_best_price_idx');
+        });
+
+        // Drop other table indexes...
+        if (Schema::hasTable('video_game_sources')) {
+            Schema::table('video_game_sources', function (Blueprint $table) {
+                $table->dropIndex('vgs_name_idx');
+                $table->dropIndex('vgs_provider_idx');
+                $table->dropIndex('vgs_url_idx');
+                $table->dropIndex('vgs_is_active_idx');
+                $table->dropIndex('vgs_created_at_idx');
+                $table->dropIndex('vgs_updated_at_idx');
+            });
+        }
+
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropIndex('users_email_verified_at_idx');
+            $table->dropIndex('users_name_idx');
+            $table->dropIndex('users_created_at_idx');
+            $table->dropIndex('users_updated_at_idx');
+        });
+
+        // Drop PostgreSQL-specific indexes
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('DROP INDEX IF EXISTS products_name_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS products_title_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS video_games_name_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS vgt_name_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS vgp_metadata_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS vgt_providers_gin_idx');
+            DB::statement('DROP INDEX IF EXISTS vgp_active_prices_idx');
+            DB::statement('DROP INDEX IF EXISTS retailers_active_idx');
+            DB::statement('DROP INDEX IF EXISTS currencies_active_idx');
+        }
+    }
+};

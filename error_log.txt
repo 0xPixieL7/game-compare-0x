@@ -1,0 +1,36 @@
+=== IGDB Import Started ===
+Path: /Users/lowkey/Desktop/game-compare/storage/igdb-dumps
+Provider: igdb
+Limit: 1
+
+Loading platforms map from /Users/lowkey/Desktop/game-compare/storage/igdb-dumps/1768197600_platforms.csv...
+📥 Importing games (streaming)...
+File: /Users/lowkey/Desktop/game-compare/storage/igdb-dumps/1767852000_games.csv
+
+
+ 1/1 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100% < 1 ms/< 1 ms
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[42703]: Undefined column: 7 ERROR:  column "slug" of relation "video_games" does not exist
+LINE 1: ...d", "name", "provider", "rating", "release_date", "slug", "u...
+                                                             ^ (Connection: pgsql, Host: 2a05:d016:571:a40d:93e:4d2a:7aab:1321, Port: 5432, Database: postgres, SQL: insert into "video_games" ("attributes", "created_at", "external_id", "name", "provider", "rating", "release_date", "slug", "updated_at", "video_game_title_id") values ({"platform":["PC"],"slug":"rival-species","name":"Rival Species","summary":"In the far distant future of the 40th millennium behind the stars there is only war. Enter the universe of WARHAMMER 40,000 and play a mighty warrior for one out of an ever growing list of rival species. A large PvP team multiplayer mod for Half-Life that plays similary to Battlefield\/Battlefront, based on the Game's Workshop property. Eventually Exterminatus, A sequel for the Source Engine would be made","storyline":"","release_date":null,"rating":null,"rating_count":null,"developer":null,"publisher":null,"genre":"[\"Shooter\"]","media":null,"source_payload":null}, 2026-01-16 09:24:07, 350392, Rival Species, igdb, ?, ?, rival-species, 2026-01-16 09:24:07, 1))
+
+  at vendor/laravel/framework/src/Illuminate/Database/Connection.php:831
+    827▕             $exceptionType = $this->isUniqueConstraintError($e)
+    828▕                 ? UniqueConstraintViolationException::class
+    829▕                 : QueryException::class;
+    830▕ 
+  ➜ 831▕             throw new $exceptionType(
+    832▕                 $this->getNameWithReadWriteType(),
+    833▕                 $query,
+    834▕                 $this->prepareBindings($bindings),
+    835▕                 $e,
+
+      [2m+8 vendor frames [22m
+
+  9   app/Console/Commands/ImportIgdbDumpsCommand.php:1389
+      Illuminate\Database\Query\Builder::upsert([])
+
+  10  app/Console/Commands/ImportIgdbDumpsCommand.php:1355
+      App\Console\Commands\ImportIgdbDumpsCommand::flushVideoGameBatch()
+

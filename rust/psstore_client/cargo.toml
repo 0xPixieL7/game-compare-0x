@@ -1,0 +1,43 @@
+[package]
+name = "psstore-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
+reqwest = { version = "0.12", features = [
+    "json",
+    "gzip",
+    "brotli",
+    "deflate",
+    "cookies",
+    "charset",
+    "socks"
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+governor = { version = "0.6", default-features = false, features = [
+    "std",
+    "jitter",
+    "dashmap"
+] }
+backoff = { version = "0.4", features = ["futures"] }
+chrono = { version = "0.4.38", default-features = false, features = [
+    "clock",
+    "std",
+    "serde"
+] }
+dotenv = "0.15.0"
+awc = "3.8.1"
+time = { version = "0.3", features = ["macros"] }
+urlencoding = "2.1"
+hickory-resolver = "0.24"
+actix-web = { version = "4.9.0", default-features = false, features = [
+    "macros",
+    "compress-brotli",
+    "compress-gzip"
+] }
+futures = "0.3"
