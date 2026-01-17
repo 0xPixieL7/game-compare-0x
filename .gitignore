@@ -52,7 +52,7 @@ serve
 .gemini/
 target/
 node_modules/
-*.phar 
+*.phar
 *.config*
 # Additional ignores for configs, envs, workflows, logs, and AI docs
 .env*
@@ -74,3 +74,9 @@ boost.json
 opencode.json
 rust/backups/
 /.github/instructions/
+# Docker credentials/configs
+.dockerignore
+docker-compose.override.yml
+docker-compose.*.yml
+.env.docker
+.docker/
