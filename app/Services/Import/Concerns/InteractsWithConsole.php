@@ -8,6 +8,8 @@ use Illuminate\Console\Command;
 
 trait InteractsWithConsole
 {
+    use CanOptimizeImport;
+
     protected ?Command $command = null;
 
     /**

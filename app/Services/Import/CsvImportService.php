@@ -13,16 +13,21 @@ use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
 use App\Models\Product; 
 use App\Models\SkuRegion;
+use App\Services\Import\Concerns\InteractsWithConsole;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use League\Csv\Reader;
+use League\Csv\Statement;
 use Illuminate\Console\View\Components\Factory as OutputFactory;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Illuminate\Support\Str;
 
 class CsvImportService
 {
+    use InteractsWithConsole;
+
     protected string $storagePath;
     protected $output;
 
@@ -34,8 +39,7 @@ class CsvImportService
 
     public function run()
     {
-        DB::disableQueryLog();
-        IdentityMap::clear();
+        $this->startOptimizedImport();
 
         $this->output->info('Starting Synchronous CSV Import...');
 
@@ -62,6 +66,8 @@ class CsvImportService
         $this->importCurrencies();
         
         $this->output->success('CSV Import Completed.');
+
+        $this->endOptimizedImport();
     }
 
     protected function findFiles(string $pattern): array
@@ -136,10 +142,23 @@ class CsvImportService
     {
         $csv = $this->getReader($path);
         
-        DB::beginTransaction();
-        $i = 0;
+        // Checkpoint logic
+        $checkpointKey = 'import_checkpoint_' . md5(basename($path));
+        $checkpoint = Cache::get($checkpointKey, 0);
+        
+        $records = $csv->getRecords();
 
-        foreach ($csv->getRecords() as $record) {
+        if ($checkpoint > 0) {
+            $this->output->info("Resuming " . basename($path) . " from record $checkpoint");
+            $stmt = Statement::create()->offset($checkpoint);
+            $records = $stmt->process($csv);
+        }
+        
+        $i = $checkpoint;
+        $batch = [];
+        $BATCH_SIZE = 5000;
+
+        foreach ($records as $record) {
             $i++;
             
             $provider = $explicitProvider;
@@ -166,40 +185,83 @@ class CsvImportService
                 continue;
             }
 
-            try {
-                DB::transaction(function () use ($record, $provider, $externalId, $mapProviderKey) {
-                    $game = VideoGame::updateOrCreate(
-                        ['provider' => $provider, 'external_id' => (string)$externalId],
-                        [
-                            'title' => $record['name'] ?? $record['title'],
-                            'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title']),
-                            'genre' => $record['genre'] ?? null,
-                            'release_date' => (isset($record['release_date']) && $record['release_date'] !== '') ? $record['release_date'] : ((isset($record['original_release_date']) && $record['original_release_date'] !== '') ? $record['original_release_date'] : null),
-                            'description' => $record['deck'] ?? $record['description'] ?? $record['synopsis'] ?? null,
-                            'metadata' => $record['metadata'] ?? null,
-                        ]
-                    );
+            $batch[] = [
+                'provider' => $provider,
+                'external_id' => (string)$externalId,
+                'title' => $record['name'] ?? $record['title'] ?? 'Unknown',
+                'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title'] ?? 'unknown'),
+                'genre' => $record['genre'] ?? null,
+                'release_date' => (isset($record['release_date']) && $record['release_date'] !== '') ? $record['release_date'] : ((isset($record['original_release_date']) && $record['original_release_date'] !== '') ? $record['original_release_date'] : null),
+                'description' => $record['deck'] ?? $record['description'] ?? $record['synopsis'] ?? null,
+                'metadata' => $record['metadata'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+                'legacy_id_from_csv' => $record['id'] ?? null, // Temporary storage for mapping if needed
+                'map_provider_key' => $mapProviderKey,
+            ];
 
-                    // Map Legacy ID
-                    if (isset($record['id'])) {
-                        IdentityMap::put('game', $mapProviderKey, $record['id'], $game->id);
-                    }
-                    
-                    // Map Provider Identity
-                    IdentityMap::put('game', $provider, $externalId, $game->id);
-                });
-            } catch (\Exception $e) {
-                Log::error("Failed to import game: $provider:$externalId. Error: " . $e->getMessage());
-                // Nested transaction rollback handled automatically by DB::transaction
-            }
-
-            if ($i % 500 === 0) {
-                DB::commit();
-                DB::beginTransaction();
+            if (count($batch) >= $BATCH_SIZE) {
+                $this->flushGamesBatch($batch, $checkpointKey, $i);
+                $batch = [];
                 $this->output->info("Processed $i games...");
             }
         }
-        DB::commit();
+
+        if (!empty($batch)) {
+            $this->flushGamesBatch($batch, $checkpointKey, $i);
+        }
+
+        Cache::forget($checkpointKey);
+    }
+
+    protected function flushGamesBatch(array $batch, string $checkpointKey, int $progress)
+    {
+        DB::transaction(function () use ($batch) {
+            $rows = array_map(function($item) {
+                $copy = $item;
+                unset($copy['legacy_id_from_csv'], $copy['map_provider_key']);
+                return $copy;
+            }, $batch);
+
+            // Use upsert to handle updates and inserts in one go
+            DB::table('video_games')->upsert(
+                $rows,
+                ['provider', 'external_id'],
+                ['title', 'slug', 'genre', 'release_date', 'description', 'metadata', 'updated_at']
+            );
+
+            // Now we need to update IdentityMap. 
+            $keys = array_map(fn($b) => $b['provider'] . '|' . $b['external_id'], $batch);
+            
+            $results = DB::table('video_games')
+                ->whereIn(DB::raw("provider || '|' || external_id"), $keys)
+                ->get(['id', 'provider', 'external_id']);
+
+            $idLookup = [];
+            foreach ($results as $r) {
+                $idLookup[$r->provider . '|' . $r->external_id] = $r->id;
+            }
+
+            $legacyMappings = [];
+            $providerMappings = [];
+
+            foreach ($batch as $item) {
+                $id = $idLookup[$item['provider'] . '|' . $item['external_id']] ?? null;
+                if ($id) {
+                    if ($item['legacy_id_from_csv']) {
+                        $legacyMappings[$item['legacy_id_from_csv']] = $id;
+                    }
+                    $providerMappings[$item['external_id']] = $id;
+                }
+            }
+            
+            if (!empty($legacyMappings)) {
+                IdentityMap::putMany('game', $batch[0]['map_provider_key'], $legacyMappings);
+            }
+            IdentityMap::putMany('game', $batch[0]['provider'], $providerMappings);
+        });
+
+        Cache::put($checkpointKey, $progress);
     }
 
     protected function determineProvider($filename)
@@ -214,34 +276,79 @@ class CsvImportService
     {
         $files = $this->findFiles('video_game_titles.csv');
         foreach ($files as $file) {
-            $this->output->info("Importing Titles...");
+            $this->output->info("Importing Titles from " . basename($file));
             $csv = $this->getReader($file);
-            
-            DB::beginTransaction();
+            $batch = [];
+            $BATCH_SIZE = 5000;
+            $i = 0;
+
             foreach ($csv->getRecords() as $record) {
-                // Find legacy game using video_game_id from CSV
-                $gameId = IdentityMap::get('game', 'legacy_main', $record['video_game_id']);
-                
-                $title = VideoGameTitle::updateOrCreate(
-                    [
-                        'slug' => $record['slug'],
-                    ],
-                    [
-                        'name' => $record['name'],
-                        'normalized_title' => $record['normalized_title'],
-                        'product_id' => $record['product_id'] ?: null, // product_id is optional? Migration says foreignId..constrained.
-                        'providers' => $record['providers'] ?? null,
-                    ]
-                );
+                $i++;
+                $batch[] = [
+                    'legacy_id' => $record['id'],
+                    'slug' => $record['slug'],
+                    'name' => $record['name'],
+                    'normalized_title' => $record['normalized_title'],
+                    'product_id' => $record['product_id'] ?: null,
+                    'providers' => $record['providers'] ?? null,
+                    'video_game_id' => $record['video_game_id'] ?? null, // From CSV
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
-                IdentityMap::put('title', 'legacy', $record['id'], $title->id);
-
-                if ($gameId) {
-                    VideoGame::where('id', $gameId)->update(['video_game_title_id' => $title->id]);
+                if (count($batch) >= $BATCH_SIZE) {
+                    $this->flushTitlesBatch($batch);
+                    $batch = [];
                 }
             }
-            DB::commit();
+            if (!empty($batch)) $this->flushTitlesBatch($batch);
         }
+    }
+
+    protected function flushTitlesBatch(array $batch)
+    {
+        DB::transaction(function () use ($batch) {
+            $rows = array_map(function($item) {
+                $copy = $item;
+                unset($copy['legacy_id'], $copy['video_game_id']);
+                return $copy;
+            }, $batch);
+
+            DB::table('video_game_titles')->upsert(
+                $rows,
+                ['slug'],
+                ['name', 'normalized_title', 'product_id', 'providers', 'updated_at']
+            );
+
+            $slugs = array_map(fn($b) => $b['slug'], $batch);
+            $results = DB::table('video_game_titles')->whereIn('slug', $slugs)->get(['id', 'slug']);
+            $idLookup = $results->pluck('id', 'slug')->all();
+
+            $gameUpdates = [];
+            foreach ($batch as $item) {
+                $titleId = $idLookup[$item['slug']] ?? null;
+                if ($titleId) {
+                    IdentityMap::put('title', 'legacy', $item['legacy_id'], $titleId);
+                    
+                    if ($item['video_game_id']) {
+                        $gameInternalId = IdentityMap::get('game', 'legacy_main', $item['video_game_id']);
+                        if ($gameInternalId) {
+                            $gameUpdates[$gameInternalId] = $titleId;
+                        }
+                    }
+                }
+            }
+
+            // Bulk update video_games with title_id if we have any
+            if (!empty($gameUpdates)) {
+                $cases = [];
+                foreach ($gameUpdates as $gameId => $titleId) {
+                    $cases[] = "WHEN $gameId THEN $titleId";
+                }
+                $ids = implode(',', array_keys($gameUpdates));
+                DB::statement("UPDATE video_games SET video_game_title_id = CASE id " . implode(' ', $cases) . " END WHERE id IN ($ids)");
+            }
+        });
     }
 
     // 4. Title Sources
@@ -251,21 +358,29 @@ class CsvImportService
         foreach ($files as $file) {
             $this->output->info("Importing Title Sources from " . basename($file));
             $csv = $this->getReader($file);
-            
-            DB::beginTransaction();
+            $batch = [];
+            $BATCH_SIZE = 5000;
+
             foreach ($csv->getRecords() as $record) {
                 $titleId = IdentityMap::get('title', 'legacy', $record['video_game_title_id']);
                 $sourceId = IdentityMap::get('source', 'legacy', $record['video_game_source_id']);
                 
                 if ($titleId && $sourceId) {
-                    VideoGameTitleSource::firstOrCreate([
+                    $batch[] = [
                         'video_game_title_id' => $titleId,
                         'video_game_source_id' => $sourceId,
                         'provider_item_id' => $record['provider_item_id'],
-                    ]);
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                if (count($batch) >= $BATCH_SIZE) {
+                    DB::table('video_game_title_sources')->insertOrIgnore($batch);
+                    $batch = [];
                 }
             }
-            DB::commit();
+            if (!empty($batch)) DB::table('video_game_title_sources')->insertOrIgnore($batch);
         }
     }
 
@@ -276,25 +391,57 @@ class CsvImportService
         foreach ($files as $file) {
             $this->output->info("Importing Products...");
             $csv = $this->getReader($file);
-            
-            DB::beginTransaction();
+            $batch = [];
+            $BATCH_SIZE = 5000;
+
             foreach ($csv->getRecords() as $row) {
-                $product = Product::updateOrCreate(
-                    ['slug' => $row['slug']],
-                    [
-                        'name' => $row['name'],
-                        'type' => $row['category'] ?? 'video_game',
-                        'platform' => $row['platform'],
-                        'release_date' => $row['release_date'],
-                        'external_ids' => $row['external_ids'],
-                        'metadata' => $row['metadata'],
-                    ]
-                );
-                
-                IdentityMap::put('product', 'legacy', $row['id'], $product->id);
+                $batch[] = [
+                    'legacy_id' => $row['id'],
+                    'slug' => $row['slug'],
+                    'name' => $row['name'],
+                    'type' => $row['category'] ?? 'video_game',
+                    'platform' => $row['platform'],
+                    'release_date' => $row['release_date'] ?: null,
+                    'external_ids' => $row['external_ids'],
+                    'metadata' => $row['metadata'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                if (count($batch) >= $BATCH_SIZE) {
+                    $this->flushProductsBatch($batch);
+                    $batch = [];
+                }
             }
-            DB::commit();
+            if (!empty($batch)) $this->flushProductsBatch($batch);
         }
+    }
+
+    protected function flushProductsBatch(array $batch)
+    {
+        DB::transaction(function () use ($batch) {
+            $rows = array_map(function($item) {
+                $copy = $item;
+                unset($copy['legacy_id']);
+                return $copy;
+            }, $batch);
+
+            DB::table('products')->upsert(
+                $rows,
+                ['slug'],
+                ['name', 'type', 'platform', 'release_date', 'external_ids', 'metadata', 'updated_at']
+            );
+
+            $slugs = array_map(fn($b) => $b['slug'], $batch);
+            $idLookup = DB::table('products')->whereIn('slug', $slugs)->pluck('id', 'slug')->all();
+
+            foreach ($batch as $item) {
+                $id = $idLookup[$item['slug']] ?? null;
+                if ($id) {
+                    IdentityMap::put('product', 'legacy', $item['legacy_id'], $id);
+                }
+            }
+        });
     }
 
     // 6. Prices
@@ -305,25 +452,31 @@ class CsvImportService
         foreach ($files as $file) {
             $this->output->info("Importing Prices (SKU Regions)...");
             $csv = $this->getReader($file);
-            
-            DB::beginTransaction();
+            $batch = [];
+            $BATCH_SIZE = 5000;
+
             foreach ($csv->getRecords() as $row) {
-                $productLegacyId = $row['product_id'];
-                $productId = IdentityMap::get('product', 'legacy', $productLegacyId);
-                
+                $productId = IdentityMap::get('product', 'legacy', $row['product_id']);
                 if (!$productId) continue;
 
-                VideoGamePrice::create([
+                $batch[] = [
                     'product_id' => $productId,
                     'currency' => $row['currency'],
                     'amount_minor' => $row['amount_minor'] ?? (floatval($row['amount'] ?? 0) * 100),
                     'retailer' => $row['retailer'],
                     'region_code' => $row['region_code'],
                     'sku' => $row['sku'],
-                    'is_active' => $row['is_active'],
-                ]);
+                    'is_active' => filter_var($row['is_active'], FILTER_VALIDATE_BOOLEAN),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+
+                if (count($batch) >= $BATCH_SIZE) {
+                    DB::table('video_game_prices')->insert($batch);
+                    $batch = [];
+                }
             }
-            DB::commit();
+            if (!empty($batch)) DB::table('video_game_prices')->insert($batch);
         }
 
         // Price Aggregates
@@ -331,20 +484,28 @@ class CsvImportService
         foreach ($files as $file) {
             $this->output->info("Importing Historical Prices...");
             $csv = $this->getReader($file);
-            DB::beginTransaction();
+            $batch = [];
+
             foreach ($csv->getRecords() as $row) {
                  $productId = IdentityMap::get('product', 'legacy', $row['product_id']);
                  if (!$productId) continue;
                  
-                 VideoGamePrice::create([
+                 $batch[] = [
                      'product_id' => $productId,
                      'currency' => 'USD', 
                      'amount_minor' => (float)$row['avg_fiat'] * 100, 
                      'recorded_at' => $row['window_end'],
                      'metadata' => json_encode(['min' => $row['min_fiat'], 'max' => $row['max_fiat']]),
-                 ]);
+                     'created_at' => now(),
+                     'updated_at' => now(),
+                 ];
+
+                 if (count($batch) >= 5000) {
+                     DB::table('video_game_prices')->insert($batch);
+                     $batch = [];
+                 }
             }
-            DB::commit();
+            if (!empty($batch)) DB::table('video_game_prices')->insert($batch);
         }
     }
 
@@ -357,28 +518,29 @@ class CsvImportService
             $provider = $this->determineProvider(basename($file));
             $this->output->info("Importing Videos ($provider)...");
             $csv = $this->getReader($file);
-            
-            DB::beginTransaction();
+            $batch = [];
+
             foreach ($csv->getRecords() as $row) {
                 $legacyGameId = $row['video_game_id'] ?? null;
-                $gameId = null;
-                
-                if ($legacyGameId) {
-                    $gameId = IdentityMap::get('game', 'legacy_' . $provider, $legacyGameId);
-                }
+                $gameId = $legacyGameId ? IdentityMap::get('game', 'legacy_' . $provider, $legacyGameId) : null;
                 
                 if ($gameId) {
-                    Video::firstOrCreate(
-                        ['url' => $row['url']],
-                        [
-                            'video_game_id' => $gameId,
-                            'name' => $row['name'],
-                            'metadata' => $row['metadata'] ?? null,
-                        ]
-                    );
+                    $batch[] = [
+                        'video_game_id' => $gameId,
+                        'url' => $row['url'],
+                        'name' => $row['name'],
+                        'metadata' => $row['metadata'] ?? null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                if (count($batch) >= 5000) {
+                    DB::table('videos')->insertOrIgnore($batch);
+                    $batch = [];
                 }
             }
-            DB::commit();
+            if (!empty($batch)) DB::table('videos')->insertOrIgnore($batch);
         }
 
         // Images
@@ -387,29 +549,28 @@ class CsvImportService
             $provider = $this->determineProvider(basename($file));
             $this->output->info("Importing Images ($provider)...");
             $csv = $this->getReader($file); 
-            
-            DB::beginTransaction();
-            $i=0;
+            $batch = [];
+
             foreach ($csv->getRecords() as $row) {
-                 $i++;
                  $legacyGameId = $row['video_game_id'] ?? null;
                  $gameId = IdentityMap::get('game', 'legacy_' . $provider, $legacyGameId);
                  
                  if ($gameId) {
-                     Image::firstOrCreate(
-                         ['url' => $row['url']],
-                         [
-                             'video_game_id' => $gameId,
-                             'type' => $row['type'] ?? 'screenshot',
-                         ]
-                     );
+                    $batch[] = [
+                        'video_game_id' => $gameId,
+                        'url' => $row['url'],
+                        'type' => $row['type'] ?? 'screenshot',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
                  }
-                 if($i % 500 == 0) {
-                      DB::commit(); 
-                      DB::beginTransaction();
+
+                 if (count($batch) >= 5000) {
+                      DB::table('images')->insertOrIgnore($batch); 
+                      $batch = [];
                  }
             }
-            DB::commit();
+            if (!empty($batch)) DB::table('images')->insertOrIgnore($batch);
         }
     }
 
@@ -419,15 +580,17 @@ class CsvImportService
         foreach ($files as $file) {
             $this->output->info("Importing Users...");
             $csv = $this->getReader($file);
+            $batch = [];
             foreach ($csv->getRecords() as $row) {
-                User::firstOrCreate(
-                    ['email' => $row['email']],
-                    [
-                        'name' => $row['name'],
-                        'password' => $row['password'], 
-                    ]
-                );
+                $batch[] = [
+                    'name' => $row['name'],
+                    'email' => $row['email'],
+                    'password' => $row['password'], 
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
             }
+            if (!empty($batch)) DB::table('users')->insertOrIgnore($batch);
         }
     }
 
@@ -436,11 +599,18 @@ class CsvImportService
         $files = $this->findFiles('local_currencies.csv');
         foreach ($files as $file) {
             $csv = $this->getReader($file);
+            $batch = [];
             foreach ($csv->getRecords() as $row) {
-                Currency::updateOrCreate(
-                    ['code' => $row['code']],
-                    ['name' => $row['name'], 'symbol' => $row['symbol'] ?? '$']
-                );
+                $batch[] = [
+                    'code' => $row['code'],
+                    'name' => $row['name'],
+                    'symbol' => $row['symbol'] ?? '$',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+            if (!empty($batch)) {
+                DB::table('currencies')->upsert($batch, ['code'], ['name', 'symbol', 'updated_at']);
             }
         }
     }

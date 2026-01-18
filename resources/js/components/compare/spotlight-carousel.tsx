@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from '@inertiajs/react';
+import { AppleTvCard } from '@/components/apple-tv-card';
 
 interface SpotlightScore {
     total: number;
@@ -41,9 +42,10 @@ export interface SpotlightProduct {
 
 interface SpotlightCarouselProps {
     spotlight: SpotlightProduct[];
+    hero?: SpotlightProduct;
 }
 
-export function SpotlightCarousel({ spotlight = [] }: SpotlightCarouselProps) {
+export function SpotlightCarousel({ spotlight = [], hero }: SpotlightCarouselProps) {
     if (!spotlight || spotlight.length === 0) {
         return <div className="p-8 text-center text-gray-500">Spotlight warming up...</div>;
     }
@@ -52,8 +54,22 @@ export function SpotlightCarousel({ spotlight = [] }: SpotlightCarouselProps) {
     const [isPaused, setIsPaused] = useState(false);
     const autoplayRef = useRef<NodeJS.Timeout | null>(null);
 
-    const currentItem = spotlight[currentIndex] || {};
-    const totalItems = spotlight.length;
+    // If a hero is provided, we can either prepend it or treat it as a special case
+    // For now, if hero is passed, we might want to ensure it's the first visible item?
+    // Or arguably, if "hero" is distinct from "spotlight" list, we might just default currentItem to hero if set?
+    
+    // Let's assume we want to cycle through the spotlight list, but if a hero is provided, it might override 
+    // or be the initial state. For simpler logic, let's just stick to the carousel list. 
+    // The user asked for a "Spotlight hero", which implies the carousel ITSELF is the hero section.
+    // So the `hero` prop passed from controller is just a specific Item to feature.
+    
+    // Effective list: if hero is passed, ensure it is in the list or is the list?
+    // The controller passes `spotlight` (array) AND `hero` (single object).
+    // Let's prepend hero to spotlight if it's not already there?
+    const effectiveList = hero ? [hero, ...spotlight.filter(s => s.id !== hero.id)] : spotlight;
+
+    const currentItem = effectiveList[currentIndex] || {};
+    const totalItems = effectiveList.length;
 
     // Autoplay logic
     useEffect(() => {
@@ -179,8 +195,8 @@ export function SpotlightCarousel({ spotlight = [] }: SpotlightCarouselProps) {
 
                         {/* The Large Card */}
                         <div className="flex-1 relative perspective-1000">
-                            <div className="apple-tv-card group">
-                                <div className="apple-tv-media">
+                            <AppleTvCard className="h-full min-h-[500px]">
+                                <div className="apple-tv-media absolute inset-0">
                                     {/* Placeholder for video/large image - reusing cover for now or random gallery image */}
                                     <img
                                         src={coverImage}
@@ -195,8 +211,8 @@ export function SpotlightCarousel({ spotlight = [] }: SpotlightCarouselProps) {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="apple-tv-overlay">
-                                    <div className="apple-tv-content">
+                                <div className="apple-tv-overlay pointer-events-none relative z-10 h-full">
+                                    <div className="apple-tv-content pointer-events-auto mt-auto">
                                         <div className="apple-tv-badges">
                                             {currentContext.media_count > 0 && (
                                                 <span className="apple-tv-badge">{currentContext.media_count} Assets</span>
@@ -216,16 +232,16 @@ export function SpotlightCarousel({ spotlight = [] }: SpotlightCarouselProps) {
                                             </svg>
                                         </Link>
                                     </div>
-                                    <div className="apple-tv-source">
+                                    <div className="apple-tv-source absolute top-4 right-4">
                                         {primaryMedia.source || 'LIVE'}
                                     </div>
                                 </div>
-                            </div>
+                            </AppleTvCard>
                         </div>
 
                         {/* Dots */}
                         <div className="carousel-dots">
-                            {spotlight.map((_, idx) => (
+                            {effectiveList.map((_, idx) => (
                                 <div
                                     key={idx}
                                     onClick={() => goToSlide(idx)}

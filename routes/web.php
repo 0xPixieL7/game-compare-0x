@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VideoGameController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 // Health check endpoint for Railway/Docker
 Route::get('/up', function () {
@@ -34,7 +35,16 @@ Route::get('/debug/{gameId}', function ($gameId) {
     ]);
 });
 
-Route::get('/compare', [\App\Http\Controllers\CompareController::class, 'index'])->name('compare');
+Route::group(['prefix' => 'compare', 'as' => 'compare.'], function () {
+    Route::get('/', [\App\Http\Controllers\CompareController::class, 'index'])->name('index'); // This becomes compare.index (alias for /compare)
+    Route::get('/stats', [\App\Http\Controllers\CompareController::class, 'stats'])->name('stats');
+    Route::get('/entries', [\App\Http\Controllers\CompareController::class, 'entries'])->name('entries');
+    Route::get('/spotlight', [\App\Http\Controllers\CompareController::class, 'spotlight'])->name('spotlight');
+});
+// Basic Alias for legacy support if needed, pointing to same controller
+if (! Route::has('compare')) {
+    Route::get('/compare', [\App\Http\Controllers\CompareController::class, 'index'])->name('compare');
+}
 
 Route::get('/games', [VideoGameController::class, 'index'])->name('games.index');
 Route::get('/games/{game}', [VideoGameController::class, 'show'])->name('games.show');
@@ -49,3 +59,11 @@ Route::prefix('api/ai')->group(function () {
     Route::post('/auto-fix-types', [AIAssistantController::class, 'autoFixTypes']);
     Route::post('/generate-api-docs', [AIAssistantController::class, 'generateApiDocs']);
 });
+// Legal
+Route::get('/privacy-policy', function () {
+    return Inertia::render('Legal/PrivacyPolicy');
+})->name('privacy-policy');
+
+Route::get('/terms-of-service', function () {
+    return Inertia::render('Legal/TermsOfService');
+})->name('terms-of-service');

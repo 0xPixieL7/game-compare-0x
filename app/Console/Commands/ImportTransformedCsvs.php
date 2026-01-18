@@ -15,7 +15,6 @@ class ImportTransformedCsvs extends Command
 {
     protected $signature = 'import:transformed-csvs
                             {--batch=2000 : Batch size for inserts}
-                            {--skip-truncate : Skip truncating tables before import}
                             {--skip-on-error : Skip rows that cause errors instead of failing}
                             {--table= : Import only specific table}
                             {--enrich : Dispatch enrichment jobs after import}';
@@ -100,12 +99,7 @@ class ImportTransformedCsvs extends Command
         // Validate files exist
         $this->validateFiles($basePath);
 
-        // Optionally truncate tables
-        if (! $this->option('skip-truncate')) {
-            if ($this->confirm('⚠️  Truncate existing data before import?', true)) {
-                $this->truncateTables();
-            }
-        }
+        $this->newLine();
 
         $this->newLine();
 
@@ -364,24 +358,6 @@ class ImportTransformedCsvs extends Command
         $this->newLine();
     }
 
-    private function truncateTables(): void
-    {
-        $this->warn('⚠️  Truncating tables (reverse FK order)...');
-
-        DB::transaction(function () {
-            // Reverse order to respect FK constraints
-            $tables = array_reverse(array_keys($this->importSequence));
-
-            foreach ($tables as $table) {
-                DB::table($table)->truncate();
-                $this->line("   ✓ Truncated {$table}");
-            }
-        });
-
-        $this->info('✅ Tables truncated');
-        Log::channel($this->logChannel)->info('Tables truncated successfully');
-    }
-
     /**
      * Cache of valid IDs to prevent FK violations
      */
@@ -554,7 +530,8 @@ class ImportTransformedCsvs extends Command
         } elseif ($table === 'video_games') {
             // Must have valid video_game_title_id
             if (! isset($this->validTitleIds[$row['video_game_title_id']])) {
-                Log::channel($this->logChannel)->warning("Skipping video_game: Invalid title_id via shouldSkip", ['row_id' => $row['id'] ?? 'unknown', 'title_id' => $row['video_game_title_id']]);
+                Log::channel($this->logChannel)->warning('Skipping video_game: Invalid title_id via shouldSkip', ['row_id' => $row['id'] ?? 'unknown', 'title_id' => $row['video_game_title_id']]);
+
                 return true;
             }
         } elseif ($table === 'video_game_title_sources') {
@@ -582,14 +559,14 @@ class ImportTransformedCsvs extends Command
     {
         // Debug log first batch for media table
         static $mediaFirstBatch = false;
-        if ($table === 'media' && !$mediaFirstBatch && !empty($batch)) {
+        if ($table === 'media' && ! $mediaFirstBatch && ! empty($batch)) {
             $mediaFirstBatch = true;
-            Log::channel($this->logChannel)->debug("Media first row data", [
+            Log::channel($this->logChannel)->debug('Media first row data', [
                 'row' => $batch[0] ?? [],
                 'keys' => array_keys($batch[0] ?? []),
             ]);
         }
-        
+
         if ($this->option('skip-on-error')) {
             // Insert row by row to isolate errors
             foreach ($batch as $row) {
@@ -624,11 +601,11 @@ class ImportTransformedCsvs extends Command
             if (empty($row['provider'])) {
                 $row['provider'] = $row['provider_key'] ?? $row['slug'] ?? null;
             }
-            
+
             // Allow all columns to pass through (provider_key, slug, category, display_name, metadata)
         } elseif ($table === 'video_games') {
             // Map description to summary (as requested by user)
-            if (empty($row['summary']) && !empty($row['description'])) {
+            if (empty($row['summary']) && ! empty($row['description'])) {
                 $row['summary'] = $row['description'];
             }
             // Ensure description is unset so it doesn't cause "column not found" error
@@ -637,16 +614,16 @@ class ImportTransformedCsvs extends Command
             // Renumber media IDs to start from 0 instead of 1
             // This prevents FK violations when images have empty media_id (converts to 0)
             if (isset($row['id']) && is_numeric($row['id'])) {
-                $row['id'] = (int)$row['id'] - 1;
+                $row['id'] = (int) $row['id'] - 1;
             }
-            
+
             // Handle JSON columns - decode and re-encode to ensure valid JSON
             $jsonColumns = ['manipulations', 'custom_properties', 'generated_conversions', 'responsive_images'];
             foreach ($jsonColumns as $column) {
-                if (isset($row[$column]) && is_string($row[$column]) && !empty($row[$column])) {
+                if (isset($row[$column]) && is_string($row[$column]) && ! empty($row[$column])) {
                     // Try to decode the JSON
                     $decoded = json_decode($row[$column], true);
-                    
+
                     if (json_last_error() !== JSON_ERROR_NONE) {
                         // If JSON decode fails, use an appropriate default based on column
                         if ($column === 'custom_properties') {
@@ -696,14 +673,15 @@ class ImportTransformedCsvs extends Command
                 // Special case: media_id for images can be NULL (not all images have media records)
                 if ($table === 'images' && $key === 'media_id' && ($value === '' || $value === null)) {
                     static $firstLog = false;
-                    if (!$firstLog) {
-                        Log::channel($this->logChannel)->debug("Images: Setting empty media_id to NULL", ['original' => $value]);
+                    if (! $firstLog) {
+                        Log::channel($this->logChannel)->debug('Images: Setting empty media_id to NULL', ['original' => $value]);
                         $firstLog = true;
                     }
                     $row[$key] = null;
+
                     continue;
                 }
-                
+
                 $row[$key] = $value !== null && $value !== '' ? (int) $value : null;
 
                 continue;

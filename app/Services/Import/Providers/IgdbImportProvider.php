@@ -122,8 +122,8 @@ use App\Services\Import\Concerns\InteractsWithConsole;
     {
         $this->setCommand($command);
 
-        // Disable query logging for performance
-        DB::disableQueryLog();
+        // Start optimized session
+        $this->startOptimizedImport();
 
         // Parse flags
         $this->mergeMedia = (int) $command->option('merge-media') !== 0;
@@ -275,6 +275,8 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         $this->info('🚀 Running Retailer Extraction...');
         $this->command->call('app:extract-retailers');
+
+        $this->endOptimizedImport();
 
         return self::SUCCESS;
     }

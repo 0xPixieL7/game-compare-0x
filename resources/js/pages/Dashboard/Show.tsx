@@ -29,6 +29,7 @@ interface Game {
     screenshots: MediaItem[]
     artworks: MediaItem[]
     trailers: any[]
+    hero_url?: string
     cover_url_high_res: string
     cover_url_mobile: string
     summary: {
@@ -37,6 +38,7 @@ interface Game {
         has_screenshots: boolean
         has_artworks: boolean
         total_count: number
+        hero_url?: string
       }
       videos: {
         has_trailers: boolean
@@ -85,8 +87,8 @@ export default function DashboardShow({ game, priceData, availabilityData, meta 
   const [isChartLoading, setIsChartLoading] = useState(true)
   const [isVideoPlaying, setIsVideoPlaying] = useState(false)
 
-  // Background image with mobile responsiveness
-  const backgroundImage = game.media.cover_url_high_res || game.media.cover_url_mobile
+  // Background image priority: Hero (Art/Promo) > Cover
+  const backgroundImage = game.media.hero_url || game.media.cover_url_high_res || game.media.cover_url_mobile
 
   // Get all media items for carousel
   const allMedia = [...game.media.screenshots, ...game.media.artworks]
@@ -220,19 +222,17 @@ export default function DashboardShow({ game, priceData, availabilityData, meta 
             backgroundColor: '#000000',
           }}
         >
-          {/* Background Overlay */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+          {/* Background Overlay - Darken for text but NO BLUR */}
+          <div className="absolute inset-0 bg-black/40"></div>
 
-          {/* Mobile Background Optimization */}
+          {/* Mobile Background Optimization - Removed Blur */}
           <div
             className="absolute inset-0 md:hidden bg-cover bg-center"
             style={{
               backgroundImage: game.media.cover_url_mobile ? `url(${game.media.cover_url_mobile})` : 'none',
-              filter: 'blur(8px)',
-              transform: 'scale(1.1)',
             }}
           />
-          <div className="absolute inset-0 md:hidden bg-black/80" />
+          <div className="absolute inset-0 md:hidden bg-black/60" />
 
           {/* Content */}
           <div className="relative z-10">
@@ -286,7 +286,7 @@ export default function DashboardShow({ game, priceData, availabilityData, meta 
                   </div>
 
                   {/* Main Display */}
-                  <div className="bg-black/40 backdrop-blur-md rounded-xl border border-white/20 overflow-hidden min-h-[400px]">
+                  <div className="bg-black/60 rounded-xl border border-white/20 overflow-hidden min-h-[400px]">
                     {activeView === 'chart' ? (
                       <div className="p-6">
                         {/* Price Analysis Chart */}
@@ -370,7 +370,7 @@ export default function DashboardShow({ game, priceData, availabilityData, meta 
 
                   {/* Image Carousel */}
                   {allMedia.length > 0 && (
-                    <div className="bg-black/40 backdrop-blur-md rounded-xl border border-white/20 p-6">
+                    <div className="bg-black/60 rounded-xl border border-white/20 p-6">
                       <h3 className="text-xl font-bold text-white mb-4">Screenshots & Artwork</h3>
                       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
                         {allMedia.slice(0, 12).map((media, index) => (
@@ -400,7 +400,7 @@ export default function DashboardShow({ game, priceData, availabilityData, meta 
                 {/* Game Info - Right Column */}
                 <div className="space-y-6">
                   {/* Game Details */}
-                  <div className="bg-black/40 backdrop-blur-md rounded-xl border border-white/20 p-6">
+                  <div className="bg-black/60 rounded-xl border border-white/20 p-6">
                     <h2 className="text-2xl font-bold text-white mb-4">{game.name}</h2>
 
                     {/* Rating */}

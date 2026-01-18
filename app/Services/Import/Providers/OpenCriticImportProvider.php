@@ -35,6 +35,8 @@ class OpenCriticImportProvider implements ImportProvider
 
         $this->info('Starting OpenCritic Import...');
 
+        $this->startOptimizedImport();
+
         $query = VideoGame::query()->whereNotNull('name');
 
         if (! $force) {
@@ -137,6 +139,8 @@ class OpenCriticImportProvider implements ImportProvider
         $progressBar->finish();
         $this->command->newLine();
         $this->info('OpenCritic Import Complete.');
+
+        $this->endOptimizedImport();
 
         return Command::SUCCESS;
     }

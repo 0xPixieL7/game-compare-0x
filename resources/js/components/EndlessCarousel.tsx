@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { type Game } from '@/types';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useEffect, useRef, useState } from 'react';
@@ -108,9 +109,12 @@ export default function EndlessCarousel({
                 <h2 className="text-xl font-bold text-white transition-colors hover:text-blue-400 lg:text-2xl">
                     {title}
                 </h2>
-                <div className="text-xs font-medium tracking-wider text-gray-500 uppercase">
+                <Link
+                    href="/compare"
+                    className="text-xs font-medium tracking-wider text-gray-500 uppercase hover:text-white"
+                >
                     See All
-                </div>
+                </Link>
             </div>
 
             {/* Carousel Container */}

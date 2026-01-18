@@ -68,6 +68,7 @@ export interface GameMediaSummary {
         has_screenshots: boolean;
         has_artworks: boolean;
         cover_url: string | null;
+        hero_url: string | null;
         total_count: number;
         [key: string]: unknown;
     };

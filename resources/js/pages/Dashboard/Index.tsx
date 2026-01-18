@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Head, Link, usePage } from '@inertiajs/react'
 import Header from '@/components/Header'
+import { GameCard } from '@/components/GameCard'
 import EndlessCarousel from '@/components/EndlessCarousel'
 import { useUserPreferences } from '@/Utils/userPreferences'
 
@@ -177,51 +178,12 @@ export default function DashboardIndex({ carouselRows, searchResults, search, me
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 gap-6">
                 {searchResults.map((game) => (
-                  <Link
-                    key={game.id}
-                    href={`/dashboard/${game.id}`}
-                    onClick={() => trackGameView(game.id)}
-                    className="group relative transform-gpu transition-transform duration-200 hover:scale-110 focus:scale-110 focus:outline-none"
-                  >
-                    <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-gradient-to-br from-gray-800 to-gray-900 shadow-lg group-hover:shadow-2xl transition-shadow duration-300">
-                      {game.media.cover_url_thumb ? (
-                        <img
-                          src={game.media.cover_url_thumb}
-                          alt={game.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-700 to-gray-800">
-                          <div className="text-5xl text-gray-400">🎮</div>
-                        </div>
-                      )}
-
-                      {/* Rating Badge */}
-                      {game.rating && (
-                        <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full border border-white/10">
-                          ⭐ {Math.round(game.rating * 10) / 10}
-                        </div>
-                      )}
-
-                      {/* Gradient Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-
-                      {/* Game Info */}
-                      <div className="absolute bottom-0 left-0 right-0 p-4">
-                        <h3 className="text-white font-semibold text-sm line-clamp-2 mb-1">
-                          {game.canonical_name || game.name}
-                        </h3>
-                        {game.rating && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white text-xs ml-1">
-                              {Math.round(game.rating * 10) / 10} ★
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                  <div key={game.id} onClick={() => trackGameView(game.id)}>
+                    <GameCard 
+                      game={game} 
+                      className="aspect-[2/3]"
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -247,8 +209,9 @@ export default function DashboardIndex({ carouselRows, searchResults, search, me
                     ...game.media,
                     cover_url: game.media.cover_url_thumb || game.media.cover_url,
                     cover_url_thumb: game.media.cover_url_thumb || game.media.cover_url,
+                    cover: { url: game.media.cover_url_thumb || game.media.cover_url, width: 0, height: 0 }
                   }
-                }))
+                })) as any[]
 
                 return (
                   <div

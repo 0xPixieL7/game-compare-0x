@@ -161,11 +161,22 @@ class DashboardController extends Controller
             }
         }
 
+        // Determine the best Hero URL (Artwork > Screenshot > Cover)
+        $heroUrl = null;
+        if (!empty($artworks)) {
+            $heroUrl = $baseUrl . 't_original/ar' . base_convert($artworks[0]['external_id'], 10, 36) . '.webp';
+        } elseif (!empty($screenshots)) {
+            $heroUrl = $baseUrl . 't_original/sc' . base_convert($screenshots[0]['external_id'], 10, 36) . '.webp';
+        } elseif ($cover) {
+            $heroUrl = $baseUrl . 't_original/co' . base_convert($cover['external_id'], 10, 36) . '.webp';
+        }
+
         return [
             'cover' => $cover,
             'screenshots' => $screenshots,
             'artworks' => $artworks,
             'trailers' => $trailers,
+            'hero_url' => $heroUrl,
             'cover_url_high_res' => $cover ? $baseUrl.'t_1080p/co'.base_convert($cover['external_id'], 10, 36).'.webp' : null,
             'cover_url_mobile' => $cover ? $baseUrl.'t_cover_big/co'.base_convert($cover['external_id'], 10, 36).'.webp' : null,
             'summary' => [
@@ -174,6 +185,7 @@ class DashboardController extends Controller
                     'has_screenshots' => ! empty($screenshots),
                     'has_artworks' => ! empty($artworks),
                     'total_count' => count($screenshots) + count($artworks) + ($cover ? 1 : 0),
+                    'hero_url' => $heroUrl,
                 ],
                 'videos' => [
                     'has_trailers' => ! empty($trailers),

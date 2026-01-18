@@ -103,6 +103,7 @@ interface PrioritizedMatch {
 }
 
 interface ComparePageProps {
+    hero?: SpotlightProduct;
     spotlight: SpotlightProduct[];
     crossReferenceStats: CrossReferenceStats;
     prioritizedMatches: PrioritizedMatch[];
@@ -124,6 +125,7 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Compare({
+    hero,
     spotlight,
     crossReferenceStats,
     prioritizedMatches,
@@ -235,7 +237,7 @@ export default function Compare({
                     {/* Main content grid */}
                     <div className="grid grid-cols-12 gap-8">
                         {/* Spotlight carousel */}
-                        <SpotlightCarousel spotlight={spotlight} />
+                        <SpotlightCarousel spotlight={spotlight} hero={hero} />
 
                         {/* Stats section */}
                         <div className="col-span-12">

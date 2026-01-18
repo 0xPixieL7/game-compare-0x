@@ -42,7 +42,7 @@ class GdbImportProvider implements ImportProvider
     }
 
     private $batch = [];
-    private const BATCH_SIZE = 1;
+    private const BATCH_SIZE = 1000;
 
     public function handle(Command $command): int
     {
@@ -56,6 +56,8 @@ class GdbImportProvider implements ImportProvider
 
             return Command::FAILURE;
         }
+
+        $this->startOptimizedImport();
 
         $files = collect(File::files($path))
             ->filter(fn ($f) => $f->isFile())
@@ -145,6 +147,8 @@ class GdbImportProvider implements ImportProvider
             ['Images created', $totals['images'] ?? 0],
             ['Videos created', $totals['videos'] ?? 0],
         ]);
+
+        $this->endOptimizedImport();
 
         return Command::SUCCESS;
     }

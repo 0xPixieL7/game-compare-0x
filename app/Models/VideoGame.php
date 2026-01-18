@@ -437,6 +437,92 @@ class VideoGame extends Model implements HasMedia
      *
      * @return array{images: array<string, mixed>, videos: array<string, mixed>}
      */
+    /**
+     * Get the best high-resolution background image for the game page.
+     * Priority: Artworks > Screenshots > Cover.
+     */
+    public function getHeroImageUrl(): ?string
+    {
+        $image = $this->images;
+        if (! $image) {
+            return null;
+        }
+
+        $details = $image->getAllDetails();
+
+        // Priority 1: Artworks (Cinematic/Promo Artwork)
+        $artwork = collect($details)
+            ->filter(fn ($d) => ($d['collection'] ?? '') === 'artworks')
+            ->first();
+
+        if ($artwork) {
+            $url = $this->getBestVariant($artwork['size_variants'] ?? []);
+            if ($url) {
+                return $url;
+            }
+        }
+
+        // Priority 2: Screenshots (Promo/Gameplay)
+        $screenshot = collect($details)
+            ->filter(fn ($d) => ($d['collection'] ?? '') === 'screenshots')
+            ->first();
+
+        if ($screenshot) {
+            $url = $this->getBestVariant($screenshot['size_variants'] ?? []);
+            if ($url) {
+                return $url;
+            }
+        }
+
+        // Priority 3: Cover (Highest possible quality)
+        return $this->getCoverUrl('t_original') ?? $this->getCoverUrl('t_1080p');
+    }
+
+    /**
+     * Helper to find the best resolution in a list of size variants.
+     */
+    protected function getBestVariant(array $variants): ?string
+    {
+        if ($variants === []) {
+            return null;
+        }
+
+        // Absolute priority: Original uncompressed size
+        foreach ($variants as $v) {
+            if (str_contains($v, '/t_original/')) {
+                return $v;
+            }
+        }
+
+        // High priority: 1080p
+        foreach ($variants as $v) {
+            if (str_contains($v, '/t_1080p/')) {
+                return $v;
+            }
+        }
+
+        // Fallback: 720p
+        foreach ($variants as $v) {
+            if (str_contains($v, '/t_720p/')) {
+                return $v;
+            }
+        }
+
+        // Any other sized variant
+        foreach ($variants as $v) {
+            if (preg_match('/\/t_[a-z0-9_]+\//', $v)) {
+                return $v;
+            }
+        }
+
+        return $variants[0] ?? null;
+    }
+
+    /**
+     * Get complete media summary with all metadata.
+     *
+     * @return array{images: array<string, mixed>, videos: array<string, mixed>}
+     */
     public function getMediaSummary(): array
     {
         $image = $this->images;
@@ -448,6 +534,7 @@ class VideoGame extends Model implements HasMedia
                 'has_screenshots' => $image && $image->hasCollection('screenshots'),
                 'has_artworks' => $image && $image->hasCollection('artworks'),
                 'cover_url' => $image?->url,
+                'hero_url' => $this->getHeroImageUrl(),
                 'collections' => $image?->getCollections() ?? [],
                 'total_count' => $image?->getImageCount() ?? 0,
                 'custom_properties' => $image?->custom_properties ?? [],

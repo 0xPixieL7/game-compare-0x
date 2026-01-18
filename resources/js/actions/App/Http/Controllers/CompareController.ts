@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\CompareController::index
 * @see app/Http/Controllers/CompareController.php:16
@@ -42,6 +42,43 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\CompareController::index
+* @see app/Http/Controllers/CompareController.php:16
+* @route '/compare'
+*/
+const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::index
+* @see app/Http/Controllers/CompareController.php:16
+* @route '/compare'
+*/
+indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::index
+* @see app/Http/Controllers/CompareController.php:16
+* @route '/compare'
+*/
+indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\CompareController::stats
@@ -88,6 +125,43 @@ stats.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
+* @see \App\Http\Controllers\CompareController::stats
+* @see app/Http/Controllers/CompareController.php:58
+* @route '/compare/stats'
+*/
+const statsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::stats
+* @see app/Http/Controllers/CompareController.php:58
+* @route '/compare/stats'
+*/
+statsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::stats
+* @see app/Http/Controllers/CompareController.php:58
+* @route '/compare/stats'
+*/
+statsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+stats.form = statsForm
+
+/**
 * @see \App\Http\Controllers\CompareController::entries
 * @see app/Http/Controllers/CompareController.php:63
 * @route '/compare/entries'
@@ -132,6 +206,43 @@ entries.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
+* @see \App\Http\Controllers\CompareController::entries
+* @see app/Http/Controllers/CompareController.php:63
+* @route '/compare/entries'
+*/
+const entriesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::entries
+* @see app/Http/Controllers/CompareController.php:63
+* @route '/compare/entries'
+*/
+entriesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::entries
+* @see app/Http/Controllers/CompareController.php:63
+* @route '/compare/entries'
+*/
+entriesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+entries.form = entriesForm
+
+/**
 * @see \App\Http\Controllers\CompareController::spotlight
 * @see app/Http/Controllers/CompareController.php:71
 * @route '/compare/spotlight'
@@ -174,6 +285,43 @@ spotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: spotlight.url(options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\CompareController::spotlight
+* @see app/Http/Controllers/CompareController.php:71
+* @route '/compare/spotlight'
+*/
+const spotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::spotlight
+* @see app/Http/Controllers/CompareController.php:71
+* @route '/compare/spotlight'
+*/
+spotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\CompareController::spotlight
+* @see app/Http/Controllers/CompareController.php:71
+* @route '/compare/spotlight'
+*/
+spotlightForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+spotlight.form = spotlightForm
 
 const CompareController = { index, stats, entries, spotlight }
 

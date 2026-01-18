@@ -1,104 +1,74 @@
-import { type Game } from '@/types';
+import { AppleTvCard } from '@/components/apple-tv-card';
+import { type Game, type GameListItem } from '@/types';
 import { Link } from '@inertiajs/react';
+import { Star } from 'lucide-react';
 import { type FC } from 'react';
 
+// Flexible prop type that supports both Game and GameListItem
 interface GameCardProps {
-    game: Game;
+    game: any; // Using any for compatibility between slightly different frontend types
     className?: string;
+    variant?: 'default' | 'compact';
 }
 
-export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
-    // Prefer thumbnail for list view performance
-    const coverUrl =
-        game.media.cover_url_thumb ||
-        game.media.cover_url ||
-        '/placeholder-game.jpg';
+export const GameCard: FC<GameCardProps> = ({ game, className = '', variant = 'default' }) => {
+    // Handle different data shapes from different routes
+    const isListItem = 'cover_url' in game;
+    
+    const coverUrl = isListItem 
+        ? game.cover_url 
+        : (game.media?.cover_url || game.media?.cover_url_thumb || '/placeholder-game.jpg');
+    
+    const rating = isListItem ? game.rating : game.rating;
+    const name = isListItem ? game.name : (game.canonical_name || game.name);
+    const releaseDate = isListItem ? game.release_date : game.release_date;
+    const price = isListItem ? game.latest_price : game.pricing?.amount_major;
+    const currency = isListItem ? game.currency : game.pricing?.currency;
 
-    const formatBtc = (amount: number) => {
-        return `₿${amount.toFixed(8)}`;
-    };
-
-    const formatFiat = (amount: number, currency: string) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: currency,
-        }).format(amount);
-    };
+    const href = isListItem ? `/games/${game.id}` : `/dashboard/${game.id}`;
 
     return (
-        <Link
-            href={`/dashboard/${game.id}`} // Assuming detailed view is here
-            className={`group relative block h-full overflow-hidden rounded-xl bg-gray-900 shadow-lg transition-all hover:z-10 hover:scale-105 hover:shadow-2xl hover:ring-2 hover:ring-blue-500/50 ${className}`}
-        >
-            {/* Cover Image */}
-            <div className="aspect-[2/3] w-full overflow-hidden">
-                <img
-                    src={coverUrl}
-                    alt={game.name}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    loading="lazy"
-                />
-
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent opacity-60 transition-opacity duration-300 group-hover:opacity-80" />
-            </div>
-
-            {/* Content Overlay */}
-            <div className="absolute inset-0 flex flex-col justify-end p-4">
-                <h3 className="mb-1 line-clamp-2 text-sm font-bold text-white drop-shadow-md">
-                    {game.canonical_name || game.name}
-                </h3>
-
-                {/* Meta Row: Rating + Date */}
-                <div className="mb-2 flex items-center justify-between text-xs text-gray-300">
-                    {game.rating && (
-                        <div className="flex items-center gap-1 rounded bg-black/40 px-1.5 py-0.5 backdrop-blur-sm">
-                            <span className="text-yellow-400">★</span>
-                            <span>{Math.round(game.rating)}</span>
-                        </div>
-                    )}
-                    {game.release_date && (
-                        <span className="opacity-80">
-                            {new Date(game.release_date).getFullYear()}
-                        </span>
-                    )}
+        <Link href={href} className={`block h-full cursor-default ${className}`}>
+            <AppleTvCard className="h-full">
+                {/* Media Layer */}
+                <div className="absolute inset-0 z-0 h-full w-full">
+                    <img
+                        src={coverUrl}
+                        alt={name}
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover/atv:scale-110"
+                        loading="lazy"
+                    />
+                    {/* Shadow/Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-80" />
                 </div>
 
-                {/* Pricing */}
-                {game.pricing ? (
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-emerald-400">
-                                {game.pricing.is_free
-                                    ? 'FREE'
-                                    : formatFiat(
-                                          game.pricing.amount_major,
-                                          game.pricing.currency,
-                                      )}
-                            </span>
-                            {/* Retailer Badge */}
-                            {game.pricing.retailer && (
-                                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/80 uppercase">
-                                    {game.pricing.retailer}
-                                </span>
+                {/* Content Layer (Parallax-ish) */}
+                <div className="absolute inset-0 z-10 flex flex-col justify-end p-4 text-white">
+                    <div className="transform transition-transform duration-500 group-hover/atv:-translate-y-2">
+                        <h3 className="line-clamp-2 text-sm font-black tracking-tight drop-shadow-lg lg:text-base">
+                            {name}
+                        </h3>
+                        
+                        <div className="mt-2 flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold backdrop-blur-md border border-white/10">
+                                <Star className="size-3 fill-yellow-400 text-yellow-400" />
+                                <span>{rating ? Math.round(rating) : '—'}</span>
+                            </div>
+                            
+                            {price ? (
+                                <div className="text-right">
+                                    <span className="text-xs font-black text-cyan-400 drop-shadow-md">
+                                        {currency} {price}
+                                    </span>
+                                </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 uppercase tracking-tighter font-bold">Compare</span>
                             )}
                         </div>
-
-                        {/* BTC Price */}
-                        {game.pricing.btc_price !== null &&
-                            !game.pricing.is_free && (
-                                <div className="flex items-center gap-1 font-mono text-xs text-orange-400">
-                                    <span className="opacity-75"></span>
-                                    {formatBtc(game.pricing.btc_price)}
-                                </div>
-                            )}
                     </div>
-                ) : (
-                    <div className="mt-1 text-xs text-gray-500 italic">
-                        Login for prices
-                    </div>
-                )}
-            </div>
+                </div>
+            </AppleTvCard>
         </Link>
     );
 };
+

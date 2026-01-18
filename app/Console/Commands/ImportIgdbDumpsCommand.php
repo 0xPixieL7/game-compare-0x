@@ -266,10 +266,12 @@ class ImportIgdbDumpsCommand extends Command
 
             $this->newLine();
             $this->info('=== Post-Import Steps ===');
-            $this->info('🚀 Running OpenCritic import (Limit: 5)...');
-            $this->call('gc:import-opencritic', ['--limit' => 5]);
             $this->info('🚀 Running Retailer Extraction...');
             $this->call('app:extract-retailers');
+
+            $this->newLine();
+            $this->info('🚀 Triggering Synchronous CSV Import...');
+            $this->call('import:csvs');
 
             return self::SUCCESS;
         }
@@ -346,11 +348,12 @@ class ImportIgdbDumpsCommand extends Command
             $this->warn('No imported game IDs found for propagation.');
         }
 
-        $this->info('🚀 Running OpenCritic import (Limit: 5)...');
-        $this->call('gc:import-opencritic', ['--limit' => 5]);
-
         $this->info('🚀 Running Retailer Extraction...');
         $this->call('app:extract-retailers');
+
+        $this->newLine();
+        $this->info('🚀 Triggering Synchronous CSV Import...');
+        $this->call('import:csvs');
 
         return self::SUCCESS;
     }
@@ -819,6 +822,11 @@ class ImportIgdbDumpsCommand extends Command
 
             // Never treat schema artifacts as import payloads.
             if (str_ends_with($name, '_schema.json') || str_ends_with($name, 'schema.json')) {
+                continue;
+            }
+
+            // EXCLUSION: "companies" should not match "involved_companies"
+            if ($basename === 'companies' && str_contains($name, 'involved_companies')) {
                 continue;
             }
 
@@ -2789,7 +2797,7 @@ class ImportIgdbDumpsCommand extends Command
         // PRE-LOAD all game ID mappings into memory to avoid N+1 queries
         $this->info('Preloading game ID mappings...');
         $gameIdMap = $this->preloadGameIdMappings($provider);
-        $this->info('✓ Loaded ' . count($gameIdMap) . ' game mappings');
+        $this->info('✓ Loaded '.count($gameIdMap).' game mappings');
         if (empty($gameIdMap)) {
             $this->warn("No game ID mappings found - skipping media import for {$file}");
             fclose($handle);

@@ -7,6 +7,7 @@ import {
     PaginatedCollection,
     BreadcrumbItem
 } from '@/types';
+import { GameCard } from '@/components/GameCard';
 import { Deferred, Head, Link } from '@inertiajs/react';
 import {
     Calendar,
@@ -196,79 +197,11 @@ export default function Index({ featuredGame, games, filters }: Props) {
                                     className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' : 'grid-cols-1'}`}
                                 >
                                     {games.data.map((game) => (
-                                        <Link
-                                            key={game.id}
-                                            href={`/games/${game.id}`}
-                                            className={`group relative bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden transition-all hover:border-indigo-500/50 hover:shadow-[0_0_30px_rgba(79,70,229,0.15)] hover:-translate-y-1 ${viewMode === 'list' ? 'flex items-center p-3 gap-6' : ''}`}
-                                        >
-                                            <div
-                                                className={`relative overflow-hidden ${viewMode === 'grid' ? 'aspect-[3/4]' : 'w-24 aspect-[3/4] flex-shrink-0'} rounded-xl`}
-                                            >
-                                                <img
-                                                    src={
-                                                        game.cover_url ||
-                                                        '/placeholder-game.jpg'
-                                                    }
-                                                    alt={game.name}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                                                />
-                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                                                    <div className="bg-indigo-600 rounded-full p-2.5 shadow-xl text-white">
-                                                        <Play className="fill-current size-4" />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                className={`p-4 ${viewMode === 'list' ? 'flex-1 grid grid-cols-4 items-center gap-4' : ''}`}
-                                            >
-                                                <div
-                                                    className={
-                                                        viewMode === 'list'
-                                                            ? 'col-span-2'
-                                                            : ''
-                                                    }
-                                                >
-                                                    <h4 className="font-bold text-neutral-100 group-hover:text-indigo-400 transition-colors truncate">
-                                                        {game.name}
-                                                    </h4>
-                                                    <div className="flex items-center gap-2 mt-1 text-xs text-neutral-500 font-medium uppercase tracking-wider">
-                                                        <Calendar className="size-3" />
-                                                        {game.release_date}
-                                                    </div>
-                                                </div>
-
-                                                <div
-                                                    className={`mt-3 flex items-center justify-between ${viewMode === 'list' ? 'mt-0 col-span-2' : ''}`}
-                                                >
-                                                    <div className="flex items-center gap-1.5 text-amber-400 font-bold bg-amber-400/10 px-2 py-0.5 rounded-md text-sm">
-                                                        <Star className="fill-current size-3.5" />
-                                                        {game.rating}
-                                                    </div>
-
-                                                    <div className="text-right">
-                                                        <div className="text-xs text-neutral-500 leading-none">
-                                                            Best Price
-                                                        </div>
-                                                        <div className="font-black text-white group-hover:text-cyan-400 transition-colors">
-                                                            {game.latest_price &&
-                                                            game.currency ? (
-                                                                <>
-                                                                    {
-                                                                        game.currency
-                                                                    }{' '}
-                                                                    {
-                                                                        game.latest_price
-                                                                    }
-                                                                </>
-                                                            ) : (
-                                                                'N/A'
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
+                                        <GameCard 
+                                            key={game.id} 
+                                            game={game} 
+                                            className={viewMode === 'list' ? 'h-32' : 'aspect-[3/4]'}
+                                        />
                                     ))}
                                 </div>
 

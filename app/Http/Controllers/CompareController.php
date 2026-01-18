@@ -15,6 +15,12 @@ class CompareController extends Controller
 {
     public function index(Request $request): Response
     {
+        set_time_limit(120); // Prevent timeouts during heavy DB/IO operations
+
+        // ... (existing index code)
+        // Check if request expects JSON (for simple polling/updates) - optional but good practice
+        // For now, we return Inertia response as requested.
+        
         $searchQuery = $request->get('search', '');
         $limit = min((int) $request->get('limit', 20), 100);
 
@@ -31,7 +37,11 @@ class CompareController extends Controller
         $platforms = $this->getAvailablePlatforms();
         $currencies = ['USD', 'EUR', 'GBP', 'JPY'];
 
+        // Get hero product (top rated)
+        $hero = $this->getHeroProduct();
+
         return Inertia::render('Compare/Index', [
+            'hero' => $hero,
             'spotlight' => $spotlight,
             'crossReferenceStats' => $crossReferenceStats,
             'prioritizedMatches' => $prioritizedMatches,
@@ -45,6 +55,24 @@ class CompareController extends Controller
             ],
             // Filters can be passed back if needed by the frontend to maintain state
         ]);
+    }
+
+    public function stats(): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($this->getCrossReferenceStats());
+    }
+
+    public function entries(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $searchQuery = $request->get('search', '');
+        $limit = min((int) $request->get('limit', 20), 100);
+        
+        return response()->json($this->getGameComparisons($searchQuery, $limit));
+    }
+
+    public function spotlight(): \Illuminate\Http\JsonResponse
+    {
+         return response()->json($this->getSpotlightProducts());
     }
 
     private function getSpotlightProducts(): array
@@ -101,6 +129,15 @@ class CompareController extends Controller
         ];
     }
 
+    private function getHeroProduct(): ?array
+    {
+        // For now, let's use the first spotlight product as the hero
+        // In the future, this could be dynamic, latest release, or editor's pick
+        $spotlights = $this->getSpotlightProducts();
+        
+        return $spotlights[0] ?? null;
+    }
+
     private function getCrossReferenceStats(): array
     {
         $total = VideoGameTitleSource::count();
@@ -132,8 +169,8 @@ class CompareController extends Controller
                 'video_game_title_sources.external_id',
                 'video_game_title_sources.rating',
                 'video_game_title_sources.release_date',
-                'video_game_sources.name as source_name',
-                'video_game_titles.canonical_name',
+                'video_game_sources.display_name as source_name',
+                'video_game_titles.name as canonical_name',
             ])
             ->join('video_game_sources', 'video_game_title_sources.video_game_source_id', '=', 'video_game_sources.id')
             ->join('video_game_titles', 'video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
@@ -251,31 +288,32 @@ class CompareController extends Controller
 
     private function loadPriceChartingData(string $gameName): array
     {
-        static $csvData = null;
-
-        if ($csvData === null) {
+        $csvData = Cache::remember('compare:price-guide-sample', 3600, function() {
             $csvPath = base_path('price-guide.csv');
             if (! file_exists($csvPath)) {
                 return [];
             }
 
-            $csvData = [];
+            $rows = [];
             $handle = fopen($csvPath, 'r');
             if ($handle !== false) {
                 $headers = fgetcsv($handle);
-                // Load first 5000 rows for demo/speed
                 $rowCount = 0;
                 while (($row = fgetcsv($handle)) && $rowCount < 5000) {
                     if (count($row) >= 4 && is_array($headers)) {
-                        // Ensure row and headers match
                          if (count($row) === count($headers)) {
-                            $csvData[] = array_combine($headers, $row);
+                            $rows[] = array_combine($headers, $row);
                          }
                     }
                     $rowCount++;
                 }
                 fclose($handle);
             }
+            return $rows;
+        });
+
+        if (empty($csvData)) {
+            return [];
         }
 
         $matches = [];

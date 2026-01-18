@@ -2,16 +2,19 @@
 
 namespace App\Services\Import;
 
+use Illuminate\Support\Facades\Cache;
+
 class IdentityMap
 {
-    protected static array $map = [];
+    // Memory cache to avoid hitting Redis/File for repeated lookups in same process
+    protected static array $localCache = [];
 
     /**
      * Generate a unique key for the map.
      */
     public static function key(string $type, string $provider, string $externalId): string
     {
-        return strtolower("{$type}:{$provider}:{$externalId}");
+        return strtolower("imap:{$type}:{$provider}:{$externalId}");
     }
 
     /**
@@ -19,7 +22,26 @@ class IdentityMap
      */
     public static function put(string $type, string $provider, string $externalId, int $newId): void
     {
-        self::$map[self::key($type, $provider, $externalId)] = $newId;
+        $key = self::key($type, $provider, $externalId);
+        self::$localCache[$key] = $newId;
+        Cache::put($key, $newId, now()->addDays(2));
+    }
+
+    /**
+     * Store multiple mappings at once.
+     */
+    public static function putMany(string $type, string $provider, array $mappings): void
+    {
+        $cacheData = [];
+        foreach ($mappings as $externalId => $newId) {
+            $key = self::key($type, $provider, (string)$externalId);
+            self::$localCache[$key] = $newId;
+            $cacheData[$key] = $newId;
+        }
+        
+        if (!empty($cacheData)) {
+            Cache::putMany($cacheData, now()->addDays(2));
+        }
     }
 
     /**
@@ -27,18 +49,57 @@ class IdentityMap
      */
     public static function get(string $type, string $provider, string $externalId): ?int
     {
-        return self::$map[self::key($type, $provider, $externalId)] ?? null;
+        $key = self::key($type, $provider, $externalId);
+        
+        if (isset(self::$localCache[$key])) {
+            return self::$localCache[$key];
+        }
+        
+        $val = Cache::get($key);
+        if ($val) {
+             self::$localCache[$key] = $val;
+             return $val;
+        }
+        
+        return null;
     }
 
     /**
-     * Clear the map (memory management).
+     * Retrieve multiple mappings at once.
+     */
+    public static function getMany(string $type, string $provider, array $externalIds): array
+    {
+        $keys = [];
+        $results = [];
+        
+        foreach ($externalIds as $id) {
+            $k = self::key($type, $provider, (string)$id);
+            if (isset(self::$localCache[$k])) {
+                $results[$id] = self::$localCache[$k];
+            } else {
+                $keys[$k] = $id;
+            }
+        }
+        
+        if (!empty($keys)) {
+            $cached = Cache::many(array_keys($keys));
+            foreach ($cached as $k => $val) {
+                if ($val !== null) {
+                    $originalId = $keys[$k];
+                    self::$localCache[$k] = $val;
+                    $results[$originalId] = $val;
+                }
+            }
+        }
+        
+        return $results;
+    }
+
+    /**
+     * Clear the local map.
      */
     public static function clear(): void
     {
-        self::$map = [];
+        self::$localCache = [];
     }
-    
-    /**
-     * Bulk load logic if needed
-     */
 }

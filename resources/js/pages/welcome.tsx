@@ -1,6 +1,8 @@
 import EndlessCarousel from '@/components/EndlessCarousel';
+import IgdbAttribution from '@/components/igdb-attribution';
 import { dashboard, login, register } from '@/routes';
 import { type Game, type GameRowData, type SharedData } from '@/types';
+import { AppleTvCard } from '@/components/apple-tv-card';
 import { Head, Link, usePage } from '@inertiajs/react';
 
 interface WelcomeProps {
@@ -17,8 +19,8 @@ export default function Welcome({
 }: WelcomeProps) {
     const { auth } = usePage<SharedData>().props;
 
-    // Fixed Witcher high-res background for landing page
-    const heroImage = 'https://images.igdb.com/igdb/image/upload/t_1080p/co1wyy.jpg';
+    // Cyberpunk 2077 high-res background for landing page
+    const heroImage = 'https://images.igdb.com/igdb/image/upload/t_1080p/co2mdf.jpg';
 
     const stats = [
         { label: 'Live prices', value: '250K+' },
@@ -162,45 +164,47 @@ export default function Welcome({
                                 </div>
                             </div>
 
-                            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur lg:ml-auto">
-                                <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-200">Spotlight</div>
-                                <div className="space-y-3">
-                                    <div className="text-2xl font-black text-white">
-                                        {hero?.canonical_name || hero?.name || 'Global markets'}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 text-sm text-gray-200">
-                                        <span className="rounded-full bg-white/10 px-3 py-1">Real-time prices</span>
-                                        <span className="rounded-full bg-white/10 px-3 py-1">Charts</span>
-                                        <span className="rounded-full bg-white/10 px-3 py-1">Media</span>
-                                        <span className="rounded-full bg-white/10 px-3 py-1">Alerts</span>
-                                    </div>
-                                    <div className="rounded-lg bg-black/40 p-4">
-                                        <div className="flex items-center justify-between text-sm text-gray-200">
-                                            <span>Price heatmap</span>
-                                            <span className="text-blue-300">Live</span>
+                            <AppleTvCard className="lg:ml-auto min-h-[400px]">
+                                <div className="p-6 h-full flex flex-col">
+                                    <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-200">Spotlight</div>
+                                    <div className="space-y-3 flex-1">
+                                        <div className="text-2xl font-black text-white">
+                                            {hero?.canonical_name || hero?.name || 'Global markets'}
                                         </div>
-                                        <div className="mt-3 h-24 rounded bg-gradient-to-r from-blue-500/40 via-purple-500/30 to-blue-500/40" />
+                                        <div className="flex flex-wrap gap-2 text-sm text-gray-200">
+                                            <span className="rounded-full bg-white/10 px-3 py-1">Real-time prices</span>
+                                            <span className="rounded-full bg-white/10 px-3 py-1">Charts</span>
+                                            <span className="rounded-full bg-white/10 px-3 py-1">Media</span>
+                                            <span className="rounded-full bg-white/10 px-3 py-1">Alerts</span>
+                                        </div>
+                                        <div className="rounded-lg bg-black/40 p-4">
+                                            <div className="flex items-center justify-between text-sm text-gray-200">
+                                                <span>Price heatmap</span>
+                                                <span className="text-blue-300">Live</span>
+                                            </div>
+                                            <div className="mt-3 h-24 rounded bg-gradient-to-r from-blue-500/40 via-purple-500/30 to-blue-500/40" />
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 grid grid-cols-2 gap-3 text-sm text-gray-200">
+                                        <div>
+                                            <div className="text-xs font-semibold uppercase text-blue-200">Coverage</div>
+                                            <div className="text-white">Global markets</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-semibold uppercase text-blue-200">Data partner</div>
+                                            <div className="text-white">IGDB</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-semibold uppercase text-blue-200">Realtime</div>
+                                            <div className="text-white">Every refresh</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs font-semibold uppercase text-blue-200">Platforms</div>
+                                            <div className="text-white">PC • Console • Switch</div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="mt-6 grid grid-cols-2 gap-3 text-sm text-gray-200">
-                                    <div>
-        <div className="text-xs font-semibold uppercase text-blue-200">Coverage</div>
-        <div className="text-white">Global markets</div>
-    </div>
-    <div>
-        <div className="text-xs font-semibold uppercase text-blue-200">Data partner</div>
-        <div className="text-white">IGDB</div>
-    </div>
-    <div>
-        <div className="text-xs font-semibold uppercase text-blue-200">Realtime</div>
-        <div className="text-white">Every refresh</div>
-    </div>
-    <div>
-        <div className="text-xs font-semibold uppercase text-blue-200">Platforms</div>
-        <div className="text-white">PC • Console • Switch</div>
-    </div>
-</div>
-                            </div>
+                            </AppleTvCard>
                         </div>
                     </main>
 
@@ -223,20 +227,19 @@ export default function Welcome({
                     <footer className="mt-auto border-t border-white/10 bg-black/90 py-12 backdrop-blur">
                         <div className="mx-auto max-w-7xl px-6 lg:px-8">
                             <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
-                                <div className="flex items-center gap-3 text-sm text-gray-400">
-                                    <span className="font-semibold text-gray-200">Powered by IGDB</span>
-                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-200">IGDB</span>
+                                <div className="flex items-center gap-3">
+                                    <IgdbAttribution />
                                 </div>
                                 <p className="text-sm text-gray-500">
                                     © {new Date().getFullYear()} Game Compare. All rights reserved.
                                 </p>
                                 <div className="flex space-x-6 text-sm text-gray-500">
-                                    <a href="#" className="hover:text-white">
+                                    <Link href="/privacy-policy" className="hover:text-white">
                                         Privacy
-                                    </a>
-                                    <a href="#" className="hover:text-white">
+                                    </Link>
+                                    <Link href="/terms-of-service" className="hover:text-white">
                                         Terms
-                                    </a>
+                                    </Link>
                                 </div>
                             </div>
                         </div>
