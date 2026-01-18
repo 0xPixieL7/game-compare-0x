@@ -61,12 +61,8 @@ node_modules/
 !vite.config.ts
 !tailwind.config.js
 /rust/**/vite.config.ts
-# Additional ignores for configs, envs, workflows, logs, and AI docs
+# Additional ignores for envs, workflows, logs, and AI docs
 .env*
-config/*.php
-config/*.json
-config/*.yml
-config/*.yaml
 .github/
 .github/workflows/
 storage/logs/
