@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Head, Link, usePage } from '@inertiajs/react'
-import Header from '@/Components/Header'
-import EndlessCarousel from '@/Components/EndlessCarousel'
+import Header from '@/components/Header'
+import EndlessCarousel from '@/components/EndlessCarousel'
 import { useUserPreferences } from '@/Utils/userPreferences'
 
 interface Game {

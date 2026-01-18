@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Head, Link } from '@inertiajs/react'
 import Chart from 'react-apexcharts'
-import Header from '@/Components/Header'
+import Header from '@/components/Header'
 
 interface MediaItem {
   url: string
