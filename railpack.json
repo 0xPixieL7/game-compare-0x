@@ -1,25 +1,4 @@
 {
     "$schema": "https://schema.railpack.com",
-    "provider": "php",
-    "steps": {
-        "install": {
-            "commands": ["composer install --no-dev --optimize-autoloader"]
-        },
-        "build": {
-            "commands": ["npm ci", "npm run build"]
-        }
-    },
-    "deploy": {
-        "inputs": [
-            "...",
-            {
-                "step": "install",
-                "include": ["vendor"]
-            },
-            {
-                "step": "build",
-                "include": ["public/build", "node_modules"]
-            }
-        ]
-    }
+    "provider": "php"
 }
