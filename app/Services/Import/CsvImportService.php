@@ -167,28 +167,30 @@ class CsvImportService
             }
 
             try {
-                $game = VideoGame::updateOrCreate(
-                    ['provider' => $provider, 'external_id' => $externalId],
-                    [
-                        'title' => $record['name'] ?? $record['title'],
-                        'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title']),
-                        'genre' => $record['genre'] ?? null,
-                        'release_date' => $record['release_date'] ?? $record['original_release_date'] ?? null,
-                        'description' => $record['deck'] ?? $record['description'] ?? $record['synopsis'] ?? null,
-                        'metadata' => $record['metadata'] ?? null,
-                    ]
-                );
+                DB::transaction(function () use ($record, $provider, $externalId, $mapProviderKey) {
+                    $game = VideoGame::updateOrCreate(
+                        ['provider' => $provider, 'external_id' => $externalId],
+                        [
+                            'title' => $record['name'] ?? $record['title'],
+                            'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title']),
+                            'genre' => $record['genre'] ?? null,
+                            'release_date' => $record['release_date'] ?? $record['original_release_date'] ?? null,
+                            'description' => $record['deck'] ?? $record['description'] ?? $record['synopsis'] ?? null,
+                            'metadata' => $record['metadata'] ?? null,
+                        ]
+                    );
 
-                // Map Legacy ID
-                if (isset($record['id'])) {
-                    IdentityMap::put('game', $mapProviderKey, $record['id'], $game->id);
-                }
-                
-                // Map Provider Identity
-                IdentityMap::put('game', $provider, $externalId, $game->id);
+                    // Map Legacy ID
+                    if (isset($record['id'])) {
+                        IdentityMap::put('game', $mapProviderKey, $record['id'], $game->id);
+                    }
+                    
+                    // Map Provider Identity
+                    IdentityMap::put('game', $provider, $externalId, $game->id);
+                });
             } catch (\Exception $e) {
                 Log::error("Failed to import game: $provider:$externalId. Error: " . $e->getMessage());
-                // Don't rethrow, just skip duplicates if that's the issue
+                // Nested transaction rollback handled automatically by DB::transaction
             }
 
             if ($i % 500 === 0) {
