@@ -34,12 +34,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 COPY composer.json composer.lock ./
 
 # Install PHP dependencies (production mode)
+# Skip post-install scripts - artisan doesn't exist yet
 RUN composer install \
     --no-dev \
     --optimize-autoloader \
     --no-interaction \
     --no-progress \
-    --prefer-dist
+    --prefer-dist \
+    --no-scripts
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -50,7 +52,10 @@ RUN npm ci --omit=dev
 # Copy application code
 COPY . .
 
-# Run post-install composer scripts with full codebase
+# NOW run Composer post-install scripts (artisan exists now)
+RUN composer run-script post-autoload-dump
+
+# Run additional autoload optimization
 RUN composer dump-autoload --optimize
 
 # Build frontend assets for production
