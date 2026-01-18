@@ -169,7 +169,7 @@ class CsvImportService
             try {
                 DB::transaction(function () use ($record, $provider, $externalId, $mapProviderKey) {
                     $game = VideoGame::updateOrCreate(
-                        ['provider' => $provider, 'external_id' => $externalId],
+                        ['provider' => $provider, 'external_id' => (string)$externalId],
                         [
                             'title' => $record['name'] ?? $record['title'],
                             'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title']),
