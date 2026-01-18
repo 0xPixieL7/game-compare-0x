@@ -2,18 +2,6 @@
 builder = "railpack"
 buildCommand = "composer install --no-dev --optimize-autoloader && npm ci && npm run build && php artisan config:cache && php artisan route:cache && php artisan view:cache"
 
-[[build.packages]]
-name = "php"
-version = "8.5"
-
-[[build.packages]]
-name = "node"
-version = "20"
-
-[[build.packages]]
-name = "composer"
-version = "latest"
-
 [deploy]
 startCommand = "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}"
 healthcheckPath = "/up"
