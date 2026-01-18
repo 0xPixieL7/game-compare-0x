@@ -26,11 +26,10 @@ export default defineConfig({
             },
         }),
         tailwindcss(),
-        // Skip Wayfinder generation in production builds (routes gitignored)
-        !isProduction && wayfinder({
+        wayfinder({
             formVariants: true,
         }),
-    ].filter(Boolean),
+    ],
     esbuild: {
         jsx: 'automatic',
     },
