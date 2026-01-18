@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +28,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force HTTPS in production (critical for Inertia to avoid mixed content errors)
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Register Observers
         \App\Models\VideoGame::observe(\App\Observers\VideoGameObserver::class);
         \App\Models\VideoGameTitleSource::observe(\App\Observers\VideoGameTitleSourceObserver::class);
