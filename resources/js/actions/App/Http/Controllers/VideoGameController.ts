@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\VideoGameController::index
 * @see app/Http/Controllers/VideoGameController.php:11
@@ -111,9 +111,6 @@ show.head = (args: { game: number | { id: number } } | [game: number | { id: num
     method: 'head',
 })
 
-const games = {
-    index: Object.assign(index, index),
-    show: Object.assign(show, show),
-}
+const VideoGameController = { index, show }
 
-export default games
+export default VideoGameController
