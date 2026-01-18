@@ -174,7 +174,7 @@ class CsvImportService
                             'title' => $record['name'] ?? $record['title'],
                             'slug' => $record['slug'] ?? Str::slug($record['name'] ?? $record['title']),
                             'genre' => $record['genre'] ?? null,
-                            'release_date' => $record['release_date'] ?? $record['original_release_date'] ?? null,
+                            'release_date' => (isset($record['release_date']) && $record['release_date'] !== '') ? $record['release_date'] : ((isset($record['original_release_date']) && $record['original_release_date'] !== '') ? $record['original_release_date'] : null),
                             'description' => $record['deck'] ?? $record['description'] ?? $record['synopsis'] ?? null,
                             'metadata' => $record['metadata'] ?? null,
                         ]

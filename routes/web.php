@@ -6,6 +6,11 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VideoGameController;
 use Illuminate\Support\Facades\Route;
 
+// Health check endpoint for Railway/Docker
+Route::get('/up', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
 Route::get('/', [LandingController::class, 'index'])->name('home');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
