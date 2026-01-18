@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nodejs \
     npm \
-    && docker-php-ext-install pdo pdo_pgsql zip \
+    && docker-php-ext-install pdo pdo_pgsql zip pcntl exif \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
