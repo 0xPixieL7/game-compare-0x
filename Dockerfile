@@ -27,6 +27,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 # Set working directory
 WORKDIR /app
 
+# Install Composer from official image (FrankenPHP doesn't include it)
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 # Copy composer files first for better layer caching
 COPY composer.json composer.lock ./
 
