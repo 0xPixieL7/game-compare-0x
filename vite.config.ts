@@ -26,9 +26,13 @@ export default defineConfig({
             },
         }),
         tailwindcss(),
-        wayfinder({
-            formVariants: true,
-        }),
+        ...(isProduction
+            ? []
+            : [
+                wayfinder({
+                    formVariants: true,
+                }),
+            ]),
     ],
     esbuild: {
         jsx: 'automatic',
