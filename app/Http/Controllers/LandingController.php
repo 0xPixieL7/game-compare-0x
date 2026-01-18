@@ -13,6 +13,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -25,12 +26,20 @@ class LandingController extends Controller
 
     private const COUNTRY_CURRENCY_CACHE_TTL = 3600;
 
-    private const ROW_CACHE_TTL = 300;
+    private const ROW_CACHE_TTL = 3600; // Increased to 1 hour to prevent timeouts during imports
 
     public function __construct(private readonly TradingViewClient $tradingViewClient) {}
 
     public function index(Request $request): Response
     {
+        set_time_limit(120); // Give it extra time if DB is under heavy load
+
+        Log::info('Homepage hit', [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'auth' => $request->user()?->id
+        ]);
+
         $isAuthenticated = $request->user() !== null;
 
         $topRated = $this->fetchTopRated(self::ROW_LIMIT);
@@ -75,6 +84,15 @@ class LandingController extends Controller
         }
 
         $hero = $topRated->first();
+
+        Log::info('Homepage data fetched', [
+            'topRated' => $topRated->count(),
+            'newReleases' => $newReleases->count(),
+            'mostReviewed' => $mostReviewed->count(),
+            'bestDeals' => $bestDealsData['games']->count(),
+            'genreRows' => count($genreRows),
+            'heroLinked' => $hero !== null
+        ]);
 
         return Inertia::render('welcome', [
             'hero' => $hero ? $this->mapGame($hero, $pricingMap, $isAuthenticated) : null,
@@ -205,12 +223,10 @@ class LandingController extends Controller
                 'video_games.name',
                 'video_games.rating',
                 'video_games.release_date',
-                'video_games.opencritic_review_count',
-                'video_games.opencritic_user_count',
+                'video_game_title_sources.rating_count',
                 'video_game_titles.name as canonical_name',
                 'video_game_title_sources.genre',
                 'video_game_title_sources.raw_payload as media',
-                'video_game_title_sources.rating_count',
                 'images.urls as image_urls',
                 'images.url as image_url',
                 DB::raw("{$reviewScore} as review_score"),
@@ -222,37 +238,26 @@ class LandingController extends Controller
 
     private function latestPriceQuery(): Builder
     {
-        return DB::query()
-            ->fromSub(function (Builder $query) {
-                $query->from('video_game_prices')
-                    ->select([
-                        'video_game_prices.video_game_id',
-                        'video_game_prices.currency',
-                        'video_game_prices.amount_minor',
-                        DB::raw('COALESCE(video_game_prices.country_code, video_game_prices.region_code) as country_code'),
-                        'video_game_prices.recorded_at',
-                        'video_game_prices.retailer',
-                        DB::raw('ROW_NUMBER() OVER (PARTITION BY video_game_prices.video_game_id ORDER BY video_game_prices.recorded_at DESC) as rn'),
-                    ])
-                    ->whereNotNull('video_game_prices.currency')
-                    ->where('video_game_prices.amount_minor', '>=', 0);
-            }, 'latest_prices')
-            ->where('rn', 1);
+        // Use PostgreSQL DISTINCT ON for much faster "latest per group" lookups than ROW_NUMBER()
+        return DB::table('video_game_prices')
+            ->select([
+                'video_game_id',
+                'currency',
+                'amount_minor',
+                DB::raw('COALESCE(country_code, region_code) as country_code'),
+                'recorded_at',
+                'retailer',
+            ])
+            ->distinct('video_game_id')
+            ->whereNotNull('currency')
+            ->where('amount_minor', '>=', 0)
+            ->orderBy('video_game_id')
+            ->orderByDesc('recorded_at');
     }
 
     private function reviewScoreExpression(): string
     {
-        $sum = 'COALESCE(video_game_title_sources.rating_count, 0)'
-            .' + COALESCE(video_games.opencritic_review_count, 0)'
-            .' + COALESCE(video_games.opencritic_user_count, 0)';
-
-        $denominator = '('.
-            'CASE WHEN video_game_title_sources.rating_count IS NULL THEN 0 ELSE 1 END + '
-            .'CASE WHEN video_games.opencritic_review_count IS NULL THEN 0 ELSE 1 END + '
-            .'CASE WHEN video_games.opencritic_user_count IS NULL THEN 0 ELSE 1 END'
-            .')';
-
-        return "({$sum}) / NULLIF({$denominator}, 0)";
+        return 'COALESCE(video_game_title_sources.rating_count, 0)';
     }
 
     /**
