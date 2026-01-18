@@ -47,6 +47,12 @@ CLAUDE.local.md
 serve
 *.xml
 *.json
+!railpack.json
+!composer.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!components.json
 *.claude/
 *.cache
 .gemini/
