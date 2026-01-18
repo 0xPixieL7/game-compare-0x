@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f97d1ce32d8c94cf96b93cec830a2457",
+    "content-hash": "4c0ef3b5afa0096c07576e031b42b7cb",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -1719,79 +1719,6 @@
                 "source": "https://github.com/laravel/horizon/tree/v5.43.0"
             },
             "time": "2026-01-15T15:10:56+00:00"
-        },
-        {
-            "name": "laravel/mcp",
-            "version": "v0.5.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/laravel/mcp.git",
-                "reference": "b9bdd8d6f8b547c8733fe6826b1819341597ba3c"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/laravel/mcp/zipball/b9bdd8d6f8b547c8733fe6826b1819341597ba3c",
-                "reference": "b9bdd8d6f8b547c8733fe6826b1819341597ba3c",
-                "shasum": ""
-            },
-            "require": {
-                "ext-json": "*",
-                "ext-mbstring": "*",
-                "illuminate/console": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/container": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/contracts": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/http": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/json-schema": "^12.41.1",
-                "illuminate/routing": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/support": "^10.49.0|^11.45.3|^12.41.1",
-                "illuminate/validation": "^10.49.0|^11.45.3|^12.41.1",
-                "php": "^8.1"
-            },
-            "require-dev": {
-                "laravel/pint": "^1.20",
-                "orchestra/testbench": "^8.36|^9.15|^10.8",
-                "pestphp/pest": "^2.36.0|^3.8.4|^4.1.0",
-                "phpstan/phpstan": "^2.1.27",
-                "rector/rector": "^2.2.4"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "Mcp": "Laravel\\Mcp\\Server\\Facades\\Mcp"
-                    },
-                    "providers": [
-                        "Laravel\\Mcp\\Server\\McpServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Laravel\\Mcp\\": "src/",
-                    "Laravel\\Mcp\\Server\\": "src/Server/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Taylor Otwell",
-                    "email": "taylor@laravel.com"
-                }
-            ],
-            "description": "Rapidly build MCP servers for your Laravel applications.",
-            "homepage": "https://github.com/laravel/mcp",
-            "keywords": [
-                "laravel",
-                "mcp"
-            ],
-            "support": {
-                "issues": "https://github.com/laravel/mcp/issues",
-                "source": "https://github.com/laravel/mcp"
-            },
-            "time": "2025-12-19T19:32:34+00:00"
         },
         {
             "name": "laravel/prompts",
@@ -4319,66 +4246,6 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.2"
             },
             "time": "2025-12-14T04:43:48+00:00"
-        },
-        {
-            "name": "skylence/laravel-optimize-mcp",
-            "version": "1.0.2",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/skylence-be/laravel-optimize-mcp.git",
-                "reference": "27f66e28e0ef8dbea31a017620b577104b215a7d"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/skylence-be/laravel-optimize-mcp/zipball/27f66e28e0ef8dbea31a017620b577104b215a7d",
-                "reference": "27f66e28e0ef8dbea31a017620b577104b215a7d",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/console": "^10.0|^11.0|^12.0",
-                "illuminate/contracts": "^10.0|^11.0|^12.0",
-                "illuminate/support": "^10.0|^11.0|^12.0",
-                "laravel/mcp": "^0.3.0 || ^0.5.0",
-                "laravel/prompts": "^0.3.0",
-                "php": "^8.1"
-            },
-            "require-dev": {
-                "laravel/pint": "^1.20",
-                "orchestra/testbench": "^8.0|^9.0|^10.0",
-                "pestphp/pest": "^2.0|^3.0",
-                "pestphp/pest-plugin-type-coverage": "*",
-                "phpstan/phpstan": "^2.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Skylence\\OptimizeMcp\\OptimizeMcpServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Skylence\\OptimizeMcp\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "description": "Laravel Optimize MCP provides optimization tools and utilities for AI-assisted development",
-            "homepage": "https://github.com/laravel/optimize-mcp",
-            "keywords": [
-                "ai",
-                "laravel",
-                "mcp",
-                "optimization"
-            ],
-            "support": {
-                "issues": "https://github.com/skylence-be/laravel-optimize-mcp/issues",
-                "source": "https://github.com/skylence-be/laravel-optimize-mcp/tree/1.0.2"
-            },
-            "time": "2026-01-03T12:31:58+00:00"
         },
         {
             "name": "spatie/image",
@@ -8585,6 +8452,79 @@
                 "source": "https://github.com/laravel/boost"
             },
             "time": "2026-01-14T14:51:16+00:00"
+        },
+        {
+            "name": "laravel/mcp",
+            "version": "v0.5.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/mcp.git",
+                "reference": "b9bdd8d6f8b547c8733fe6826b1819341597ba3c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/mcp/zipball/b9bdd8d6f8b547c8733fe6826b1819341597ba3c",
+                "reference": "b9bdd8d6f8b547c8733fe6826b1819341597ba3c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "illuminate/console": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/container": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/contracts": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/http": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/json-schema": "^12.41.1",
+                "illuminate/routing": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/support": "^10.49.0|^11.45.3|^12.41.1",
+                "illuminate/validation": "^10.49.0|^11.45.3|^12.41.1",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.20",
+                "orchestra/testbench": "^8.36|^9.15|^10.8",
+                "pestphp/pest": "^2.36.0|^3.8.4|^4.1.0",
+                "phpstan/phpstan": "^2.1.27",
+                "rector/rector": "^2.2.4"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Mcp": "Laravel\\Mcp\\Server\\Facades\\Mcp"
+                    },
+                    "providers": [
+                        "Laravel\\Mcp\\Server\\McpServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Mcp\\": "src/",
+                    "Laravel\\Mcp\\Server\\": "src/Server/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "Rapidly build MCP servers for your Laravel applications.",
+            "homepage": "https://github.com/laravel/mcp",
+            "keywords": [
+                "laravel",
+                "mcp"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/mcp/issues",
+                "source": "https://github.com/laravel/mcp"
+            },
+            "time": "2025-12-19T19:32:34+00:00"
         },
         {
             "name": "laravel/pail",
