@@ -60,6 +60,9 @@ target/
 node_modules/
 *.phar
 *.config*
+!vite.config.ts
+!tailwind.config.js
+/rust/**/vite.config.ts
 # Additional ignores for configs, envs, workflows, logs, and AI docs
 .env*
 config/*.php
