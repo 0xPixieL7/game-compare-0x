@@ -20,7 +20,6 @@
         "laravel/wayfinder": "^0.1.9",
         "league/csv": "^9.28",
         "mrt1m/playstation-store-api": "^2.2",
-        "skylence/laravel-optimize-mcp": "^1.0",
         "spatie/laravel-medialibrary": "*"
     },
     "require-dev": {
