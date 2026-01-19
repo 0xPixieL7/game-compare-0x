@@ -10,6 +10,7 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 # This is the CORRECT method for dunglas/frankenphp images
 RUN install-php-extensions \
     pdo_pgsql \
+    redis \
     zip \
     pcntl \
     exif \
@@ -51,6 +52,9 @@ RUN npm ci
 
 # Copy application code
 COPY . .
+
+# Copy custom Caddyfile
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # NOW run Composer post-install scripts (artisan exists now)
 RUN composer run-script post-autoload-dump

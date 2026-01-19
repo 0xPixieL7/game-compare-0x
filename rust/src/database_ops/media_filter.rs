@@ -13,26 +13,26 @@ use std::collections::HashMap;
 /// Media classification for images
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ImageType {
-    Cover,       // Box art, cover art, primary product image
-    Hero,        // Hero/banner images, key art
-    Background,  // Background images, backdrops
-    Artwork,     // Promotional artwork, concept art
-    Character,   // Character portraits, character art
-    Logo,        // Game logos
-    Icon,        // App icons, small icons
-    Screenshot,  // Screenshots (LOWEST PRIORITY - typically excluded)
-    Thumbnail,   // Thumbnail images (typically excluded)
-    Unknown,     // Unclassified images
+    Cover,      // Box art, cover art, primary product image
+    Hero,       // Hero/banner images, key art
+    Background, // Background images, backdrops
+    Artwork,    // Promotional artwork, concept art
+    Character,  // Character portraits, character art
+    Logo,       // Game logos
+    Icon,       // App icons, small icons
+    Screenshot, // Screenshots (LOWEST PRIORITY - typically excluded)
+    Thumbnail,  // Thumbnail images (typically excluded)
+    Unknown,    // Unclassified images
 }
 
 /// Media classification for videos
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VideoType {
-    Trailer,      // Official trailers
+    Trailer,       // Official trailers
     Advertisement, // Promotional videos, adverts
-    Preview,      // Preview clips, teasers
-    Gameplay,     // Gameplay footage
-    Unknown,      // Unclassified videos
+    Preview,       // Preview clips, teasers
+    Gameplay,      // Gameplay footage
+    Unknown,       // Unclassified videos
 }
 
 impl ImageType {

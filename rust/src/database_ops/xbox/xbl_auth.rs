@@ -10,10 +10,9 @@
 /// 2. Tokens stored to .xbox_tokens.json
 /// 3. Subsequent runs: Auto-refresh tokens from storage
 /// 4. Use XSTS token for Xbox API calls
-
 use anyhow::{Context, Result};
 use std::path::Path;
-use tracing::{info, warn, debug, error};
+use tracing::{debug, error, info, warn};
 use xal::{AccessTokenPrefix, Flows, TokenStore, XalAuthenticator};
 
 /// Token storage file path (default).
@@ -165,7 +164,8 @@ pub async fn device_code_authentication() -> Result<TokenStore> {
     // Step 2: Display the code to the user
     let user_code = device_code_response.user_code().secret();
     let verification_uri_str = device_code_response.verification_uri().url().as_str();
-    let verification_uri_complete_str = device_code_response.verification_uri_complete()
+    let verification_uri_complete_str = device_code_response
+        .verification_uri_complete()
         .map(|u| u.secret());
 
     println!("\n╔══════════════════════════════════════════════════════════════╗");
@@ -188,7 +188,10 @@ pub async fn device_code_authentication() -> Result<TokenStore> {
     println!("║                                                              ║");
     println!("║  And enter this code:                                        ║");
     println!("║                                                              ║");
-    println!("║              CODE: {:<6}                                   ║", user_code);
+    println!(
+        "║              CODE: {:<6}                                   ║",
+        user_code
+    );
     println!("║                                                              ║");
     println!("╚══════════════════════════════════════════════════════════════╝\n");
 
@@ -208,18 +211,22 @@ pub async fn device_code_authentication() -> Result<TokenStore> {
 
     // Step 4: Perform Xbox Live authorization flow (non-SISU)
     info!("xbl_auth: starting Xbox Live traditional authorization");
-    let mut token_store = match authorize_xbox_live_traditional(&mut authenticator, live_token).await {
-        Ok(store) => store,
-        Err(e) => {
-            // Log the full error chain with all details
-            error!("xbl_auth: Xbox Live authorization failed with error: {:?}", e);
-            error!("xbl_auth: Error display: {}", e);
-            if let Some(source) = e.source() {
-                error!("xbl_auth: Error source: {}", source);
+    let mut token_store =
+        match authorize_xbox_live_traditional(&mut authenticator, live_token).await {
+            Ok(store) => store,
+            Err(e) => {
+                // Log the full error chain with all details
+                error!(
+                    "xbl_auth: Xbox Live authorization failed with error: {:?}",
+                    e
+                );
+                error!("xbl_auth: Error display: {}", e);
+                if let Some(source) = e.source() {
+                    error!("xbl_auth: Error source: {}", source);
+                }
+                return Err(e).context("Xbox Live authorization failed");
             }
-            return Err(e).context("Xbox Live authorization failed");
-        }
-    };
+        };
 
     token_store.update_timestamp();
 

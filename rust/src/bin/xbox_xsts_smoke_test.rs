@@ -9,7 +9,6 @@
 ///
 /// Prerequisite:
 ///   cargo run --bin xbox_auth_setup
-
 use anyhow::{Context, Result};
 use dotenv::dotenv;
 use i_miss_rust::database_ops::xbox::xbl_auth::get_xsts_token;
@@ -106,5 +105,8 @@ async fn main() -> Result<()> {
         "xbox_xsts_smoke_test: Xbox Live endpoint returned non-success"
     );
 
-    anyhow::bail!("xbox_xsts_smoke_test: request failed with status {}", status);
+    anyhow::bail!(
+        "xbox_xsts_smoke_test: request failed with status {}",
+        status
+    );
 }

@@ -42,6 +42,7 @@ return [
     'igdb' => [
         'client_id' => env('IGDB_CLIENT_ID'),
         'client_secret' => env('IGDB_CLIENT_SECRET'),
+        'webhook_secret' => env('IGDB_WEBHOOK_SECRET'), // Generate: openssl rand -hex 32
     ],
 
     'tgdb' => [

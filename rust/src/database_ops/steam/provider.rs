@@ -579,13 +579,8 @@ impl SteamProvider {
             .build()
             .unwrap_or_else(|_| Client::new());
 
-        let provider_id = ensure_provider(
-            db,
-            "steam",
-            "storefront",
-            Some(STEAM_PROVIDER_KEY),
-        )
-        .await?;
+        let provider_id =
+            ensure_provider(db, "steam", "storefront", Some(STEAM_PROVIDER_KEY)).await?;
         let retailer_id = ensure_retailer(db, "Steam", Some("steam")).await?;
         let _platform_id = ensure_platform(db, "PC", Some("pc")).await?;
         let mut entity_cache = ProviderEntityCache::new(db.clone());
@@ -794,7 +789,7 @@ impl SteamProvider {
                             if let Some(po) = details.data.and_then(|d| d.price_overview) {
                                 if let Some(f) = po.final_price {
                                     if f > 0 {
-                                    price_rows.push(PriceRow {
+                                        price_rows.push(PriceRow {
                                         offer_jurisdiction_id: oj_id,
                                         video_game_source_id: Some(video_game_source_id),
                                         recorded_at: Utc::now(),
@@ -843,20 +838,20 @@ impl SteamProvider {
                                         "standard_initial_amount": po.initial_price,
                                         "base_amount_minor": bundle.base_minor,
                                     });
-                                let final_row = PriceRow {
-                                    offer_jurisdiction_id: oj_id,
-                                    video_game_source_id: Some(video_game_source_id),
-                                    recorded_at: Utc::now(),
-                                    amount_minor: bundle.final_minor,
-                                    tax_inclusive: true,
-                                    fx_minor_per_unit: None,
-                                    btc_sats_per_unit: None,
-                                    meta: meta_final,
-                                    video_game_id: Some(vg_id),
-                                    currency: Some(cur_code.clone()),
-                                    country_code: Some(cc.clone()),
-                                    retailer: Some("steam".to_string()),
-                                };
+                                    let final_row = PriceRow {
+                                        offer_jurisdiction_id: oj_id,
+                                        video_game_source_id: Some(video_game_source_id),
+                                        recorded_at: Utc::now(),
+                                        amount_minor: bundle.final_minor,
+                                        tax_inclusive: true,
+                                        fx_minor_per_unit: None,
+                                        btc_sats_per_unit: None,
+                                        meta: meta_final,
+                                        video_game_id: Some(vg_id),
+                                        currency: Some(cur_code.clone()),
+                                        country_code: Some(cc.clone()),
+                                        retailer: Some("steam".to_string()),
+                                    };
                                     if push_bundle_price_row(
                                         &mut price_rows,
                                         &mut bundle_seen,
@@ -877,20 +872,20 @@ impl SteamProvider {
                                                 "discount_pct": bundle.discount_pct,
                                                 "standard_final_amount": po.final_price,
                                             });
-                                        let base_row = PriceRow {
-                                            offer_jurisdiction_id: oj_id,
-                                            video_game_source_id: Some(video_game_source_id),
-                                            recorded_at: Utc::now(),
-                                            amount_minor: base_minor,
-                                            tax_inclusive: true,
-                                            fx_minor_per_unit: None,
-                                            btc_sats_per_unit: None,
-                                            meta: meta_initial,
-                                            video_game_id: Some(vg_id),
-                                            currency: Some(cur_code.clone()),
-                                            country_code: Some(cc.clone()),
-                                            retailer: Some("steam".to_string()),
-                                        };
+                                            let base_row = PriceRow {
+                                                offer_jurisdiction_id: oj_id,
+                                                video_game_source_id: Some(video_game_source_id),
+                                                recorded_at: Utc::now(),
+                                                amount_minor: base_minor,
+                                                tax_inclusive: true,
+                                                fx_minor_per_unit: None,
+                                                btc_sats_per_unit: None,
+                                                meta: meta_initial,
+                                                video_game_id: Some(vg_id),
+                                                currency: Some(cur_code.clone()),
+                                                country_code: Some(cc.clone()),
+                                                retailer: Some("steam".to_string()),
+                                            };
                                             if push_bundle_price_row(
                                                 &mut price_rows,
                                                 &mut bundle_seen,
@@ -1124,35 +1119,6 @@ fn load_app_ids_from_file(path: &str) -> Result<Vec<u64>> {
     println!("loaded {} Steam app ids from file {}", list.len(), path);
 
     Ok(list)
-}
-
-fn collect_app_ids(value: &Value, out: &mut HashSet<String>) {
-    match value {
-        Value::Number(n) => {
-            if let Some(id) = n.as_u64() {
-                out.insert(id.to_string());
-            }
-        }
-        Value::String(s) => {
-            if let Ok(id) = s.trim().parse::<u64>() {
-                out.insert(id.to_string());
-            }
-        }
-        Value::Array(arr) => {
-            for v in arr {
-                collect_app_ids(v, out);
-            }
-        }
-        Value::Object(map) => {
-            if let Some(id_val) = map.get("appid") {
-                collect_app_ids(id_val, out);
-            }
-            for v in map.values() {
-                collect_app_ids(v, out);
-            }
-        }
-        _ => {}
-    }
 }
 
 fn strip_html_tags(input: &str) -> String {
@@ -1933,7 +1899,7 @@ async fn fetch_media_urls(
 
     // Extract from media-slideshow if present (user priority)
     if let Some(slideshow) = data.media_slideshow {
-        // Assuming it might be a list of strings or objects. 
+        // Assuming it might be a list of strings or objects.
         // If it's a comprehensive list, we try to extract URLs from it.
         // Pattern match commonly found structures in custom/undocumented fields.
         if let Some(arr) = slideshow.as_array() {

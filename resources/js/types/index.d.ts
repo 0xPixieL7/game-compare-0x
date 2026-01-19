@@ -80,6 +80,27 @@ export interface GameMediaSummary {
     };
 }
 
+export interface GameShowMedia {
+    hero: string | null;
+    logo: string | null;
+    poster: string | null;
+    background: string | null;
+    cover: string | null;
+    screenshots: string[];
+    trailers: string[];
+}
+
+export interface GameShowPrice {
+    id: number;
+    retailer: string;
+    country_code: string;
+    currency: string;
+    amount: number;
+    url: string | null;
+    discount_percent: number;
+    initial_amount: number | null;
+}
+
 export interface GamePricing {
     amount_minor: number;
     amount_major: number;

@@ -4,7 +4,9 @@
 /public/build
 /public/hot
 /public/storage
-
+/resources/js/actions
+/resources/js/routes
+/resources/js/wayfinder
 /storage/*.key
 /storage/pail
 /vendor
@@ -45,12 +47,6 @@ CLAUDE.local.md
 serve
 *.xml
 *.json
-!railpack.json
-!composer.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!components.json
 *.claude/
 *.cache
 .gemini/
@@ -58,11 +54,12 @@ target/
 node_modules/
 *.phar
 *.config*
-!vite.config.ts
-!tailwind.config.js
-/rust/**/vite.config.ts
-# Additional ignores for envs, workflows, logs, and AI docs
+# Additional ignores for configs, envs, workflows, logs, and AI docs
 .env*
+config/*.php
+config/*.json
+config/*.yml
+config/*.yaml
 .github/
 .github/workflows/
 storage/logs/
@@ -89,3 +86,4 @@ rust/docs/seed_snapshot_*.sql
 rust/output.ndjson
 rust/games_detailed_partial.ndjson
 rust/games_detailed_partial_from_code.ndjson
+rust/*.ndjson

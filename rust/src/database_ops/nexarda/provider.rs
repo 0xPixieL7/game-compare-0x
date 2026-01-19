@@ -497,17 +497,14 @@ impl NexardaProvider {
 
         let default_tax_inclusive = options.default_tax_inclusive.unwrap_or(true);
 
-        let store_id = overrides
-            .store_id
-            .take()
-            .unwrap_or_else(|| {
-                if has_digits {
-                    // Force clean retailer if digits present
-                    format!("nexarda_{}", currency.to_lowercase())
-                } else {
-                    format!("nexarda_{}_{}", store_slug, currency.to_lowercase())
-                }
-            });
+        let store_id = overrides.store_id.take().unwrap_or_else(|| {
+            if has_digits {
+                // Force clean retailer if digits present
+                format!("nexarda_{}", currency.to_lowercase())
+            } else {
+                format!("nexarda_{}_{}", store_slug, currency.to_lowercase())
+            }
+        });
         let region_code = overrides
             .region_code
             .take()
@@ -670,13 +667,8 @@ impl NexardaProvider {
         };
         use chrono::Utc;
 
-        let provider_id = ensure_provider(
-            db,
-            "nexarda",
-            "pricing_catalog",
-            Some(NEXARDA_PROVIDER_KEY),
-        )
-        .await?;
+        let provider_id =
+            ensure_provider(db, "nexarda", "pricing_catalog", Some(NEXARDA_PROVIDER_KEY)).await?;
         let mut entity_cache = ProviderEntityCache::new(db.clone());
         let mut post_summary = PostIngestSummary::default();
 

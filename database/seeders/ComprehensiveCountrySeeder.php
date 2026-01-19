@@ -19,6 +19,7 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'US', 'name' => 'United States', 'currency' => 'USD', 'region' => 'North America'],
             ['code' => 'CA', 'name' => 'Canada', 'currency' => 'CAD', 'region' => 'North America'],
             ['code' => 'MX', 'name' => 'Mexico', 'currency' => 'MXN', 'region' => 'North America'],
+            ['code' => 'CR', 'name' => 'Costa Rica', 'currency' => 'CRC', 'region' => 'North America'],
 
             // South America
             ['code' => 'BR', 'name' => 'Brazil', 'currency' => 'BRL', 'region' => 'South America'],
@@ -26,6 +27,7 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'CL', 'name' => 'Chile', 'currency' => 'CLP', 'region' => 'South America'],
             ['code' => 'CO', 'name' => 'Colombia', 'currency' => 'COP', 'region' => 'South America'],
             ['code' => 'PE', 'name' => 'Peru', 'currency' => 'PEN', 'region' => 'South America'],
+            ['code' => 'UY', 'name' => 'Uruguay', 'currency' => 'UYU', 'region' => 'South America'],
 
             // Western Europe (Euro)
             ['code' => 'DE', 'name' => 'Germany', 'currency' => 'EUR', 'region' => 'Europe'],
@@ -63,7 +65,8 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'LT', 'name' => 'Lithuania', 'currency' => 'EUR', 'region' => 'Europe'],
             ['code' => 'RU', 'name' => 'Russia', 'currency' => 'RUB', 'region' => 'Europe'],
             ['code' => 'TR', 'name' => 'Turkey', 'currency' => 'TRY', 'region' => 'Europe'],
-            ['code' => 'UA', 'name' => 'Ukraine', 'currency' => 'EUR', 'region' => 'Europe'],
+            ['code' => 'UA', 'name' => 'Ukraine', 'currency' => 'UAH', 'region' => 'Europe'],
+            ['code' => 'BY', 'name' => 'Belarus', 'currency' => 'BYN', 'region' => 'Europe'],
 
             // Asia Pacific (East Asia)
             ['code' => 'JP', 'name' => 'Japan', 'currency' => 'JPY', 'region' => 'Asia Pacific'],
@@ -72,6 +75,7 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'HK', 'name' => 'Hong Kong', 'currency' => 'HKD', 'region' => 'Asia Pacific'],
             ['code' => 'TW', 'name' => 'Taiwan', 'currency' => 'TWD', 'region' => 'Asia Pacific'],
             ['code' => 'MO', 'name' => 'Macau', 'currency' => 'HKD', 'region' => 'Asia Pacific'],
+            ['code' => 'KZ', 'name' => 'Kazakhstan', 'currency' => 'KZT', 'region' => 'Asia Pacific'],
 
             // Asia Pacific (Southeast Asia)
             ['code' => 'SG', 'name' => 'Singapore', 'currency' => 'SGD', 'region' => 'Asia Pacific'],
@@ -79,7 +83,7 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'MY', 'name' => 'Malaysia', 'currency' => 'MYR', 'region' => 'Asia Pacific'],
             ['code' => 'PH', 'name' => 'Philippines', 'currency' => 'PHP', 'region' => 'Asia Pacific'],
             ['code' => 'ID', 'name' => 'Indonesia', 'currency' => 'IDR', 'region' => 'Asia Pacific'],
-            ['code' => 'VN', 'name' => 'Vietnam', 'currency' => 'USD', 'region' => 'Asia Pacific'],
+            ['code' => 'VN', 'name' => 'Vietnam', 'currency' => 'VND', 'region' => 'Asia Pacific'],
 
             // Asia Pacific (South Asia)
             ['code' => 'IN', 'name' => 'India', 'currency' => 'INR', 'region' => 'Asia Pacific'],
@@ -92,6 +96,8 @@ class ComprehensiveCountrySeeder extends Seeder
             ['code' => 'AE', 'name' => 'United Arab Emirates', 'currency' => 'AED', 'region' => 'Middle East'],
             ['code' => 'SA', 'name' => 'Saudi Arabia', 'currency' => 'SAR', 'region' => 'Middle East'],
             ['code' => 'IL', 'name' => 'Israel', 'currency' => 'ILS', 'region' => 'Middle East'],
+            ['code' => 'KW', 'name' => 'Kuwait', 'currency' => 'KWD', 'region' => 'Middle East'],
+            ['code' => 'QA', 'name' => 'Qatar', 'currency' => 'QAR', 'region' => 'Middle East'],
 
             // Africa
             ['code' => 'ZA', 'name' => 'South Africa', 'currency' => 'ZAR', 'region' => 'Africa'],

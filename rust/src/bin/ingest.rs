@@ -266,7 +266,10 @@ async fn main() -> Result<()> {
                 Some(p)
             }
             Err(e) => {
-                warn!("Failed to initialize Xbox provider: {}. Will attempt fallback per-iteration.", e);
+                warn!(
+                    "Failed to initialize Xbox provider: {}. Will attempt fallback per-iteration.",
+                    e
+                );
                 None
             }
         }

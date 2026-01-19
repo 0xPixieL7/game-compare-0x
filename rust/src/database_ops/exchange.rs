@@ -231,11 +231,17 @@ impl ExchangeService {
         );
 
         let mut all = Vec::new();
-        
+
         // Handle results
-        if let Ok(r) = btc { all.extend(r); }
-        if let Ok(r) = usd { all.extend(r); }
-        if let Ok(r) = tv { all.extend(r); }
+        if let Ok(r) = btc {
+            all.extend(r);
+        }
+        if let Ok(r) = usd {
+            all.extend(r);
+        }
+        if let Ok(r) = tv {
+            all.extend(r);
+        }
 
         // Additional FX sources: ECB (Euro foreign exchange reference), exchangerate.host fallback
         if let Ok(ecb) = self.fetch_ecb_daily().await {
@@ -255,14 +261,16 @@ impl ExchangeService {
         // 1. Crypto (BTC, ETH)
         // We use BYBIT as requested (replacing BINANCE)
         let crypto_symbols = vec!["BYBIT:BTCUSD", "BYBIT:ETHUSD"];
-        let crypto_rates = self.query_tradingview_scanner("crypto", &crypto_symbols).await?;
-        
+        let crypto_rates = self
+            .query_tradingview_scanner("crypto", &crypto_symbols)
+            .await?;
+
         for (symbol, rate) in crypto_rates {
             // BYBIT:BTCUSD -> Base: BTC, Quote: USD
             let ticker = symbol.split(':').nth(1).unwrap_or(&symbol);
             let base = &ticker[0..3]; // BTC
             let quote = &ticker[3..]; // USD
-            
+
             out.push(RateRow {
                 base_currency: base.to_string(),
                 quote_currency: quote.to_string(),
@@ -277,14 +285,31 @@ impl ExchangeService {
         // Common pairs. Note: TV symbols are often FX_IDC:EURUSD, etc.
         // We want rates convertible to/from USD usually.
         let forex_symbols = vec![
-            "FX_IDC:EURUSD", "FX_IDC:GBPUSD", "FX_IDC:AUDUSD", "FX_IDC:NZDUSD", // Base: Foreign, Quote: USD
-            "FX_IDC:USDJPY", "FX_IDC:USDCAD", "FX_IDC:USDCHF", "FX_IDC:USDCNY", // Base: USD, Quote: Foreign
-            "FX_IDC:USDKRW", "FX_IDC:USDTRY", "FX_IDC:USDBRL", "FX_IDC:USDINR",
-            "FX_IDC:USDSGD", "FX_IDC:USDHKD", "FX_IDC:USDZAR", "FX_IDC:USDMAD",
-            "FX_IDC:USDTHB", "FX_IDC:USDMON", "FX_IDC:USDARS", "FX_IDC:USDCOP" // Add more as needed
+            "FX_IDC:EURUSD",
+            "FX_IDC:GBPUSD",
+            "FX_IDC:AUDUSD",
+            "FX_IDC:NZDUSD", // Base: Foreign, Quote: USD
+            "FX_IDC:USDJPY",
+            "FX_IDC:USDCAD",
+            "FX_IDC:USDCHF",
+            "FX_IDC:USDCNY", // Base: USD, Quote: Foreign
+            "FX_IDC:USDKRW",
+            "FX_IDC:USDTRY",
+            "FX_IDC:USDBRL",
+            "FX_IDC:USDINR",
+            "FX_IDC:USDSGD",
+            "FX_IDC:USDHKD",
+            "FX_IDC:USDZAR",
+            "FX_IDC:USDMAD",
+            "FX_IDC:USDTHB",
+            "FX_IDC:USDMON",
+            "FX_IDC:USDARS",
+            "FX_IDC:USDCOP", // Add more as needed
         ];
-        
-        let forex_rates = self.query_tradingview_scanner("forex", &forex_symbols).await?;
+
+        let forex_rates = self
+            .query_tradingview_scanner("forex", &forex_symbols)
+            .await?;
 
         for (symbol, rate) in forex_rates {
             let ticker = symbol.split(':').nth(1).unwrap_or(&symbol);
@@ -304,9 +329,13 @@ impl ExchangeService {
         Ok(out)
     }
 
-    async fn query_tradingview_scanner(&self, market: &str, symbols: &[&str]) -> Result<Vec<(String, f64)>> {
+    async fn query_tradingview_scanner(
+        &self,
+        market: &str,
+        symbols: &[&str],
+    ) -> Result<Vec<(String, f64)>> {
         let url = format!("https://scanner.tradingview.com/{}/scan", market);
-        
+
         let payload = json!({
             "symbols": {
                 "tickers": symbols
@@ -314,7 +343,9 @@ impl ExchangeService {
             "columns": ["close"]
         });
 
-        let resp = self.http.post(&url)
+        let resp = self
+            .http
+            .post(&url)
             .json(&payload)
             .send()
             .await?
@@ -325,14 +356,17 @@ impl ExchangeService {
 
         if let Some(data) = json.get("data").and_then(|d| d.as_array()) {
             for item in data {
-                if let (Some(s), Some(d)) = (item.get("s").and_then(|v| v.as_str()), item.get("d").and_then(|v| v.as_array())) {
+                if let (Some(s), Some(d)) = (
+                    item.get("s").and_then(|v| v.as_str()),
+                    item.get("d").and_then(|v| v.as_array()),
+                ) {
                     if let Some(close) = d.get(0).and_then(|v| v.as_f64()) {
                         results.push((s.to_string(), close));
                     }
                 }
             }
         }
-        
+
         Ok(results)
     }
 

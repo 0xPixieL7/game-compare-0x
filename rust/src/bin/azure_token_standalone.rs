@@ -169,7 +169,6 @@ async fn main() -> Result<()> {
         "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
         tenant_id
     );
-    
 
     let params = [
         ("client_id", client_id.as_str()),

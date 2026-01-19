@@ -115,6 +115,8 @@ class SteamStoreService
                 'webm_max' => $movie['webm']['max'] ?? null,
                 'mp4_480' => $movie['mp4']['480'] ?? null,
                 'mp4_max' => $movie['mp4']['max'] ?? null,
+                // Add HLS support for modern Steam trailers
+                'hls_max' => $movie['hls_h264'] ?? null,
             ];
         }
 

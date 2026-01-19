@@ -769,8 +769,8 @@ impl IgdbService {
                         product_id,
                         name,
                         Some(&slug),
-                            Some(metadata.clone()),
-                            IGDB_PROVIDER_SLUG,
+                        Some(metadata.clone()),
+                        IGDB_PROVIDER_SLUG,
                     )
                     .await?
             };

@@ -36,6 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Exclude IGDB webhooks from CSRF protection (verified via X-Secret header)
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/igdb/*',
+        ]);
+
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,

@@ -4,10 +4,9 @@ use chrono::NaiveDate;
 use futures::{future::BoxFuture, TryStreamExt};
 use i_miss_rust::database_ops::db::Db;
 use i_miss_rust::database_ops::ingest_providers::{
-    ensure_platform, ensure_product_named_with_platform, ensure_provider,
-    ensure_software_row, ensure_video_game_title, ensure_video_game_source,
-    ensure_vg_source_media_links_with_meta, ProviderEntityCache,
-    table_exists,
+    ensure_platform, ensure_product_named_with_platform, ensure_provider, ensure_software_row,
+    ensure_vg_source_media_links_with_meta, ensure_video_game_source, ensure_video_game_title,
+    table_exists, ProviderEntityCache,
 };
 use i_miss_rust::util::env::{self, db_url_prefer_session};
 use rayon::{prelude::*, ThreadPool, ThreadPoolBuilder};
@@ -364,8 +363,8 @@ async fn apply_fast_ingest_session(db: &Db) -> Result<()> {
             "SET work_mem = '{}MB';",
             "SET temp_buffers = '{}MB';"
         ),
-        work_mem_mb, 2 *
-        work_mem_mb
+        work_mem_mb,
+        2 * work_mem_mb
     );
     // Execute as a single batch to avoid borrow/lifetime issues with multiple queries.
     sqlx::raw_sql(&sql).execute(&db.pool).await?;
@@ -392,15 +391,15 @@ async fn apply_sqlite_perf_pragmas(pool: &SqlitePool) -> Result<()> {
         ]
     } else {
         vec![
-            "PRAGMA journal_mode=OFF;", // no rollback journal overhead
+            "PRAGMA journal_mode=OFF;",       // no rollback journal overhead
             "PRAGMA locking_mode=EXCLUSIVE;", // reduce lock churn
-            "PRAGMA synchronous=OFF;",  // skip fsync (ok for read-only)
-            "PRAGMA temp_store=MEMORY;", // temp B-Trees in RAM
-            "PRAGMA cache_size=-160000;", // ~160MB cache (negative = KB units)
-            "PRAGMA mmap_size=536870912;", // 512MB memory map
-            "PRAGMA page_size=4096;",   // larger pages (ignored if DB already created)
-            "PRAGMA optimize;",         // run internal optimizer
-            "PRAGMA analysis_limit=1000;", // accelerate ANALYZE internals
+            "PRAGMA synchronous=OFF;",        // skip fsync (ok for read-only)
+            "PRAGMA temp_store=MEMORY;",      // temp B-Trees in RAM
+            "PRAGMA cache_size=-160000;",     // ~160MB cache (negative = KB units)
+            "PRAGMA mmap_size=536870912;",    // 512MB memory map
+            "PRAGMA page_size=4096;",         // larger pages (ignored if DB already created)
+            "PRAGMA optimize;",               // run internal optimizer
+            "PRAGMA analysis_limit=1000;",    // accelerate ANALYZE internals
         ]
     };
 
@@ -841,7 +840,6 @@ impl ImportContext {
     }
 
     async fn run(&mut self) -> Result<()> {
-
         if self.media_only {
             info!(
                 "MEDIA_ONLY enabled — skipping non-media stages (lookups, products, video_games)"
@@ -888,7 +886,6 @@ impl ImportContext {
             .profile_stage("game_videos", |ctx| Box::pin(ctx.import_game_videos()))
             .await;
 
-
         // Giant Bomb media specialized path (optional)
         // Run images in chunked loops until the stage marks done. This avoids having to
         // restart the importer for each chunk and leverages the durable checkpoint
@@ -920,11 +917,6 @@ impl ImportContext {
 
 // Methods on ImportContext
 impl ImportContext {
-
-
-
-
-
     // ----- Deduplication stage (post-import) -----
     // Consolidate duplicate titles created during import by picking a stable keeper ID
     // and re-pointing dependents before deleting duplicates.
@@ -1044,9 +1036,7 @@ impl ImportContext {
         let deleted_titles = res_titles.rows_affected();
 
         tx.commit().await?;
-        info!(
-            deleted_titles, "deduplication complete (titles)"
-        );
+        info!(deleted_titles, "deduplication complete (titles)");
         Ok(())
     }
 
@@ -1700,11 +1690,8 @@ impl ImportContext {
 
         // Ensure provider and source exist for lineage tracking
         let provider_id = self.provider_id_for_slug("sqlite_import").await?;
-        let sqlite_source_id = ensure_video_game_source(
-            self.cache.db(),
-            "sqlite_import",
-            "SQLite Import",
-        ).await?;
+        let sqlite_source_id =
+            ensure_video_game_source(self.cache.db(), "sqlite_import", "SQLite Import").await?;
 
         let mut stream = if min_id > 0 {
             sqlx::query_as::<_, LegacyProduct>(
@@ -1781,17 +1768,20 @@ impl ImportContext {
             let mut title_id = None;
             if kind == "software" {
                 // 1. Ensure the provider item exists for lineage
-                let _vg_source_item_id = self.cache.ensure_provider_item(
-                    provider_id,
-                    &row.id.to_string(),
-                    Some(serde_json::json!({
-                        "legacy_id": row.id,
-                        "legacy_slug": row.slug,
-                        "legacy_name": name,
-                        "imported_at": chrono::Utc::now().to_rfc3339()
-                    })),
-                    false,
-                ).await?;
+                let _vg_source_item_id = self
+                    .cache
+                    .ensure_provider_item(
+                        provider_id,
+                        &row.id.to_string(),
+                        Some(serde_json::json!({
+                            "legacy_id": row.id,
+                            "legacy_slug": row.slug,
+                            "legacy_name": name,
+                            "imported_at": chrono::Utc::now().to_rfc3339()
+                        })),
+                        false,
+                    )
+                    .await?;
 
                 // 2. Ensure title exists and is linked to the source item
                 let tid: i64 = if let Some(pid) = product_id {
@@ -1805,18 +1795,21 @@ impl ImportContext {
                         } else {
                             Some(slug.as_str())
                         };
-                        
-                        let tid = self.cache.ensure_video_game_title_for_source_item(
-                            sqlite_source_id,
-                            &row.id.to_string(),
-                            Some(pid),
-                            None,
-                            name,
-                            slug_hint,
-                            None,
-                            None,
-                        ).await?;
-                        
+
+                        let tid = self
+                            .cache
+                            .ensure_video_game_title_for_source_item(
+                                sqlite_source_id,
+                                &row.id.to_string(),
+                                Some(pid),
+                                None,
+                                name,
+                                slug_hint,
+                                None,
+                                None,
+                            )
+                            .await?;
+
                         *self.title_by_product.entry(pid).or_insert(tid)
                     } else {
                         let slug_hint = if slug.trim().is_empty() {
@@ -1998,15 +1991,12 @@ impl ImportContext {
         // Stream rows to avoid large memory spikes on big datasets
         let mut prog = Progress::new("video_games", total_filtered.map(|n| n as usize));
         let pool = &self.db.pool.clone();
-        
+
         // Ensure provider exists for lineage
         let provider_id = self.provider_id_for_slug("sqlite_import").await?;
-        let sqlite_source_id = ensure_video_game_source(
-            self.cache.db(),
-            "sqlite_import",
-            "SQLite Import",
-        ).await?;
-        
+        let sqlite_source_id =
+            ensure_video_game_source(self.cache.db(), "sqlite_import", "SQLite Import").await?;
+
         let chunk = update_chunk_size();
         let mut updates: Vec<VgUpd> = Vec::with_capacity(chunk);
         let mut flushed_batches = 0usize;
@@ -2092,7 +2082,8 @@ impl ImportContext {
                 }
             };
 
-            let mut product = self.clone()
+            let mut product = self
+                .clone()
                 .bootstrap_product_from_video_game(row.product_id, &row, fallback_product)
                 .await?;
 
@@ -2122,18 +2113,25 @@ impl ImportContext {
                 tid
             } else {
                 // Ensure provider item for this video game row
-                let _vg_source_item_id = self.cache.ensure_provider_item(
-                    provider_id,
-                    &row.id.to_string(),
-                    Some(serde_json::json!({
-                        "legacy_video_game_id": row.id,
-                        "legacy_product_id": row.product_id,
-                        "imported_at": chrono::Utc::now().to_rfc3339()
-                    })),
-                    false,
-                ).await?;
+                let _vg_source_item_id = self
+                    .cache
+                    .ensure_provider_item(
+                        provider_id,
+                        &row.id.to_string(),
+                        Some(serde_json::json!({
+                            "legacy_video_game_id": row.id,
+                            "legacy_product_id": row.product_id,
+                            "imported_at": chrono::Utc::now().to_rfc3339()
+                        })),
+                        false,
+                    )
+                    .await?;
 
-                let pid_opt = if product.pg_id > 0 { Some(product.pg_id) } else { None };
+                let pid_opt = if product.pg_id > 0 {
+                    Some(product.pg_id)
+                } else {
+                    None
+                };
 
                 let tid = self
                     .cache
@@ -3079,7 +3077,8 @@ impl ImportContext {
                             let mut vgs: Vec<i64> = Vec::new();
                             if let Some(info) = self.product_map.get(&legacy_pid) {
                                 if let Some(title_id) = info.title_id {
-                                    if let Some(platforms) = self.product_platforms.get(&legacy_pid) {
+                                    if let Some(platforms) = self.product_platforms.get(&legacy_pid)
+                                    {
                                         for pid in platforms {
                                             let vg_id = self
                                                 .cache
@@ -3315,7 +3314,6 @@ impl ImportContext {
             .map(|v| (v == "1" || v.eq_ignore_ascii_case("true")))
             .unwrap_or(false);
 
-
         info!(
             mode = if direct_specialized {
                 "specialized"
@@ -3324,7 +3322,6 @@ impl ImportContext {
             },
             "importing giant_bomb_game_images"
         );
-
 
         let cols = self.sqlite_columns("giant_bomb_game_images").await?;
         let sql = r#"
@@ -3500,8 +3497,6 @@ impl ImportContext {
             }
             let provider_data = Value::Object(pdata);
 
-
-
             // Provider item linkage
             let ext_id = url.clone();
             let provider_id = self.provider_id_for_slug(&src).await?;
@@ -3614,7 +3609,6 @@ impl ImportContext {
             total_rows += 1;
             prog.tick(1);
         }
-
 
         if pending_links > 0 || !link_groups.is_empty() {
             flush_groups(self.cache.db(), &mut link_groups).await?;
@@ -3809,8 +3803,6 @@ impl ImportContext {
             }
             let provider_data = Value::Object(pdata);
 
-
-
             let ext_id = external_id.clone().unwrap_or_else(|| url.clone());
             let provider_id = self.provider_id_for_slug(&src).await?;
             let pi_external = format!("media:{}", ext_id);
@@ -3839,8 +3831,6 @@ impl ImportContext {
             total_rows += 1;
             prog.tick(1);
         }
-
-
 
         if pending_links > 0 || !link_groups.is_empty() {
             flush_groups(self.cache.db(), &mut link_groups).await?;
@@ -4175,14 +4165,9 @@ async fn ensure_title_without_product(db: &Db, title: &str) -> Result<i64> {
         norm.clone()
     };
     let product_slug = format!("manual-product-{}", title_slug);
-    let product_id = ensure_product_named_with_platform(
-        db,
-        "software",
-        &product_slug,
-        &final_title,
-        "unknown",
-    )
-    .await?;
+    let product_id =
+        ensure_product_named_with_platform(db, "software", &product_slug, &final_title, "unknown")
+            .await?;
     ensure_software_row(db, product_id).await?;
     let title_id = ensure_video_game_title(db, product_id, &final_title, Some(&title_slug)).await?;
     Ok(title_id)

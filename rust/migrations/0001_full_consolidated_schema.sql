@@ -1,6 +1,5 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
-
 CREATE TABLE IF NOT EXISTS public._sqlx_migrations (
   version bigint NOT NULL,
   description text NOT NULL,
@@ -16,8 +15,16 @@ CREATE TABLE IF NOT EXISTS public.alerts (
   product_id bigint NOT NULL,
   region_code character varying NOT NULL,
   threshold_btc numeric NOT NULL,
-  comparison_operator character varying NOT NULL DEFAULT 'below'::character varying CHECK (comparison_operator::text = ANY (ARRAY['below'::character varying, 'above'::character varying]::text[])),
-  channel character varying NOT NULL CHECK (channel::text = ANY (ARRAY['email'::character varying, 'discord'::character varying]::text[])),
+  comparison_operator character varying NOT NULL DEFAULT 'below'::character varying CHECK (
+    comparison_operator::text = ANY (
+      ARRAY ['below'::character varying, 'above'::character varying]::text []
+    )
+  ),
+  channel character varying NOT NULL CHECK (
+    channel::text = ANY (
+      ARRAY ['email'::character varying, 'discord'::character varying]::text []
+    )
+  ),
   is_active boolean NOT NULL DEFAULT true,
   last_triggered_at timestamp with time zone,
   settings jsonb,
@@ -34,9 +41,18 @@ CREATE TABLE IF NOT EXISTS public.canonical_media (
   url_hash text NOT NULL UNIQUE,
   cdn_url text,
   mime_type text,
-  width integer CHECK (width IS NULL OR width > 0),
-  height integer CHECK (height IS NULL OR height > 0),
-  size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes > 0),
+  width integer CHECK (
+    width IS NULL
+    OR width > 0
+  ),
+  height integer CHECK (
+    height IS NULL
+    OR height > 0
+  ),
+  size_bytes bigint CHECK (
+    size_bytes IS NULL
+    OR size_bytes > 0
+  ),
   hash text,
   storage_provider text,
   metadata jsonb DEFAULT '{}'::jsonb,
@@ -118,7 +134,7 @@ CREATE TABLE IF NOT EXISTS public.game_images (
   provider_payload json,
   small_url text,
   super_url text,
-  platforms text[],
+  platforms text [],
   canonical_media_id bigint,
   video_game_id bigint,
   CONSTRAINT game_images_pkey PRIMARY KEY (id),
@@ -133,10 +149,22 @@ CREATE TABLE IF NOT EXISTS public.game_media (
   media_type text NOT NULL,
   url text NOT NULL CHECK (length(url) > 0),
   cdn_url text,
-  width integer CHECK (width IS NULL OR width > 0),
-  height integer CHECK (height IS NULL OR height > 0),
-  size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes > 0),
-  duration_seconds integer CHECK (duration_seconds IS NULL OR duration_seconds > 0),
+  width integer CHECK (
+    width IS NULL
+    OR width > 0
+  ),
+  height integer CHECK (
+    height IS NULL
+    OR height > 0
+  ),
+  size_bytes bigint CHECK (
+    size_bytes IS NULL
+    OR size_bytes > 0
+  ),
+  duration_seconds integer CHECK (
+    duration_seconds IS NULL
+    OR duration_seconds > 0
+  ),
   mime_type text,
   hash text,
   provider_data jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -492,7 +520,9 @@ CREATE TABLE IF NOT EXISTS public.products (
   id BIGSERIAL,
   slug text NOT NULL UNIQUE,
   name text NOT NULL,
-  category text NOT NULL DEFAULT 'software'::text CHECK (category = ANY (ARRAY['software'::text, 'hardware'::text])),
+  category text NOT NULL DEFAULT 'software'::text CHECK (
+    category = ANY (ARRAY ['software'::text, 'hardware'::text])
+  ),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   software_children_count integer NOT NULL DEFAULT 0,
@@ -584,7 +614,7 @@ CREATE TABLE IF NOT EXISTS public.retailer_video_game_sources (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   credentials jsonb NOT NULL DEFAULT '{}'::jsonb,
   settings jsonb NOT NULL DEFAULT '{}'::jsonb,
-  jurisdiction_scope text[] DEFAULT '{}'::text[],
+  jurisdiction_scope text [] DEFAULT '{}'::text [],
   last_synced_at timestamp with time zone,
   next_sync_at timestamp with time zone,
   sync_status text,
@@ -699,8 +729,16 @@ CREATE TABLE IF NOT EXISTS public.video_game_titles (
   normalized_title text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  search_vector tsvector DEFAULT to_tsvector('english'::regconfig, ((COALESCE(title, ''::text) || ' '::text) || COALESCE(normalized_title, ''::text))),
-  video_game_ids jsonb CHECK (video_game_ids IS NULL OR jsonb_typeof(video_game_ids) = 'array'::text),
+  search_vector tsvector DEFAULT to_tsvector(
+    'english'::regconfig,
+    (
+      (COALESCE(title, ''::text) || ' '::text) || COALESCE(normalized_title, ''::text)
+    )
+  ),
+  video_game_ids jsonb CHECK (
+    video_game_ids IS NULL
+    OR jsonb_typeof(video_game_ids) = 'array'::text
+  ),
   search_tsv tsvector,
   source_ids jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(source_ids) = 'array'::text),
   aliases jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(aliases) = 'array'::text),
@@ -721,10 +759,10 @@ CREATE TABLE IF NOT EXISTS public.video_games (
   average_rating real,
   rating_count bigint,
   rating_updated_at timestamp with time zone,
-  genres text[],
+  genres text [],
   display_title text,
   developer text,
-  region_codes text[],
+  region_codes text [],
   popularity_score numeric NOT NULL DEFAULT 0,
   rating numeric NOT NULL DEFAULT 0,
   synopsis text,

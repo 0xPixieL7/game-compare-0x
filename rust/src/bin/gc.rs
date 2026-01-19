@@ -455,9 +455,9 @@ async fn main() -> Result<()> {
             let mut base_currency_code = currency;
             let mut base_currency_name = currency_name;
             let mut base_minor_unit = currency_minor_unit;
-    let mut base_country_code = country;
-    let mut base_country_name = country_name;
-    let mut coverage_value = coverage;
+            let mut base_country_code = country;
+            let mut base_country_name = country_name;
+            let mut coverage_value = coverage;
 
             if coverage_value
                 .as_ref()
@@ -683,7 +683,9 @@ async fn main() -> Result<()> {
                                 );
                             }
                             Ok(None) => {
-                                info!("unified-ingest: GiantBomb ingestion skipped (payload missing)");
+                                info!(
+                                    "unified-ingest: GiantBomb ingestion skipped (payload missing)"
+                                );
                             }
                             Err(e) => {
                                 error!(error = %e, "unified-ingest: GiantBomb ingestion failed");
@@ -780,7 +782,7 @@ async fn main() -> Result<()> {
                     let client_clone = xbox_client.clone();
                     let handle = runtime.clone();
                     let retries = provider_retries;
-                    
+
                     // Config for xbox ingest
                     let browse_enabled = xbox_enable_browse;
                     let browse_min = xbox_year_min;
@@ -792,7 +794,7 @@ async fn main() -> Result<()> {
                     provider_tasks.push(Box::new(move || {
                         info!("unified-ingest: starting Xbox ingestion");
                         let start = Instant::now();
-                        
+
                         // Browse options removed temporarily - logic is internal to provider
                         let _browse_enabled = browse_enabled;
 

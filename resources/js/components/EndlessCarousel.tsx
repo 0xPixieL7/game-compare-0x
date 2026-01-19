@@ -1,6 +1,8 @@
-import { Link } from '@inertiajs/react';
+import { index as compareIndex } from '@/actions/App/Http/Controllers/CompareController';
 import { type Game } from '@/types';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { Link } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { GameCard } from './GameCard';
 
@@ -17,86 +19,94 @@ export default function EndlessCarousel({
 }: EndlessCarouselProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
-    const carouselRef = useRef<HTMLDivElement>(null);
+    const [visibleCount, setVisibleCount] = useState(6);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [isTransitioning, setIsTransitioning] = useState(true);
+    const [containerWidth, setContainerWidth] = useState(0);
 
-    // Duplicate games for endless scrolling effect
-    // If games list is short, we might need more duplication to fill the screen
-    const minGamesForLoop = 12;
-    const duplicationFactor =
-        Math.ceil(minGamesForLoop / Math.max(games.length, 1)) + 1;
+    // Reduced motion preference
+    const prefersReducedMotion =
+        typeof window !== 'undefined'
+            ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            : false;
 
-    // Create a larger set for smooth infinite scrolling
-    const duplicatedGames = Array(duplicationFactor).fill(games).flat();
-
-    const visibleCount = 6; // Number of items visible at once (responsive?)
-
+    // Responsive visible count
     useEffect(() => {
-        // Start from a middle point to allow scrolling left immediately
-        setCurrentIndex(games.length);
-    }, [games.length]);
+        const handleResize = () => {
+            if (window.innerWidth < 768) setVisibleCount(2);
+            else if (window.innerWidth < 1024) setVisibleCount(4);
+            else setVisibleCount(6);
 
-    const scrollTo = (index: number) => {
-        if (carouselRef.current) {
-            const containerWidth = carouselRef.current.clientWidth;
-            const itemWidth = containerWidth / visibleCount;
+            // Update container width for transform calculation
+            if (containerRef.current) {
+                setContainerWidth(containerRef.current.offsetWidth);
+            }
+        };
 
-            carouselRef.current.scrollTo({
-                left: index * itemWidth,
-                behavior: 'smooth',
-            });
-            setCurrentIndex(index);
+        handleResize(); // Initial call
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Triple the games to ensure smooth infinite looping
+    // [games (buffer), games (active), games (buffer)]
+    const displayGames = [...games, ...games, ...games];
+    const totalItems = games.length;
+
+    // Initial position: Start at the second set
+    useEffect(() => {
+        setCurrentIndex(totalItems);
+    }, [totalItems]);
+
+    // Auto-advance
+    useEffect(() => {
+        if (isHovered || prefersReducedMotion || games.length === 0) return;
+
+        const interval = setInterval(() => {
+            setCurrentIndex((prev) => prev + 1);
+        }, 4000);
+
+        return () => clearInterval(interval);
+    }, [isHovered, prefersReducedMotion, games.length]);
+
+    const handleTransitionEnd = () => {
+        // If we've scrolled past the second set (to the right)
+        if (currentIndex >= totalItems * 2) {
+            setIsTransitioning(false);
+            setCurrentIndex(totalItems + (currentIndex % totalItems));
+        }
+        // If we've scrolled past the first set (to the left)
+        else if (currentIndex < totalItems) {
+            setIsTransitioning(false);
+            setCurrentIndex(totalItems * 2 - (totalItems - currentIndex));
         }
     };
 
-    const nextSlide = () => {
-        const newIndex = currentIndex + 1;
-        scrollTo(newIndex);
-
-        // Reset position silently if too far right
-        if (newIndex >= duplicatedGames.length - visibleCount) {
-            setTimeout(() => {
-                if (carouselRef.current) {
-                    const containerWidth = carouselRef.current.clientWidth;
-                    const itemWidth = containerWidth / visibleCount;
-                    const resetIndex = games.length + (newIndex % games.length);
-
-                    carouselRef.current.scrollTo({
-                        left: resetIndex * itemWidth,
-                        behavior: 'auto', // Instant jump
-                    });
-                    setCurrentIndex(resetIndex);
-                }
-            }, 500); // Wait for smooth scroll to finish
+    // Re-enable transition after instant jump
+    useEffect(() => {
+        if (!isTransitioning) {
+            // Force reflow
+            containerRef.current?.getBoundingClientRect();
+            // Small timeout to ensure DOM update before re-enabling transition
+            requestAnimationFrame(() => setIsTransitioning(true));
         }
+    }, [isTransitioning]);
+
+    const handleNext = () => {
+        if (!isTransitioning) return;
+        setCurrentIndex((prev) => prev + 1);
     };
 
-    const prevSlide = () => {
-        const newIndex = currentIndex - 1;
-        scrollTo(newIndex);
-
-        // Reset position silently if too far left
-        if (newIndex <= visibleCount) {
-            setTimeout(() => {
-                if (carouselRef.current) {
-                    const containerWidth = carouselRef.current.clientWidth;
-                    const itemWidth = containerWidth / visibleCount;
-                    const resetIndex =
-                        games.length * (duplicationFactor - 2) +
-                        (newIndex % games.length);
-
-                    carouselRef.current.scrollTo({
-                        left: resetIndex * itemWidth,
-                        behavior: 'auto',
-                    });
-                    setCurrentIndex(resetIndex);
-                }
-            }, 500);
-        }
+    const handlePrev = () => {
+        if (!isTransitioning) return;
+        setCurrentIndex((prev) => prev - 1);
     };
 
-    if (games.length === 0) {
-        return null;
-    }
+    if (games.length === 0) return null;
+
+    // Calculate pixel-based width for each item (accounts for gap properly)
+    const itemWidth = containerWidth / visibleCount;
+    const translateX = -(currentIndex * itemWidth);
 
     return (
         <div
@@ -105,25 +115,35 @@ export default function EndlessCarousel({
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* Section Title */}
-            <div className="mx-auto mb-4 flex max-w-[90rem] items-end justify-between px-4 lg:px-12">
-                <h2 className="text-xl font-bold text-white transition-colors hover:text-blue-400 lg:text-2xl">
+            <div className="mx-auto mb-6 flex max-w-[90rem] items-end justify-between px-4 lg:px-12">
+                <motion.h2
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="text-2xl font-black tracking-widest text-white uppercase transition-colors hover:text-cyan-300 lg:text-3xl"
+                    style={{
+                        textShadow:
+                            '0 0 5px rgba(255,255,255,0.6), 0 0 10px rgba(6,182,212,0.5), 0 0 20px rgba(6,182,212,0.3)',
+                    }}
+                >
                     {title}
-                </h2>
+                </motion.h2>
                 <Link
-                    href="/compare"
-                    className="text-xs font-medium tracking-wider text-gray-500 uppercase hover:text-white"
+                    href={compareIndex().url}
+                    className="text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase transition-colors hover:text-white"
                 >
                     See All
                 </Link>
             </div>
 
             {/* Carousel Container */}
-            <div className="relative">
+            <div className="relative overflow-hidden">
                 {/* Left Arrow */}
                 <button
-                    onClick={prevSlide}
+                    onClick={handlePrev}
+                    aria-label="Previous slide"
                     className={`absolute top-0 bottom-0 left-0 z-20 flex w-12 items-center justify-center bg-black/30 backdrop-blur-sm transition-all duration-300 hover:w-16 hover:bg-black/60 ${
-                        isHovered
+                        isHovered || prefersReducedMotion
                             ? 'translate-x-0 opacity-100'
                             : '-translate-x-full opacity-0'
                     }`}
@@ -133,9 +153,10 @@ export default function EndlessCarousel({
 
                 {/* Right Arrow */}
                 <button
-                    onClick={nextSlide}
+                    onClick={handleNext}
+                    aria-label="Next slide"
                     className={`absolute top-0 right-0 bottom-0 z-20 flex w-12 items-center justify-center bg-black/30 backdrop-blur-sm transition-all duration-300 hover:w-16 hover:bg-black/60 ${
-                        isHovered
+                        isHovered || prefersReducedMotion
                             ? 'translate-x-0 opacity-100'
                             : 'translate-x-full opacity-0'
                     }`}
@@ -143,27 +164,28 @@ export default function EndlessCarousel({
                     <ChevronRightIcon className="h-8 w-8 text-white drop-shadow-lg" />
                 </button>
 
-                {/* Games Container */}
-                <div
-                    ref={carouselRef}
-                    className="flex gap-4 overflow-x-hidden px-4 pt-2 pb-4 lg:px-12"
-                    style={{
-                        scrollBehavior: 'smooth',
-                    }}
-                >
-                    {duplicatedGames.map((game, index) => (
-                        <div
-                            key={`${game.id}-${index}`}
-                            className="flex-none transition-all duration-300"
-                            style={{
-                                width: `calc((100% - ${(visibleCount - 1) * 16}px) / ${visibleCount})`,
-                                minWidth: '160px',
-                                maxWidth: '240px',
-                            }}
-                        >
-                            <GameCard game={game} />
-                        </div>
-                    ))}
+                {/* Games Track */}
+                <div className="px-4 lg:px-12" ref={containerRef}>
+                    <div
+                        className="flex will-change-transform"
+                        style={{
+                            transform: `translateX(${translateX}px)`,
+                            transition: isTransitioning
+                                ? 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
+                                : 'none',
+                        }}
+                        onTransitionEnd={handleTransitionEnd}
+                    >
+                        {displayGames.map((game, index) => (
+                            <div
+                                key={`${game.id}-${index}`}
+                                className="flex-none px-2"
+                                style={{ width: `${itemWidth}px` }}
+                            >
+                                <GameCard game={game} />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>

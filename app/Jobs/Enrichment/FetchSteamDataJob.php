@@ -19,38 +19,27 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Fetch combined price + media data from Steam in a single efficient API call.
- *
- * Supports both single and batch processing for maximum performance.
- * One API call returns: price, screenshots, movies, header image.
+ * Fetch combined Media AND Price for the primary region (US).
+ * 
+ * One API call returns:
+ * - Current Price (for US)
+ * - Screenshots (English)
+ * - Movies/Trailers (English)
+ * - Header/Capsule Images
  */
 class FetchSteamDataJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const TARGET_REGIONS = ['US', 'GB', 'DE', 'JP', 'BR', 'CA', 'AU'];
-
     public int $tries = 3;
-
-    /** @var array<int, int> */
     public array $backoff = [30, 120, 300];
 
-    /**
-     * @param  int  $videoGameId  The video game to enrich
-     * @param  int  $steamAppId  The Steam app ID
-     * @param  array<string>  $regions  Target regions for pricing (empty = all)
-     */
     public function __construct(
         public int $videoGameId,
         public int $steamAppId,
-        public array $regions = []
-    ) {
-        $this->regions = empty($regions) ? self::TARGET_REGIONS : $regions;
-    }
+        public bool $fetchMediaOnly = false 
+    ) {}
 
-    /**
-     * @return array<int, object>
-     */
     public function middleware(): array
     {
         return [new RateLimited('steam')];
@@ -60,229 +49,214 @@ class FetchSteamDataJob implements ShouldQueue
     {
         $game = VideoGame::find($this->videoGameId);
 
-        if (! $game) {
-            Log::warning('FetchSteamDataJob: Game not found', ['game_id' => $this->videoGameId]);
-
+        if (!$game) {
+            Log::warning('FetchSteamDataJob: Game not found', ['id' => $this->videoGameId]);
             return;
         }
 
-        // Fetch full data from Steam (price + media) - ONE API call
-        $data = $steam->getFullDetails((string) $this->steamAppId, $this->regions[0] ?? 'US');
+        // ONE Call: Get Full Details (Price + Media) for US
+        $data = $steam->getFullDetails((string) $this->steamAppId, 'US');
 
-        if (! $data) {
-            Log::info('FetchSteamDataJob: No data returned from Steam', [
-                'game_id' => $this->videoGameId,
-                'steam_app_id' => $this->steamAppId,
-            ]);
-
-            return;
+        if (!$data) {
+            return; // API Error or Invalid App ID
         }
 
-        // Store everything in parallel using DB transaction for consistency
-        DB::transaction(function () use ($game, $data, $steam) {
-            // 1. Store prices for all target regions (batch if price exists)
-            if ($data['price']) {
-                $this->storePrices($game, $data['price'], $steam);
-            }
-
-            // 2. Store media (images + videos)
+        DB::transaction(function () use ($game, $data) {
+            // 1. Store Media (Global)
             $this->storeMedia($game, $data['media']);
-        });
 
-        Log::info('FetchSteamDataJob: Complete', [
-            'game_id' => $this->videoGameId,
-            'steam_app_id' => $this->steamAppId,
-            'has_price' => $data['price'] !== null,
-            'screenshots' => count($data['media']['screenshots'] ?? []),
-            'movies' => count($data['media']['movies'] ?? []),
-        ]);
-    }
-
-    /**
-     * Store prices for all target regions.
-     * Uses bulk upsert for efficiency.
-     */
-    private function storePrices(VideoGame $game, array $priceData, SteamStoreService $steam): void
-    {
-        $retailer = Retailer::where('slug', 'steam')->first();
-
-        if (! $retailer) {
-            return;
-        }
-
-        $url = "https://store.steampowered.com/app/{$this->steamAppId}/";
-        $now = now();
-
-        // For first region, we already have the data
-        $priceRows = [];
-        $firstRegion = $this->regions[0] ?? 'US';
-
-        $priceRows[] = [
-            'video_game_id' => $game->id,
-            'currency' => $priceData['currency'],
-            'country_code' => $firstRegion,
-            'amount_minor' => $priceData['amount_minor'],
-            'retailer' => $retailer->name,
-            'url' => $url,
-            'recorded_at' => $now,
-            'is_active' => true,
-            'metadata' => json_encode([
-                'discount_percent' => $priceData['discount_percent'] ?? 0,
-                'initial_amount_minor' => $priceData['initial_amount_minor'] ?? null,
-                'steam_app_id' => $this->steamAppId,
-            ]),
-            'updated_at' => $now,
-        ];
-
-        // Fetch prices for remaining regions (if multiple regions requested)
-        foreach (array_slice($this->regions, 1) as $region) {
-            $regionalPrice = $steam->getPrice((string) $this->steamAppId, $region);
-
-            if ($regionalPrice) {
-                $priceRows[] = [
-                    'video_game_id' => $game->id,
-                    'currency' => $regionalPrice['currency'],
-                    'country_code' => $region,
-                    'amount_minor' => $regionalPrice['amount_minor'],
-                    'retailer' => $retailer->name,
-                    'url' => $url,
-                    'recorded_at' => $now,
-                    'is_active' => true,
-                    'metadata' => json_encode(['steam_app_id' => $this->steamAppId]),
-                    'updated_at' => $now,
-                ];
+            // 2. Store US Price (if not media-only mode)
+            if (!$this->fetchMediaOnly && $data['price']) {
+                $this->storePrice($game, $data['price'], 'US');
             }
-        }
-
-        // Bulk upsert all prices
-        if (! empty($priceRows)) {
-            DB::table('video_game_prices')->upsert(
-                $priceRows,
-                ['video_game_id', 'retailer', 'country_code'], // unique keys
-                ['currency', 'amount_minor', 'recorded_at', 'is_active', 'metadata', 'updated_at']
-            );
-        }
+        });
     }
 
-    /**
-     * Store media (screenshots + movies) in a single batch.
-     */
+    private function storePrice(VideoGame $game, array $priceData, string $region): void
+    {
+        $retailerName = 'Steam';
+        $retailer = Retailer::where('slug', 'steam')->first();
+        if ($retailer) {
+            $retailerName = $retailer->name;
+        }
+
+        DB::table('video_game_prices')->upsert(
+            [
+                'video_game_id' => $game->id,
+                'currency' => $priceData['currency'],
+                'country_code' => $region,
+                'amount_minor' => $priceData['amount_minor'],
+                'retailer' => $retailerName,
+                'url' => "https://store.steampowered.com/app/{$this->steamAppId}/",
+                'recorded_at' => now(),
+                'is_active' => true,
+                'metadata' => json_encode([
+                    'steam_app_id' => $this->steamAppId,
+                    'discount_percent' => $priceData['discount_percent'] ?? 0,
+                    'initial_amount_minor' => $priceData['initial_amount_minor'] ?? null,
+                ]),
+                'updated_at' => now(),
+            ],
+            ['video_game_id', 'retailer', 'country_code'],
+            ['currency', 'amount_minor', 'recorded_at', 'is_active', 'metadata', 'updated_at']
+        );
+    }
+
     private function storeMedia(VideoGame $game, array $media): void
     {
+        $headerImage = $media['header_image'] ?? null;
+        $background = $media['background_raw'] ?? $media['background'] ?? null;
+        $capsuleImage = $media['capsule_imagev5'] ?? $media['capsule_image'] ?? null;
         $screenshots = $media['screenshots'] ?? [];
         $movies = $media['movies'] ?? [];
-        $headerImage = $media['header_image'] ?? null;
-        $capsuleImage = $media['capsule_image'] ?? null;
 
-        // Build image URLs and details
-        $urls = [];
-        $details = [];
-        $collections = [];
-
-        // Add header/capsule as cover
+        // 1. Store Header Image (Cover/Landscape)
         if ($headerImage) {
-            $collections[] = 'cover_images';
-            $urls[] = $headerImage;
-            $details[] = [
-                'collection' => 'cover_images',
-                'url' => $headerImage,
-                'type' => 'header_image',
-            ];
-        }
-
-        if ($capsuleImage) {
-            $collections[] = 'cover_images';
-            $urls[] = $capsuleImage;
-            $details[] = [
-                'collection' => 'cover_images',
-                'url' => $capsuleImage,
-                'type' => 'capsule_image',
-            ];
-        }
-
-        // Add screenshots
-        foreach ($screenshots as $screenshot) {
-            $collections[] = 'screenshots';
-            $urls[] = $screenshot['full'];
-            $details[] = [
-                'collection' => 'screenshots',
-                'url' => $screenshot['full'],
-                'thumbnail' => $screenshot['thumbnail'],
-                'steam_id' => $screenshot['id'],
-            ];
-        }
-
-        $collections = array_values(array_unique($collections));
-
-        // Upsert Image record if we have any images
-        if (! empty($urls)) {
             Image::updateOrCreate(
                 [
                     'video_game_id' => $game->id,
                     'imageable_type' => VideoGame::class,
                     'imageable_id' => $game->id,
+                    'primary_collection' => 'cover_images',
                 ],
                 [
                     'provider' => 'steam',
-                    'primary_collection' => in_array('cover_images', $collections, true) ? 'cover_images' : ($collections[0] ?? 'misc'),
-                    'collection_names' => $collections,
-                    'url' => $urls[0] ?? null,
-                    'urls' => $urls,
-                    'metadata' => [
-                        'source' => 'steam_enrichment',
-                        'steam_app_id' => $this->steamAppId,
-                        'details' => $details,
-                    ],
+                    'collection_names' => ['cover_images'],
+                    'url' => $headerImage,
+                    'urls' => [$headerImage],
+                    'metadata' => ['steam_app_id' => $this->steamAppId],
                 ]
             );
         }
 
-        // Store videos if present
-        if (! empty($movies)) {
-            $videoUrls = [];
-            $videoDetails = [];
+        // 2. Store Capsule Image (Poster/Vertical Art)
+        if ($capsuleImage) {
+            Image::firstOrCreate(
+                [
+                    'video_game_id' => $game->id,
+                    'url' => $capsuleImage,
+                ],
+                [
+                    'imageable_type' => VideoGame::class,
+                    'imageable_id' => $game->id,
+                    'provider' => 'steam',
+                    'primary_collection' => 'posters',
+                    'collection_names' => ['posters', 'artwork'],
+                    'urls' => [$capsuleImage],
+                    'metadata' => ['steam_app_id' => $this->steamAppId, 'type' => 'capsule'],
+                ]
+            );
+        }
 
-            foreach ($movies as $movie) {
-                // Prefer MP4 max quality
-                $videoUrl = $movie['mp4_max'] ?? $movie['webm_max'] ?? $movie['mp4_480'] ?? $movie['webm_480'];
-                if ($videoUrl) {
-                    $videoUrls[] = $videoUrl;
-                    $videoDetails[] = [
-                        'name' => $movie['name'],
-                        'thumbnail' => $movie['thumbnail'],
-                        'steam_id' => $movie['id'],
-                        'webm_480' => $movie['webm_480'],
-                        'webm_max' => $movie['webm_max'],
-                        'mp4_480' => $movie['mp4_480'],
-                        'mp4_max' => $movie['mp4_max'],
-                    ];
-                }
-            }
+        // 3. Store Background Image (Store Page BG)
+        if ($background) {
+            Image::firstOrCreate(
+                [
+                    'video_game_id' => $game->id,
+                    'url' => $background,
+                ],
+                [
+                    'imageable_type' => VideoGame::class,
+                    'imageable_id' => $game->id,
+                    'provider' => 'steam',
+                    'primary_collection' => 'backgrounds',
+                    'collection_names' => ['backgrounds'],
+                    'urls' => [$background],
+                    'metadata' => ['steam_app_id' => $this->steamAppId, 'type' => 'store_bg'],
+                ]
+            );
+        }
 
-            if (! empty($videoUrls)) {
-                Video::updateOrCreate(
-                    [
-                        'video_game_id' => $game->id,
-                        'videoable_type' => VideoGame::class,
-                        'videoable_id' => $game->id,
-                    ],
-                    [
-                        'provider' => 'steam',
-                        'primary_collection' => 'trailers',
-                        'collection_names' => ['trailers'],
-                        'url' => $videoUrls[0] ?? null,
-                        'urls' => $videoUrls,
-                        'video_id' => (string) ($movies[0]['id'] ?? ''),
-                        'thumbnail_url' => $movies[0]['thumbnail'] ?? null,
-                        'title' => $movies[0]['name'] ?? null,
-                        'metadata' => [
-                            'source' => 'steam_enrichment',
-                            'steam_app_id' => $this->steamAppId,
-                            'videos' => $videoDetails,
-                        ],
-                    ]
-                );
-            }
+        // 4. Store Library Assets (Hero + Logo) - Constructed URLs
+        // Prefer 2x assets for high-DPI displays
+        $libraryHero = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/library_hero.jpg";
+        $libraryHero2x = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/library_hero_2x.jpg";
+        
+        $libraryLogo = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/logo.png";
+        $libraryLogo2x = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/logo_2x.png";
+
+        Image::firstOrCreate(
+            [
+                'video_game_id' => $game->id,
+                'url' => $libraryHero2x, // Prefer 2x as primary key URL
+            ],
+            [
+                'imageable_type' => VideoGame::class,
+                'imageable_id' => $game->id,
+                'provider' => 'steam',
+                'primary_collection' => 'hero',
+                'collection_names' => ['hero', 'backgrounds'],
+                'urls' => [$libraryHero2x, $libraryHero], // Store both for fallback
+                'metadata' => ['steam_app_id' => $this->steamAppId, 'type' => 'library_hero'],
+            ]
+        );
+
+        Image::firstOrCreate(
+            [
+                'video_game_id' => $game->id,
+                'url' => $libraryLogo2x,
+            ],
+            [
+                'imageable_type' => VideoGame::class,
+                'imageable_id' => $game->id,
+                'provider' => 'steam',
+                'primary_collection' => 'clear_logo',
+                'collection_names' => ['clear_logo', 'logos'],
+                'urls' => [$libraryLogo2x, $libraryLogo], // Store both for fallback
+                'metadata' => ['steam_app_id' => $this->steamAppId, 'type' => 'library_logo'],
+            ]
+        );
+
+        // 5. Store Screenshots (Batch)
+        // Only store the first 10 to avoid bloating DB
+        foreach (array_slice($screenshots, 0, 10) as $shot) {
+            if (empty($shot['full'])) continue;
+            
+            Image::firstOrCreate(
+                [
+                    'video_game_id' => $game->id,
+                    'url' => $shot['full'],
+                ],
+                [
+                    'imageable_type' => VideoGame::class,
+                    'imageable_id' => $game->id,
+                    'provider' => 'steam',
+                    'primary_collection' => 'screenshots',
+                    'collection_names' => ['screenshots'],
+                    'urls' => [$shot['full'], $shot['thumbnail'] ?? null],
+                    'metadata' => ['steam_id' => $shot['id'] ?? null],
+                ]
+            );
+        }
+
+        // 4. Store Trailers (Videos)
+        foreach (array_slice($movies, 0, 3) as $movie) {
+            // Prioritize standard formats, fallback to HLS
+            $url = $movie['mp4_max'] 
+                ?? $movie['mp4_480'] 
+                ?? $movie['webm_max'] 
+                ?? $movie['webm_480'] 
+                ?? $movie['hls_max'] 
+                ?? null;
+
+            if (!$url) continue;
+
+            Video::updateOrCreate(
+                [
+                    'video_game_id' => $game->id,
+                    'url' => $url,
+                ],
+                [
+                    'videoable_type' => VideoGame::class,
+                    'videoable_id' => $game->id,
+                    'provider' => 'steam',
+                    'primary_collection' => 'trailers',
+                    'collection_names' => ['trailers'],
+                    'title' => $movie['name'] ?? 'Trailer',
+                    'thumbnail_url' => $movie['thumbnail'] ?? null,
+                    'metadata' => ['steam_id' => $movie['id'] ?? null],
+                ]
+            );
         }
     }
 }

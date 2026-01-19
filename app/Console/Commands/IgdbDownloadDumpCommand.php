@@ -213,6 +213,8 @@ class IgdbDownloadDumpCommand extends Command
         $this->line("  1. Review the CSV: head -20 {$outputPath}");
         $this->line('  2. Import games dump into canonical provider staging (video_game_titles):');
         $this->line('     php artisan igdb:dump:import games');
+        $this->line('  3. Fetch upcoming/unreleased games via live API:');
+        $this->line('     php artisan igdb:fetch-upcoming');
 
         return self::SUCCESS;
     }

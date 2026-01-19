@@ -47,7 +47,6 @@ return new class extends Migration
             'tax_profiles',
             'countries',
             'retailers',
-            'video_game_profiles',
         ];
 
         foreach ($publicTables as $table) {
@@ -130,7 +129,6 @@ return new class extends Migration
             'tax_profiles',
             'countries',
             'retailers',
-            'video_game_profiles',
             // System tables
             'users',
             'jobs',

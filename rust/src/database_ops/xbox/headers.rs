@@ -16,7 +16,6 @@
 /// - XBOX_PACKAGE_FAMILY_NAME: App package family name
 /// - XBOX_PACKAGE_SID: Package security identifier
 /// - XBOX_APP_URI: App URI for token audience
-
 use anyhow::{Context, Result};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::collections::HashMap;
@@ -26,13 +25,13 @@ use tracing::{debug, warn};
 pub mod contract_versions {
     /// Display Catalog API version
     pub const DISPLAY_CATALOG: &str = "2";
-    
+
     /// EDS (Entertainment Discovery Services) version
     pub const EDS: &str = "3";
-    
+
     /// Collections API version
     pub const COLLECTIONS: &str = "2";
-    
+
     /// Profile API version
     pub const PROFILE: &str = "2";
 }
@@ -49,11 +48,7 @@ impl CorrelationVector {
     pub fn new() -> Self {
         use rand::Rng;
         let mut rng = rand::thread_rng();
-        let base = format!(
-            "{}.{}",
-            rng.gen::<u64>(),
-            rng.gen::<u32>()
-        );
+        let base = format!("{}.{}", rng.gen::<u64>(), rng.gen::<u32>());
         Self { base, counter: 0 }
     }
 
@@ -111,15 +106,15 @@ impl XboxLiveConfig {
     /// Get additional context headers that may be required by some endpoints
     pub fn context_headers(&self) -> HashMap<String, String> {
         let mut headers = HashMap::new();
-        
+
         if let Some(sandbox) = &self.sandbox_id {
             headers.insert("X-XBL-Sandbox-ID".to_string(), sandbox.clone());
         }
-        
+
         if let Some(service_id) = &self.web_service_id {
             headers.insert("X-XBL-WebService-ID".to_string(), service_id.clone());
         }
-        
+
         headers
     }
 }
@@ -151,11 +146,10 @@ pub fn build_xbox_live_headers(
         // Add XSTSv3 prefix
         format!("XSTSv3 t={}", xsts_token)
     };
-    
+
     headers.insert(
         reqwest::header::AUTHORIZATION,
-        HeaderValue::from_str(&auth_value)
-            .context("Failed to create Authorization header")?,
+        HeaderValue::from_str(&auth_value).context("Failed to create Authorization header")?,
     );
 
     // Contract version header
@@ -220,11 +214,11 @@ mod tests {
         let mut cv = CorrelationVector::new();
         let v1 = cv.next();
         let v2 = cv.next();
-        
+
         assert!(v1.contains('.'));
         assert!(v2.contains('.'));
         assert_ne!(v1, v2);
-        
+
         // Second call should have incremented counter
         assert!(v2.ends_with(".1"));
     }
@@ -233,10 +227,7 @@ mod tests {
     fn test_format_xsts_authorization() {
         // Raw token should get prefix
         let raw = "eyJ0eXAiOiJKV1QiLCJhbGc...";
-        assert_eq!(
-            format_xsts_authorization(raw),
-            format!("XSTSv3 t={}", raw)
-        );
+        assert_eq!(format_xsts_authorization(raw), format!("XSTSv3 t={}", raw));
 
         // Already formatted should pass through
         let formatted = "XSTSv3 t=eyJ0eXAiOiJKV1QiLCJhbGc...";
@@ -247,12 +238,12 @@ mod tests {
     fn test_xbox_config_from_env() {
         std::env::set_var("XBOX_CLIENT_ID", "test-client-id");
         std::env::set_var("XBOX_SANDBOX_ID", "RETAIL.0");
-        
+
         let config = XboxLiveConfig::from_env();
-        
+
         assert_eq!(config.client_id.as_deref(), Some("test-client-id"));
         assert_eq!(config.sandbox_id.as_deref(), Some("RETAIL.0"));
-        
+
         std::env::remove_var("XBOX_CLIENT_ID");
         std::env::remove_var("XBOX_SANDBOX_ID");
     }
@@ -270,19 +261,15 @@ mod tests {
 
         let token = "test_token_value";
         let cv = "test.cv.0";
-        
-        let headers = build_xbox_live_headers(
-            token,
-            contract_versions::DISPLAY_CATALOG,
-            cv,
-            &config,
-        )
-        .unwrap();
+
+        let headers =
+            build_xbox_live_headers(token, contract_versions::DISPLAY_CATALOG, cv, &config)
+                .unwrap();
 
         assert!(headers.contains_key(reqwest::header::AUTHORIZATION));
         assert!(headers.contains_key("x-xbl-contract-version"));
         assert!(headers.contains_key("ms-cv"));
-        
+
         let auth = headers.get(reqwest::header::AUTHORIZATION).unwrap();
         assert!(auth.to_str().unwrap().starts_with("XSTSv3 t="));
     }

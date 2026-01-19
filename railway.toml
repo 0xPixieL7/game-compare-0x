@@ -1,2 +1,8 @@
 [build]
-builder = "RAILPACK"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "frankenphp run --config /etc/caddy/Caddyfile"
+healthcheckPath = "/up"
+restartPolicyType = "ON_FAILURE"

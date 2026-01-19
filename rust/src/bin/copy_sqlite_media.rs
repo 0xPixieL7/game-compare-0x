@@ -368,9 +368,32 @@ fn normalize_media_type(raw: &str, url: &str) -> String {
     let trimmed = raw.trim().to_ascii_lowercase();
     if trimmed.is_empty() {
         guess_media_type_from_url(url).to_string()
-    } else if matches!(trimmed.as_str(), "img" | "picture" | "image" | "cover" | "artwork" | "thumbnail" | "thumb" | "banner" | "hero" | "background") {
+    } else if matches!(
+        trimmed.as_str(),
+        "img"
+            | "picture"
+            | "image"
+            | "cover"
+            | "artwork"
+            | "thumbnail"
+            | "thumb"
+            | "banner"
+            | "hero"
+            | "background"
+    ) {
         "image".to_string()
-    } else if matches!(trimmed.as_str(), "vid" | "trailer" | "clip" | "video" | "vulcan.dl" | "preview" | "youtube" | "vimeo" | "podcast") {
+    } else if matches!(
+        trimmed.as_str(),
+        "vid"
+            | "trailer"
+            | "clip"
+            | "video"
+            | "vulcan.dl"
+            | "preview"
+            | "youtube"
+            | "vimeo"
+            | "podcast"
+    ) {
         "video".to_string()
     } else if matches!(trimmed.as_str(), "audio" | "music") {
         "audio".to_string()
@@ -618,7 +641,7 @@ CREATE TEMP TABLE IF NOT EXISTS _gm_copy (
 
     if dry_run {
         println!(
-                        "copy_sqlite_media: DRY_RUN set, skipping upsert into canonical_media. Staged rows: {}",
+            "copy_sqlite_media: DRY_RUN set, skipping upsert into canonical_media. Staged rows: {}",
             copied
         );
     } else {
@@ -660,10 +683,10 @@ LEFT JOIN LATERAL (
 ON CONFLICT (url_hash) DO UPDATE SET
   metadata = canonical_media.metadata || EXCLUDED.metadata
 "#;
-                let affected = pg_client
-                        .execute(upsert_sql, &[])
-                        .await
-                        .context("upsert into canonical_media")?;
+        let affected = pg_client
+            .execute(upsert_sql, &[])
+            .await
+            .context("upsert into canonical_media")?;
         println!(
                         "copy_sqlite_media: staged {} rows (skipped_external_id={}, skipped_url={}, skipped_duplicate_url={}); canonical_media upsert affected {} row(s)",
                         copied, skipped_external_id, skipped_url, skipped_duplicate_url, affected
@@ -678,7 +701,6 @@ ON CONFLICT (url_hash) DO UPDATE SET
 
     Ok(())
 }
-
 
 /// Connect to Postgres using TLS by default, but honor sslmode overrides.
 ///

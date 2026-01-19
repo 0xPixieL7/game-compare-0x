@@ -31,8 +31,8 @@ impl ApiServer {
         let allowed_origins = env::var("ALLOWED_ORIGINS")
             .unwrap_or_else(|_| "http://localhost:3000,http://localhost:8000".to_string());
 
-        let laravel_url = env::var("LARAVEL_API_URL")
-            .unwrap_or_else(|_| "http://localhost:8000".to_string());
+        let laravel_url =
+            env::var("LARAVEL_API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string());
 
         Ok(Self {
             host,

@@ -1,3 +1,7 @@
+use super::headers::{
+    build_xbox_live_headers, contract_versions, CorrelationVector, XboxLiveConfig,
+};
+use super::xbl_auth;
 use crate::database_ops::db::{Db, PriceRow};
 use crate::database_ops::ingest_providers::{
     ensure_country, ensure_currency, ensure_national_jurisdiction, ensure_platform,
@@ -9,10 +13,6 @@ use crate::database_ops::media_filter::{
     classify_image_from_url, classify_video_from_url, filter_images, filter_videos,
     should_include_screenshots, MediaStats,
 };
-use super::headers::{
-    build_xbox_live_headers, contract_versions, CorrelationVector, XboxLiveConfig,
-};
-use super::xbl_auth;
 use anyhow::{anyhow, Context, Result};
 use chrono::{NaiveDate, NaiveDateTime, Utc};
 use reqwest::Client;
@@ -71,14 +71,12 @@ impl XboxAuth {
     }
 }
 
-
-
 #[derive(Debug, Clone)]
 pub struct XboxOptions {
-    pub market: String,           // e.g., "US"
-    pub language: String,         // e.g., "en-US"
+    pub market: String,   // e.g., "US"
+    pub language: String, // e.g., "en-US"
     pub product_ids: Vec<String>, // list of bigIds
-    // Note: MS-CV is now auto-generated via CorrelationVector
+                          // Note: MS-CV is now auto-generated via CorrelationVector
 }
 
 impl Default for XboxOptions {
@@ -799,7 +797,10 @@ impl XboxProvider {
 
             // Iterate years descending (newest first) to prioritize current catalog
             for year in (year_min..=year_max).rev() {
-                match self.browse_year(market, year, page_size, max_pages_per_year).await {
+                match self
+                    .browse_year(market, year, page_size, max_pages_per_year)
+                    .await
+                {
                     Ok(year_product_ids) => {
                         info!(
                             market=%market,
@@ -1326,18 +1327,15 @@ impl XboxProvider {
                         .and_then(|arr| arr.get(0))
                     {
                         // Process all images from Images array
-                        if let Some(images_array) = localized
-                            .get("Images")
-                            .and_then(|imgs| imgs.as_array())
+                        if let Some(images_array) =
+                            localized.get("Images").and_then(|imgs| imgs.as_array())
                         {
                             // Collect and classify all images
                             let mut classified_images = Vec::new();
                             for img in images_array {
                                 if let Some(uri) = img.get("Uri").and_then(|u| u.as_str()) {
                                     // Extract ImagePurpose for classification hint
-                                    let purpose = img
-                                        .get("ImagePurpose")
-                                        .and_then(|p| p.as_str());
+                                    let purpose = img.get("ImagePurpose").and_then(|p| p.as_str());
 
                                     let img_type = classify_image_from_url(uri, purpose);
                                     let included = img_type.should_include(include_screenshots);
@@ -1354,7 +1352,8 @@ impl XboxProvider {
                             }
 
                             // Filter and prioritize images
-                            let filtered_images = filter_images(classified_images, include_screenshots);
+                            let filtered_images =
+                                filter_images(classified_images, include_screenshots);
 
                             // Ingest filtered images
                             if !filtered_images.is_empty() {
@@ -1412,9 +1411,8 @@ impl XboxProvider {
                         }
 
                         // Process all videos from Videos array
-                        if let Some(videos_array) = localized
-                            .get("Videos")
-                            .and_then(|vids| vids.as_array())
+                        if let Some(videos_array) =
+                            localized.get("Videos").and_then(|vids| vids.as_array())
                         {
                             // Collect and classify all videos
                             let mut classified_videos = Vec::new();
@@ -1675,8 +1673,8 @@ impl XboxProvider {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(100);
-            let browse_markets_str = std::env::var("XBOX_BROWSE_MARKETS")
-                .unwrap_or_else(|_| opts.market.clone());
+            let browse_markets_str =
+                std::env::var("XBOX_BROWSE_MARKETS").unwrap_or_else(|_| opts.market.clone());
             let browse_markets = parse_markets_env(&browse_markets_str);
 
             info!(
@@ -1711,7 +1709,7 @@ impl XboxProvider {
         // Add IDs from env file if any
         let env_file_ids = load_product_ids_from_env();
         if !env_file_ids.is_empty() {
-             product_ids.extend(env_file_ids);
+            product_ids.extend(env_file_ids);
         }
 
         if product_ids.is_empty() {
@@ -2008,8 +2006,8 @@ pub async fn run_with_provider(db: &Db, prov: XboxProvider) -> Result<()> {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(100);
-        let browse_markets_str = std::env::var("XBOX_BROWSE_MARKETS")
-            .unwrap_or_else(|_| opts.market.clone());
+        let browse_markets_str =
+            std::env::var("XBOX_BROWSE_MARKETS").unwrap_or_else(|_| opts.market.clone());
         let browse_markets = parse_markets_env(&browse_markets_str);
 
         info!(

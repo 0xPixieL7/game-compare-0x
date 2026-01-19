@@ -401,7 +401,9 @@ async fn main() -> Result<()> {
                         meta: json!({"src":"psstore","kind":"base","locale":r.locale}),
                         video_game_id: Some(vg_ps5),
                         currency: None,
-                        country_code: Some(r.locale.split('-').nth(1).unwrap_or("us").to_uppercase()),
+                        country_code: Some(
+                            r.locale.split('-').nth(1).unwrap_or("us").to_uppercase(),
+                        ),
                         retailer: None,
                     });
                 }
@@ -417,7 +419,9 @@ async fn main() -> Result<()> {
                         meta: json!({"src":"psstore","kind":"discount","locale":r.locale}),
                         video_game_id: Some(vg_ps5),
                         currency: None,
-                        country_code: Some(r.locale.split('-').nth(1).unwrap_or("us").to_uppercase()),
+                        country_code: Some(
+                            r.locale.split('-').nth(1).unwrap_or("us").to_uppercase(),
+                        ),
                         retailer: None,
                     });
                 }

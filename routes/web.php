@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AIAssistantController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\IgdbWebhookController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VideoGameController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,10 @@ use Inertia\Inertia;
 Route::get('/up', function () {
     return response()->json(['status' => 'ok'], 200);
 });
+
+// IGDB Webhooks (no CSRF protection needed - verified via X-Secret header)
+Route::post('/webhooks/igdb/{eventType}', [IgdbWebhookController::class, 'handle'])
+    ->where('eventType', 'create|update|delete');
 
 Route::get('/', [LandingController::class, 'index'])->name('home');
 

@@ -22,12 +22,6 @@ ALTER TABLE video_game_prices SET (
   fillfactor = 90
 );
 
-ALTER TABLE video_game_profiles SET (
-  autovacuum_vacuum_scale_factor = 0.05,
-  autovacuum_analyze_scale_factor = 0.05,
-  fillfactor = 95
-);
-
 ALTER TABLE video_game_sources SET (
   autovacuum_vacuum_scale_factor = 0.05,
   autovacuum_analyze_scale_factor = 0.05,
@@ -90,7 +84,7 @@ ALTER TABLE sessions SET (
 
 -- Verify:
 -- SELECT relname, reloptions FROM pg_class WHERE relname IN (
---   'video_games','video_game_title_sources','video_game_prices','video_game_profiles','video_game_sources',
+--   'video_games','video_game_title_sources','video_game_prices','video_game_sources',
 --   'products','price_charting_igdb_mappings','media','images','videos',
 --   'telescope_entries','telescope_entries_tags','telescope_monitoring','sessions'
 -- );

@@ -43,11 +43,11 @@ struct LocalizedProperty {
 #[derive(Debug, Deserialize)]
 struct Price {
     #[serde(rename = "MSRP")]
-    msrp: Option<f64>,
+    _msrp: Option<f64>,
     #[serde(rename = "ListPrice")]
     list_price: Option<f64>,
     #[serde(rename = "CurrencyCode")]
-    currency_code: Option<String>,
+    _currency_code: Option<String>,
 }
 
 impl XboxStoreProvider {
@@ -99,9 +99,7 @@ impl XboxStoreProvider {
                 interval_ms = interval.as_millis(),
                 "xbox_store_api: HTTP throttle configured"
             ),
-            None => info!(
-                "xbox_store_api: HTTP throttle disabled; requests will fire immediately"
-            ),
+            None => info!("xbox_store_api: HTTP throttle disabled; requests will fire immediately"),
         }
 
         if markets.is_empty() {
@@ -123,11 +121,11 @@ impl XboxStoreProvider {
         let provider = Self::new(base_url, rate_limiter);
 
         // Ensure provider entities exist
-        let provider_id = ensure_provider(db, "xbox_store_api", "storefront", Some("xbox-api"))
+        let _provider_id = ensure_provider(db, "xbox_store_api", "storefront", Some("xbox-api"))
             .await
             .context("Failed to ensure provider")?;
 
-        let retailer_id = ensure_retailer(db, "Xbox Store", Some("xbox"))
+        let _retailer_id = ensure_retailer(db, "Xbox Store", Some("xbox"))
             .await
             .context("Failed to ensure retailer")?;
 
@@ -359,13 +357,18 @@ impl XboxStoreProvider {
 }
 
 #[derive(Clone, Debug)]
-struct RateLimitSettings {
-    max_ops_per_window: u32,
-    window_secs: u64,
+pub struct RateLimitSettings {
+    pub max_ops_per_window: u32,
+    pub window_secs: u64,
 }
 
 impl RateLimitSettings {
-    fn from_env(max_key: &str, window_key: &str, default_max: u32, default_window: u64) -> Self {
+    pub fn from_env(
+        max_key: &str,
+        window_key: &str,
+        default_max: u32,
+        default_window: u64,
+    ) -> Self {
         let max_ops = Self::parse_u32(max_key, default_max);
         let window_secs = Self::parse_u64(window_key, default_window);
         Self {
@@ -374,7 +377,7 @@ impl RateLimitSettings {
         }
     }
 
-    fn per_request_interval(&self) -> Option<Duration> {
+    pub fn per_request_interval(&self) -> Option<Duration> {
         if self.max_ops_per_window == 0 || self.window_secs == 0 {
             None
         } else {
@@ -422,13 +425,13 @@ impl RateLimitSettings {
 }
 
 #[derive(Clone)]
-struct RequestThrottle {
+pub struct RequestThrottle {
     settings: RateLimitSettings,
     state: Option<Arc<Mutex<Instant>>>,
 }
 
 impl RequestThrottle {
-    fn new(settings: RateLimitSettings) -> Self {
+    pub fn new(settings: RateLimitSettings) -> Self {
         let state = settings
             .per_request_interval()
             .map(|_| Arc::new(Mutex::new(Instant::now())));

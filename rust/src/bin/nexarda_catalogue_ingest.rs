@@ -558,15 +558,15 @@ async fn run_ndjson_stream(db: &Db, ndjson_path: &str) -> Result<()> {
                     tax_inclusive: true,
                     fx_minor_per_unit: None,
                     btc_sats_per_unit: None,
-                meta: serde_json::json!({
-                    "src":"nexarda_catalogue",
-                    "discounts": rec.discounts.as_ref().and_then(|d| d.get(ccy_raw)).cloned()
-                }),
-                video_game_id: None,
-                currency: None,
-                country_code: Some(cc2.clone()),
-                retailer: None,
-            });
+                    meta: serde_json::json!({
+                        "src":"nexarda_catalogue",
+                        "discounts": rec.discounts.as_ref().and_then(|d| d.get(ccy_raw)).cloned()
+                    }),
+                    video_game_id: None,
+                    currency: None,
+                    country_code: Some(cc2.clone()),
+                    retailer: None,
+                });
                 // offer_jurisdiction_ids aggregated via ingest result
             }
         }

@@ -22,9 +22,13 @@ return new class extends Migration
             return;
         }
 
-        // Enable required extensions
-        DB::statement('CREATE EXTENSION IF NOT EXISTS bloom');
-        DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+        // Enable required extensions in the extensions schema
+        DB::statement('CREATE SCHEMA IF NOT EXISTS extensions');
+        DB::statement('CREATE EXTENSION IF NOT EXISTS bloom SCHEMA extensions');
+        DB::statement('CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA extensions');
+
+        // Ensure extensions schema is in the search path for the current session
+        DB::statement('SET search_path TO public, extensions');
 
         // ==========================================
         // BLOOM INDEXES (space-efficient membership testing)
@@ -54,31 +58,31 @@ return new class extends Migration
         // video_games.name: Fast ILIKE/LIKE queries and fuzzy matching
         DB::statement('
             CREATE INDEX IF NOT EXISTS idx_video_games_name_trgm
-            ON video_games USING gin (name gin_trgm_ops)
+            ON video_games USING gin (name extensions.gin_trgm_ops)
         ');
 
         // video_games.description: Full-text fuzzy search
         DB::statement('
             CREATE INDEX IF NOT EXISTS idx_video_games_description_trgm
-            ON video_games USING gin (description gin_trgm_ops)
+            ON video_games USING gin (description extensions.gin_trgm_ops)
         ');
 
         // video_games.developer: Fast developer search
         DB::statement('
             CREATE INDEX IF NOT EXISTS idx_video_games_developer_trgm
-            ON video_games USING gin (developer gin_trgm_ops)
+            ON video_games USING gin (developer extensions.gin_trgm_ops)
         ');
 
         // video_games.publisher: Fast publisher search
         DB::statement('
             CREATE INDEX IF NOT EXISTS idx_video_games_publisher_trgm
-            ON video_games USING gin (publisher gin_trgm_ops)
+            ON video_games USING gin (publisher extensions.gin_trgm_ops)
         ');
 
         // products.name: Product name search
         DB::statement('
             CREATE INDEX IF NOT EXISTS idx_products_name_trgm
-            ON products USING gin (name gin_trgm_ops)
+            ON products USING gin (name extensions.gin_trgm_ops)
         ');
 
         // ==========================================

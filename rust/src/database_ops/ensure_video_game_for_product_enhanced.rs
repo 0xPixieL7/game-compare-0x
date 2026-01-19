@@ -1,4 +1,3 @@
-
 // Laravel-compatible ensure_video_game_for_product() with comprehensive column support.
 // Historically this helper keyed rows via product_id, but canonical schema now stores
 // product_id on video_game_titles. The logic below therefore supports both linkage paths
@@ -7,9 +6,9 @@
 use super::ingest_providers::{extract_normalized_rating_from_payload, table_column_exists};
 use crate::Db;
 use anyhow::{anyhow, Result};
-use tokio::sync::OnceCell;
 use serde_json::Value;
 use sqlx::Row;
+use tokio::sync::OnceCell;
 
 /// Optional metadata for creating/updating video_games rows (Laravel schema)
 #[derive(Debug, Default, Clone)]
@@ -37,8 +36,8 @@ struct VideoGamesLaravelColumns {
     // Core Laravel columns
     has_product_id: bool,
     has_title: bool,
-    has_name: bool, // Added for Laravel 12 schema
-    has_provider: bool, // Added for Laravel 12 schema
+    has_name: bool,        // Added for Laravel 12 schema
+    has_provider: bool,    // Added for Laravel 12 schema
     has_external_id: bool, // Added for Laravel 12 schema
     has_normalized_title: bool,
     has_title_id: bool,
@@ -133,9 +132,7 @@ async fn table_visible(db: &Db, name: &str) -> Result<bool> {
     Ok(visible)
 }
 
-async fn video_game_title_bridge_columns(
-    db: &Db,
-) -> Result<&'static VideoGameTitleBridgeColumns> {
+async fn video_game_title_bridge_columns(db: &Db) -> Result<&'static VideoGameTitleBridgeColumns> {
     VIDEO_GAME_TITLE_BRIDGE
         .get_or_try_init(|| async {
             let table_present = table_visible(db, "video_game_titles").await?;
@@ -143,20 +140,15 @@ async fn video_game_title_bridge_columns(
                 return Ok(VideoGameTitleBridgeColumns::default());
             }
 
-            let has_product_id =
-                table_column_exists(db, "video_game_titles", "product_id").await?;
+            let has_product_id = table_column_exists(db, "video_game_titles", "product_id").await?;
             let has_normalized_title =
                 table_column_exists(db, "video_game_titles", "normalized_title").await?;
-            let has_created_at =
-                table_column_exists(db, "video_game_titles", "created_at").await?;
-            let has_updated_at =
-                table_column_exists(db, "video_game_titles", "updated_at").await?;
+            let has_created_at = table_column_exists(db, "video_game_titles", "created_at").await?;
+            let has_updated_at = table_column_exists(db, "video_game_titles", "updated_at").await?;
             let has_video_game_ids =
                 table_column_exists(db, "video_game_titles", "video_game_ids").await?;
 
-            let title_column = if table_column_exists(db, "video_game_titles", "title")
-                .await?
-            {
+            let title_column = if table_column_exists(db, "video_game_titles", "title").await? {
                 Some("title".to_string())
             } else if table_column_exists(db, "video_game_titles", "raw_title").await? {
                 Some("raw_title".to_string())
@@ -238,8 +230,11 @@ async fn ensure_title_record_for_product(
         return Ok(Some(id));
     }
 
-    let mut columns =
-        vec!["product_id".to_string(), title_column.to_string(), "normalized_title".to_string()];
+    let mut columns = vec![
+        "product_id".to_string(),
+        title_column.to_string(),
+        "normalized_title".to_string(),
+    ];
     let mut values = vec!["$1".to_string(), "$2".to_string(), "$3".to_string()];
 
     if cols.has_created_at {
@@ -334,7 +329,10 @@ pub async fn ensure_video_game_for_product_enhanced(
     let external_id = meta.external_ids.as_ref().and_then(|ids| {
         // Try to find an ID matching the provider key
         if let Some(key) = provider {
-             ids.get(key).and_then(|v| v.as_str().or_else(|| v.as_i64().map(|i| i.to_string().leak() as &str)))
+            ids.get(key).and_then(|v| {
+                v.as_str()
+                    .or_else(|| v.as_i64().map(|i| i.to_string().leak() as &str))
+            })
         } else {
             None
         }
@@ -366,8 +364,8 @@ pub async fn ensure_video_game_for_product_enhanced(
     // NEW: Check by provider + external_id if columns exist (strongest match for provider items)
     if existing_id.is_none() && cols.has_provider && cols.has_external_id {
         if let (Some(p), Some(e)) = (provider, external_id) {
-             if let Ok(eid_int) = e.parse::<i64>() {
-                 existing_id = sqlx::query_scalar(
+            if let Ok(eid_int) = e.parse::<i64>() {
+                existing_id = sqlx::query_scalar(
                     "SELECT id FROM video_games WHERE provider=$1 AND external_id=$2 ORDER BY id DESC LIMIT 1",
                 )
                 .persistent(false)
@@ -375,7 +373,7 @@ pub async fn ensure_video_game_for_product_enhanced(
                 .bind(eid_int)
                 .fetch_optional(&db.pool)
                 .await?;
-             }
+            }
         }
     }
 
@@ -402,7 +400,6 @@ pub async fn ensure_video_game_for_product_enhanced(
     }
 
     if let Some(id) = existing_id {
-
         // Derive a normalized 0–5 rating from the provider payload (if we have metadata).
         let derived_rating_five = meta
             .metadata
@@ -424,7 +421,7 @@ pub async fn ensure_video_game_for_product_enhanced(
 
         // Backfill Name
         if cols.has_name {
-             sets.push(format!(
+            sets.push(format!(
                 "name = CASE WHEN name IS NULL OR name = '' THEN ${} ELSE name END",
                 next_param
             ));
@@ -588,10 +585,7 @@ pub async fn ensure_video_game_for_product_enhanced(
 
         if cols.has_title_id {
             if let Some(title_id) = linked_title_id {
-                sets.push(format!(
-                    "title_id = COALESCE(title_id, ${})",
-                    next_param
-                ));
+                sets.push(format!("title_id = COALESCE(title_id, ${})", next_param));
                 params.push(ParamValue::I64(title_id));
                 next_param += 1;
             }
@@ -747,11 +741,17 @@ pub async fn ensure_video_game_for_product_enhanced(
     }
 
     if cols.has_region_codes && meta.region_codes.is_some() {
-        push_param!("region_codes", ParamValue::StrArray(meta.region_codes.unwrap()));
+        push_param!(
+            "region_codes",
+            ParamValue::StrArray(meta.region_codes.unwrap())
+        );
     }
 
     if cols.has_platform_codes && meta.platform_codes.is_some() {
-        push_param!("platform_codes", ParamValue::StrArray(meta.platform_codes.unwrap()));
+        push_param!(
+            "platform_codes",
+            ParamValue::StrArray(meta.platform_codes.unwrap())
+        );
     }
 
     if cols.has_external_ids && meta.external_ids.is_some() {
@@ -759,11 +759,17 @@ pub async fn ensure_video_game_for_product_enhanced(
     }
 
     if cols.has_external_links && meta.external_links.is_some() {
-        push_param!("external_links", ParamValue::Json(meta.external_links.unwrap()));
+        push_param!(
+            "external_links",
+            ParamValue::Json(meta.external_links.unwrap())
+        );
     }
 
     if cols.has_title_keywords && meta.title_keywords.is_some() {
-        push_param!("title_keywords", ParamValue::StrArray(meta.title_keywords.unwrap()));
+        push_param!(
+            "title_keywords",
+            ParamValue::StrArray(meta.title_keywords.unwrap())
+        );
     }
 
     if cols.has_payload_hash && meta.payload_hash.is_some() {

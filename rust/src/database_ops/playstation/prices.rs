@@ -104,87 +104,6 @@ fn normalize_title(s: &str) -> String {
         .to_string()
 }
 
-fn psstore_is_allowed_image_url(url: &str) -> bool {
-    // Keep only representative artwork from PS Store.
-    // Explicitly exclude screenshots/logos/icons (and thumbnails), which were cluttering the DB
-    // and are not desired for our canonical media pipeline.
-    let url_lc = url.to_ascii_lowercase();
-
-    // Denylist first.
-    if url_lc.contains("screenshot")
-        || url_lc.contains("screenshots")
-        || url_lc.contains("logo")
-        || url_lc.contains("icon")
-        || url_lc.contains("thumbnail")
-        || url_lc.contains("thumb")
-        || url_lc.contains("character")
-    {
-        return false;
-    }
-
-    // Allowlist: keep obvious cover/hero/keyart/background/artwork.
-    if url_lc.contains("cover")
-        || url_lc.contains("hero")
-        || url_lc.contains("background")
-        || url_lc.contains("keyart")
-        || url_lc.contains("artwork")
-        || url_lc.contains("character")
-    {
-        return true;
-    }
-
-    // Default: treat as screenshot-like and skip.
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::psstore_is_allowed_image_url;
-
-    #[test]
-    fn psstore_media_url_filter_rejects_screenshots_logos_and_icons() {
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/foo/screenshot_01.jpg"
-        ));
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/assets/logo.png"
-        ));
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/assets/icon.png"
-        ));
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/assets/thumbnail.png"
-        ));
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/assets/thumb.png"
-        ));
-
-        // Unknown-ish assets default to excluded.
-        assert!(!psstore_is_allowed_image_url(
-            "https://example.test/assets/image_01.jpg"
-        ));
-    }
-
-    #[test]
-    fn psstore_media_url_filter_allows_cover_hero_background_artwork() {
-        assert!(psstore_is_allowed_image_url(
-            "https://example.test/assets/cover.jpg"
-        ));
-        assert!(psstore_is_allowed_image_url(
-            "https://example.test/assets/hero.jpg"
-        ));
-        assert!(psstore_is_allowed_image_url(
-            "https://example.test/assets/background.jpg"
-        ));
-        assert!(psstore_is_allowed_image_url(
-            "https://example.test/assets/keyart.jpg"
-        ));
-        assert!(psstore_is_allowed_image_url(
-            "https://example.test/assets/artwork.jpg"
-        ));
-    }
-}
-
 fn parse_release_date_any(raw: &str) -> Option<NaiveDate> {
     if let Ok(date) = NaiveDate::parse_from_str(raw, "%Y-%m-%d") {
         return Some(date);
@@ -753,9 +672,13 @@ pub async fn ingest_prices(
         });
     }
 
-    let provider_id =
-        ensure_provider(&db, "playstation_store", "storefront", Some(PS_STORE_PROVIDER_KEY))
-            .await?;
+    let provider_id = ensure_provider(
+        &db,
+        "playstation_store",
+        "storefront",
+        Some(PS_STORE_PROVIDER_KEY),
+    )
+    .await?;
 
     // Detect whether video_game_titles must be written via the Laravel source registry path.
     // In some deployments `video_game_titles.title` doesn't exist (only `raw_title`), and the
@@ -819,9 +742,7 @@ pub async fn ingest_prices(
         titles_source_keyed || (!titles_have_title && titles_have_raw_title);
 
     let video_game_source_id = if use_source_registry_titles {
-        Some(
-            ensure_video_game_source(&db, PS_STORE_PROVIDER_KEY, "PlayStation Store").await?,
-        )
+        Some(ensure_video_game_source(&db, PS_STORE_PROVIDER_KEY, "PlayStation Store").await?)
     } else {
         None
     };

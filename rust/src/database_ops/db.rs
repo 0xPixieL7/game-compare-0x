@@ -57,11 +57,10 @@ impl Db {
                             .execute(&mut *conn)
                             .await;
                         // SECURITY FIX: Use query! macro with validated values instead of format!
-                        if wm > 0 && wm <= 1024 { // Sanity check: max 1GB
+                        if wm > 0 && wm <= 1024 {
+                            // Sanity check: max 1GB
                             let stmt = format!("SET work_mem = '{}MB'", wm);
-                            let _ = sqlx::query(&stmt)
-                                .execute(&mut *conn)
-                                .await;
+                            let _ = sqlx::query(&stmt).execute(&mut *conn).await;
                         }
                         let _ = sqlx::query("SET maintenance_work_mem = '256MB'")
                             .execute(&mut *conn)
@@ -338,11 +337,12 @@ impl Db {
         }
 
         // Check for Laravel schema (video_game_prices table)
-        let has_video_game_prices: bool = sqlx::query_scalar("SELECT to_regclass('video_game_prices') IS NOT NULL")
-            .persistent(false)
-            .fetch_one(&self.pool)
-            .await
-            .unwrap_or(false);
+        let has_video_game_prices: bool =
+            sqlx::query_scalar("SELECT to_regclass('video_game_prices') IS NOT NULL")
+                .persistent(false)
+                .fetch_one(&self.pool)
+                .await
+                .unwrap_or(false);
 
         // CRITICAL FIX: Start transaction for atomic dual-write
         let mut tx = self.pool.begin().await?;
@@ -351,10 +351,11 @@ impl Db {
 
         // Write to Laravel schema (video_game_prices) if available
         if has_video_game_prices {
-            let laravel_rows: Vec<&PriceRow> = rows.iter()
+            let laravel_rows: Vec<&PriceRow> = rows
+                .iter()
                 .filter(|r| r.video_game_id.is_some() && r.currency.is_some())
                 .collect();
-            
+
             if !laravel_rows.is_empty() {
                 let mut qb: QueryBuilder<'_, sqlx::Postgres> = QueryBuilder::new(
                     "INSERT INTO video_game_prices (video_game_id, amount_minor, currency, country_code, retailer, tax_inclusive, recorded_at, created_at, updated_at) ",
@@ -370,7 +371,7 @@ impl Db {
                         .push_bind(r.recorded_at)
                         .push_bind(r.recorded_at);
                 });
-                
+
                 qb.build().persistent(false).execute(&mut *tx).await?;
                 laravel_written = laravel_rows.len();
                 info!("inserted {} rows into video_game_prices", laravel_written);
@@ -386,7 +387,7 @@ impl Db {
                 let dt = r.recorded_at;
                 months.insert((dt.year(), dt.month()));
             }
-            
+
             for (y, m) in months {
                 let first = Utc.with_ymd_and_hms(y, m, 1, 0, 0, 0).unwrap();
                 // SECURITY FIX: Use parameterized query instead of format!
@@ -397,7 +398,7 @@ impl Db {
                     .ok(); // Ignore errors if function missing
             }
         }
-        
+
         let mut qb: QueryBuilder<'_, sqlx::Postgres> = QueryBuilder::new(
             "INSERT INTO prices (offer_jurisdiction_id, video_game_source_id, recorded_at, amount_minor, tax_inclusive, fx_minor_per_unit, btc_sats_per_unit, meta) ",
         );
@@ -413,20 +414,20 @@ impl Db {
         });
         qb.build().persistent(false).execute(&mut *tx).await?;
         legacy_written = rows.len();
-        
+
         // Commit transaction atomically
         tx.commit().await?;
-        
+
         info!(
             laravel_rows = laravel_written,
             legacy_rows = legacy_written,
             "dual-write completed successfully"
         );
-        
+
         if has_video_game_prices && laravel_written == 0 {
             warn!("video_game_prices table exists but no rows written (missing required fields?)");
         }
-        
+
         Ok(())
     }
 

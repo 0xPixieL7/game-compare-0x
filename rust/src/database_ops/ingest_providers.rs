@@ -162,9 +162,7 @@ impl SchemaCache {
                 .await
                 .unwrap_or(false),
             provider_items_exists: table_exists(db, "provider_items").await.unwrap_or(false),
-            provider_media_links_exists: table_exists(db, "canonical_media")
-                .await
-                .unwrap_or(false),
+            provider_media_links_exists: table_exists(db, "canonical_media").await.unwrap_or(false),
             provider_offers_exists: table_exists(db, "provider_offers").await.unwrap_or(false),
             jurisdictions_exists: table_exists(db, "jurisdictions").await.unwrap_or(false),
 
@@ -370,7 +368,6 @@ fn env_truthy(name: &str) -> bool {
     }
 }
 
-static PROVIDER_KIND_SUPPORTED: OnceCell<bool> = OnceCell::const_new();
 static PHP_COMPAT_MODE: OnceCell<bool> = OnceCell::const_new();
 static OFFER_COMPAT: OnceCell<(
     std::sync::atomic::AtomicI64,
@@ -428,11 +425,7 @@ async fn provider_items_present(db: &Db) -> Result<bool> {
 async fn provider_media_links_present(db: &Db) -> Result<bool> {
     let has = PROVIDER_MEDIA_LINKS_PRESENT
         .get_or_try_init(|| async {
-            Ok::<bool, anyhow::Error>(
-                table_exists(db, "canonical_media")
-                    .await
-                    .unwrap_or(false),
-            )
+            Ok::<bool, anyhow::Error>(table_exists(db, "canonical_media").await.unwrap_or(false))
         })
         .await?;
     Ok(*has)
@@ -558,31 +551,6 @@ pub async fn php_compat_schema(db: &Db) -> Result<bool> {
         debug!("php compatibility mode enabled (sku_regions detected)");
     }
     Ok(*compat)
-}
-
-async fn provider_kind_supported(db: &Db) -> Result<bool> {
-    let supported = PROVIDER_KIND_SUPPORTED
-        .get_or_try_init(|| async {
-            let exists: Option<bool> = sqlx::query_scalar::<_, bool>(
-                "SELECT TRUE FROM information_schema.columns \
-                     WHERE table_name = 'video_game_sources' AND column_name = 'category' \
-                       AND table_schema = ANY (current_schemas(true)) LIMIT 1",
-            )
-            .persistent(false)
-            .fetch_optional(&db.pool)
-            .await?;
-            let supported = exists.unwrap_or(false);
-            if supported {
-                debug!("video_game_sources.category column detected");
-            } else {
-                warn!(
-                    "video_game_sources.category column missing — falling back to legacy schema compatibility"
-                );
-            }
-            Ok::<bool, anyhow::Error>(supported)
-        })
-        .await?;
-    Ok(*supported)
 }
 
 pub struct IngestResult {
@@ -863,21 +831,25 @@ pub async fn ensure_provider(db: &Db, name: &str, kind: &str, slug: Option<&str>
     // JIT Migration: Check legacy video_game_sources
     if let Some(s) = slug {
         // Check if it exists in video_game_sources
-        if let Some(r) = sqlx::query("SELECT id, display_name, provider, kind FROM video_game_sources WHERE slug = $1")
-            .persistent(false)
-            .bind(s)
-            .fetch_optional(&db.pool)
-            .await?
+        if let Some(r) = sqlx::query(
+            "SELECT id, display_name, provider, kind FROM video_game_sources WHERE slug = $1",
+        )
+        .persistent(false)
+        .bind(s)
+        .fetch_optional(&db.pool)
+        .await?
         {
             let display_name: Option<String> = r.try_get("display_name").ok();
             let provider: Option<String> = r.try_get("provider").ok();
-            let legacy_name = display_name.or(provider).unwrap_or_else(|| name.to_string());
-            
+            let legacy_name = display_name
+                .or(provider)
+                .unwrap_or_else(|| name.to_string());
+
             let legacy_kind_opt: Option<String> = r.try_get("kind").ok();
             let legacy_kind = legacy_kind_opt.unwrap_or_else(|| kind.to_string());
-            
+
             info!(slug=%s, "migrating legacy video_game_source to providers");
-            
+
             let inserted = sqlx::query(
                 "INSERT INTO providers (name, kind, slug) VALUES ($1, $2, $3) RETURNING id",
             )
@@ -887,21 +859,20 @@ pub async fn ensure_provider(db: &Db, name: &str, kind: &str, slug: Option<&str>
             .bind(s)
             .fetch_one(&db.pool)
             .await?;
-            
+
             return Ok(inserted.get("id"));
         }
     }
 
     // Insert fresh row
-    let inserted = sqlx::query(
-        "INSERT INTO providers (name, kind, slug) VALUES ($1, $2, $3) RETURNING id",
-    )
-    .persistent(false)
-    .bind(name)
-    .bind(kind)
-    .bind(slug)
-    .fetch_one(&db.pool)
-    .await?;
+    let inserted =
+        sqlx::query("INSERT INTO providers (name, kind, slug) VALUES ($1, $2, $3) RETURNING id")
+            .persistent(false)
+            .bind(name)
+            .bind(kind)
+            .bind(slug)
+            .fetch_one(&db.pool)
+            .await?;
 
     debug!(provider_name=%name, provider_slug=?slug, provider_kind=%kind, provider_id=inserted.get::<i64,_>("id"), "provider inserted");
     Ok(inserted.get("id"))
@@ -992,8 +963,7 @@ pub async fn ensure_game_provider(
         warn!(
             "ensure_game_provider: neither game_providers nor video_game_sources table exists. \
             Provider: {} (slug: {:?}). Returning 0.",
-            name,
-            slug
+            name, slug
         );
         return Ok(0);
     }
@@ -1212,8 +1182,7 @@ pub async fn ensure_retailer(db: &Db, name: &str, slug: Option<&str>) -> Result<
     if !retailers_available {
         warn!(
             "ensure_retailer: retailers table not available (name: {}, slug: {:?}). Returning 0.",
-            name,
-            slug
+            name, slug
         );
         return Ok(0);
     }
@@ -1527,10 +1496,10 @@ pub async fn ingest_prices(db: &Db, price_rows: Vec<PriceRow>) -> Result<IngestR
         chrono::DateTime<chrono::Utc>,
         f64,
         f64,
-        Option<f64>,  // btc_value - nullable for missing BTC rates
+        Option<f64>, // btc_value - nullable for missing BTC rates
         bool,
         f64,
-        Option<f64>,  // btc_rate_snapshot - nullable for missing BTC rates
+        Option<f64>, // btc_rate_snapshot - nullable for missing BTC rates
         Value,
         chrono::DateTime<chrono::Utc>,
         chrono::DateTime<chrono::Utc>,
@@ -1575,10 +1544,10 @@ pub async fn ingest_prices(db: &Db, price_rows: Vec<PriceRow>) -> Result<IngestR
             r.recorded_at,
             amount_major,
             amount_major,
-            btc_value,  // Already Option<f64>
+            btc_value, // Already Option<f64>
             r.tax_inclusive,
             fx_rate_snapshot,
-            btc_rate_snapshot,  // Already Option<f64>
+            btc_rate_snapshot, // Already Option<f64>
             r.meta.clone(),
             now,
             now,
@@ -1922,12 +1891,8 @@ impl ProviderEntityCache {
             return Ok(*id);
         }
 
-        let meta = Self::build_laravel_video_game_metadata(
-            title,
-            slug,
-            metadata.as_ref(),
-            provider_key,
-        )?;
+        let meta =
+            Self::build_laravel_video_game_metadata(title, slug, metadata.as_ref(), provider_key)?;
 
         // Call enhanced function
         let id = ensure_video_game_for_product_enhanced(&self.db, product_id, &meta).await?;
@@ -2058,17 +2023,11 @@ mod provider_entity_cache_tests {
 
     #[test]
     fn build_metadata_rejects_blank_provider_key() {
-        let err = ProviderEntityCache::build_laravel_video_game_metadata(
-            "Test Game",
-            None,
-            None,
-            "   ",
-        )
-        .unwrap_err();
+        let err =
+            ProviderEntityCache::build_laravel_video_game_metadata("Test Game", None, None, "   ")
+                .unwrap_err();
 
-        assert!(err
-            .to_string()
-            .contains("provider_key must be non-empty"));
+        assert!(err.to_string().contains("provider_key must be non-empty"));
     }
 
     #[test]
@@ -2188,8 +2147,7 @@ async fn detect_video_game_title_schema(db: &Db) -> Result<VideoGameTitleSchema>
 
     let has_video_game_source_id =
         video_game_titles_column_exists(db, "video_game_source_id").await?;
-    let has_vg_source_item_id =
-        video_game_titles_column_exists(db, "vg_source_item_id").await?;
+    let has_vg_source_item_id = video_game_titles_column_exists(db, "vg_source_item_id").await?;
     let has_locale = video_game_titles_column_exists(db, "locale").await?;
     let has_version_hint = video_game_titles_column_exists(db, "version_hint").await?;
     let has_metadata = video_game_titles_column_exists(db, "metadata").await?;
@@ -2433,19 +2391,20 @@ pub async fn ensure_video_game_title_for_source_item(
     // CRITICAL FIX: Verify product exists before attempting FK reference (if product_id is provided)
     // This prevents FK violations when product creation and title creation are not in the same transaction
     if let Some(pid) = product_id {
-        let product_exists = sqlx::query_scalar::<_, bool>(
-            "SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)"
-        )
-        .bind(pid)
-        .fetch_one(&db.pool)
-        .await?;
+        let product_exists =
+            sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)")
+                .bind(pid)
+                .fetch_one(&db.pool)
+                .await?;
 
         if !product_exists {
             return Err(anyhow::anyhow!(
                 "Product {} does not exist - cannot create video_game_title. \
                 This may indicate a race condition or stale cache in import/ingestion. \
                 Title: {}, Provider: {}",
-                pid, raw_title, provider_key
+                pid,
+                raw_title,
+                provider_key
             ));
         }
     }
@@ -3425,12 +3384,11 @@ pub async fn ensure_video_game_title(
     // CRITICAL FIX: Verify product exists before attempting FK reference
     // This prevents FK violations when product creation and title creation
     // are not in the same transaction (e.g., during parallel provider ingestion)
-    let product_exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)"
-    )
-    .bind(product_id)
-    .fetch_one(&db.pool)
-    .await?;
+    let product_exists =
+        sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM products WHERE id = $1)")
+            .bind(product_id)
+            .fetch_one(&db.pool)
+            .await?;
 
     if !product_exists {
         return Err(anyhow::anyhow!(
@@ -4750,49 +4708,45 @@ pub async fn ensure_product_named(db: &Db, category: &str, slug: &str, name: &st
     {
         // Keep name/category fresh if changed
         let existing_id: i64 = rec.get("id");
-        let _ = sqlx::query(
-            "UPDATE products SET name=$1, category=$2 WHERE id=$3",
-        )
-        .persistent(false)
-        .bind(name)
-        .bind(category)
-        .bind(existing_id)
-        .execute(&db.pool)
-        .await?;
+        let _ = sqlx::query("UPDATE products SET name=$1, category=$2 WHERE id=$3")
+            .persistent(false)
+            .bind(name)
+            .bind(category)
+            .bind(existing_id)
+            .execute(&db.pool)
+            .await?;
         return Ok(existing_id);
     }
-    let inserted = match sqlx
-        ::query(
-            "INSERT INTO products (slug, name, category) VALUES ($1,$2,$3) \
+    let inserted = match sqlx::query(
+        "INSERT INTO products (slug, name, category) VALUES ($1,$2,$3) \
              ON CONFLICT (slug) DO UPDATE SET \
                 name=EXCLUDED.name, \
                 category=EXCLUDED.category \
-             RETURNING id"
-        )
-        .persistent(false)
-        .bind(slug)
-        .bind(name)
-        .bind(category)
-        .fetch_one(&db.pool)
-        .await
+             RETURNING id",
+    )
+    .persistent(false)
+    .bind(slug)
+    .bind(name)
+    .bind(category)
+    .fetch_one(&db.pool)
+    .await
     {
         Ok(rec) => rec,
         Err(e) if is_products_pkey_violation(&e) => {
             resync_products_id_sequence(db).await?;
-            sqlx
-                ::query(
-                    "INSERT INTO products (slug, name, category) VALUES ($1,$2,$3) \
+            sqlx::query(
+                "INSERT INTO products (slug, name, category) VALUES ($1,$2,$3) \
                      ON CONFLICT (slug) DO UPDATE SET \
                         name=EXCLUDED.name, \
                         category=EXCLUDED.category \
-                     RETURNING id"
-                )
-                .persistent(false)
-                .bind(slug)
-                .bind(name)
-                .bind(category)
-                .fetch_one(&db.pool)
-                .await?
+                     RETURNING id",
+            )
+            .persistent(false)
+            .bind(slug)
+            .bind(name)
+            .bind(category)
+            .fetch_one(&db.pool)
+            .await?
         }
         Err(e) => return Err(e.into()),
     };
@@ -5054,7 +5008,7 @@ fn iso3_from_iso2(code: &str) -> Option<&'static str> {
 }
 
 #[derive(Debug)]
-struct CountrySchema {
+pub struct CountrySchema {
     has_iso3: bool,
     has_code2: bool,
     has_currency_id: bool,
@@ -5302,7 +5256,7 @@ struct VideoGamesLaravelColumns {
 static VIDEO_GAMES_LARAVEL_COLS: OnceCell<VideoGamesLaravelColumns> = OnceCell::const_new();
 
 #[derive(Clone, Copy, Debug, Default)]
-struct VideoGamesContentColumns {
+pub struct VideoGamesContentColumns {
     has_synopsis: bool,
     has_display_title: bool,
     has_region_codes: bool,

@@ -5,9 +5,8 @@ pub mod env_boot;
 pub mod normalization;
 pub mod orchestrator;
 
-pub mod util {
-    pub mod env;
-}
+pub mod util;
+
 pub use actix_web::http::header;
 
 // PS Store seeding pipeline (library function, not a bin)
@@ -186,7 +185,7 @@ pub async fn psstore_seed_pipeline(db: &Db) -> Result<PostIngestSummary> {
                         log_price_buckets(locale, cat_id, &buckets);
                         price_ladder_snapshots.push(PriceLadderSnapshot {
                             locale: locale.clone(),
-                            category_id: cat_id.clone(),
+                            category_id: (*cat_id).clone(),
                             currency_code: ctx.currency_code.clone(),
                             buckets,
                         });
@@ -575,8 +574,6 @@ pub async fn psstore_seed_pipeline(db: &Db) -> Result<PostIngestSummary> {
                             )
                             .await?;
                         }
-
-
                     }
 
                     // Prices: only enqueue when not in backfill mode
@@ -619,7 +616,6 @@ pub async fn psstore_seed_pipeline(db: &Db) -> Result<PostIngestSummary> {
                             }
                         }
                     }
-
 
                     // Per-locale rating row
                     if let Some((avg, cnt)) = ratings.get(idx).cloned().flatten() {

@@ -65,14 +65,53 @@ class VideoGameController extends Controller
 
     public function show(VideoGame $game)
     {
-        $prices = \Illuminate\Support\Facades\DB::table('video_game_prices')
+        $game->load(['images', 'videos']);
+
+        // Fetch prices sorted by amount (cheapest first)
+        $prices = \App\Models\VideoGamePrice::query()
             ->where('video_game_id', $game->id)
-            ->get();
+            ->where('is_active', true)
+            ->orderBy('amount_minor', 'asc')
+            ->get()
+            ->map(function ($price) {
+                $meta = $price->metadata ?? [];
+                
+                return [
+                    'id' => $price->id,
+                    'retailer' => $price->retailer,
+                    'country_code' => $price->country_code,
+                    'currency' => $price->currency,
+                    'amount' => $price->amount_minor / 100,
+                    'url' => $price->url,
+                    'discount_percent' => $meta['discount_percent'] ?? 0,
+                    'initial_amount' => isset($meta['initial_amount_minor']) ? ($meta['initial_amount_minor'] / 100) : null,
+                ];
+            });
+
+        // Organize media for the frontend
+        $media = [
+            'hero' => $game->images->firstWhere('primary_collection', 'hero')?->url,
+            'logo' => $game->images->firstWhere('primary_collection', 'clear_logo')?->url,
+            'poster' => $game->images->firstWhere('primary_collection', 'posters')?->url,
+            'background' => $game->images->firstWhere('primary_collection', 'backgrounds')?->url,
+            'screenshots' => $game->images->where('primary_collection', 'screenshots')->pluck('url')->take(6),
+            'trailers' => $game->videos->pluck('url'),
+        ];
 
         return Inertia::render('VideoGames/Show', [
-            'game' => $game,
+            'game' => [
+                'id' => $game->id,
+                'name' => $game->name,
+                'summary' => $game->attributes['summary'] ?? $game->description,
+                'release_date' => $game->release_date?->format('F j, Y'),
+                'rating' => round($game->rating ?? 0),
+                'genres' => $game->attributes['genres'] ?? [],
+                'platforms' => $game->platform ?? [],
+                'developer' => $game->developer,
+                'publisher' => $game->publisher,
+            ],
             'prices' => $prices,
-            'media' => $game->getMediaSummary(),
+            'media' => $media,
         ]);
     }
 }

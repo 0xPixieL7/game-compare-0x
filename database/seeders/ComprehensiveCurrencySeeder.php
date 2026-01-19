@@ -62,6 +62,14 @@ class ComprehensiveCurrencySeeder extends Seeder
             ['code' => 'CLP', 'name' => 'Chilean Peso', 'symbol' => '$', 'decimals' => 0, 'is_crypto' => false],
             ['code' => 'COP', 'name' => 'Colombian Peso', 'symbol' => '$', 'decimals' => 2, 'is_crypto' => false],
             ['code' => 'PEN', 'name' => 'Peruvian Sol', 'symbol' => 'S/', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'KZT', 'name' => 'Kazakhstani Tenge', 'symbol' => '₸', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'UAH', 'name' => 'Ukrainian Hryvnia', 'symbol' => '₴', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'VND', 'name' => 'Vietnamese Dong', 'symbol' => '₫', 'decimals' => 0, 'is_crypto' => false],
+            ['code' => 'UYU', 'name' => 'Uruguayan Peso', 'symbol' => '$U', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'CRC', 'name' => 'Costa Rican Colón', 'symbol' => '₡', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'KWD', 'name' => 'Kuwaiti Dinar', 'symbol' => 'د.ك', 'decimals' => 3, 'is_crypto' => false],
+            ['code' => 'QAR', 'name' => 'Qatari Riyal', 'symbol' => 'ر.ق', 'decimals' => 2, 'is_crypto' => false],
+            ['code' => 'BYN', 'name' => 'Belarusian Ruble', 'symbol' => 'Br', 'decimals' => 2, 'is_crypto' => false],
 
             // Cryptocurrencies (limited to 3-char codes per DB schema, 16 decimals standard)
             ['code' => 'BTC', 'name' => 'Bitcoin', 'symbol' => '₿', 'decimals' => 16, 'is_crypto' => true],
