@@ -8,17 +8,16 @@ use App\Models\Retailer;
 use App\Models\VideoGame;
 use App\Models\VideoGamePrice;
 use App\Models\VideoGameTitleSource;
+use App\Services\Catalogue\PriceCrossReferencer;
 use App\Services\Nexarda\NexardaClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-use App\Services\Catalogue\PriceCrossReferencer;
-
 class NexardaLiveFetchCommand extends Command
 {
-    protected $signature = 'nexarda:live-fetch 
-                            {--limit=100 : Number of games to process} 
+    protected $signature = 'nexarda:live-fetch
+                            {--limit=100 : Number of games to process}
                             {--currency=USD : Currency code}
                             {--all : Process all mapped games}
                             {--search : Search Nexarda for games without mappings}
@@ -32,6 +31,7 @@ class NexardaLiveFetchCommand extends Command
             $this->info('Ingesting Nexarda Catalogue...');
             $count = $referencer->ingestNexardaCatalogue();
             $this->info("Complete. Ingested {$count} records.");
+
             return self::SUCCESS;
         }
 
@@ -43,6 +43,7 @@ class NexardaLiveFetchCommand extends Command
             $this->info("Searching Nexarda for up to {$limit} unmapped titles...");
             $count = $referencer->backfillNexarda($limit, $currency);
             $this->info("Complete. Mapped and fetched {$count} games.");
+
             return self::SUCCESS;
         }
 
@@ -52,56 +53,13 @@ class NexardaLiveFetchCommand extends Command
 
         return self::SUCCESS;
     }
-}
-
-        $this->info('Starting Nexarda Live Price Fetcher...');
-
-        $currency = $this->option('currency');
-        
-        if ($this->option('search')) {
-            return $this->handleSearchBackfill($client, $currency);
-        }
-
-        $query = VideoGameTitleSource::where('provider', 'nexarda')
-            ->whereNotNull('provider_item_id');
-
-        if (!$this->option('all')) {
-            $limit = (int) $this->option('limit');
-            $query->limit($limit);
-        }
-
-        $sources = $query->get();
-
-        if ($sources->isEmpty()) {
-            $this->warn('No Nexarda-mapped games found in database. Use --search to find new mappings.');
-            return self::SUCCESS;
-        }
-
-        $bar = $this->output->createProgressBar($sources->count());
-        $bar->start();
-
-        foreach ($sources as $source) {
-            try {
-                $this->processSource($client, $source, $currency);
-            } catch (\Exception $e) {
-                Log::error("Nexarda Fetch Error for Source ID {$source->id}: " . $e->getMessage());
-            }
-            $bar->advance();
-            usleep(500000); 
-        }
-
-        $bar->finish();
-        $this->newLine();
-        $this->info("Complete.");
-
-        return self::SUCCESS;
-    }
 
     private function handleCatalogueIngest(): int
     {
         $path = base_path('nexarda_product_catalogue.json');
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $this->error("Catalogue file not found at {$path}");
+
             return self::FAILURE;
         }
 
@@ -111,6 +69,7 @@ class NexardaLiveFetchCommand extends Command
 
         if (empty($games)) {
             $this->warn('No games found in catalogue.');
+
             return self::SUCCESS;
         }
 
@@ -119,17 +78,19 @@ class NexardaLiveFetchCommand extends Command
 
         $now = now();
         $provider = 'nexarda';
-        
+
         // Performance caches
         $retailerCache = [];
-        
+
         $chunks = array_chunk($games, 200);
         foreach ($chunks as $chunk) {
             DB::transaction(function () use ($chunk, $now, $provider, &$retailerCache) {
                 foreach ($chunk as $row) {
                     $name = $row['name'];
                     $slug = \Illuminate\Support\Str::slug($name);
-                    if ($slug === '') $slug = 'nexarda-' . $row['id'];
+                    if ($slug === '') {
+                        $slug = 'nexarda-'.$row['id'];
+                    }
 
                     // 1. Product
                     $product = \App\Models\Product::firstOrCreate(
@@ -180,16 +141,18 @@ class NexardaLiveFetchCommand extends Command
                     // 5. Prices
                     $priceRows = [];
                     foreach ($row['prices'] as $cur => $val) {
-                        if ($val === 'unavailable') continue;
-                        
+                        if ($val === 'unavailable') {
+                            continue;
+                        }
+
                         $code = strtoupper($cur);
                         $retailerName = "Nexarda {$code}";
-                        $retailerSlug = 'nexarda_' . strtolower($code);
+                        $retailerSlug = 'nexarda_'.strtolower($code);
 
-                        if (!isset($retailerCache[$retailerSlug])) {
+                        if (! isset($retailerCache[$retailerSlug])) {
                             $retailerCache[$retailerSlug] = Retailer::firstOrCreate(
                                 ['slug' => $retailerSlug],
-                                ['name' => $retailerName . ' (Catalogue)']
+                                ['name' => $retailerName.' (Catalogue)']
                             );
                         }
 
@@ -197,7 +160,7 @@ class NexardaLiveFetchCommand extends Command
                             'video_game_id' => $videoGame->id,
                             'currency' => $code,
                             'country_code' => $this->getCountryForCurrency($code),
-                            'amount_minor' => (int) round(((float)$val) * 100),
+                            'amount_minor' => (int) round(((float) $val) * 100),
                             'retailer' => $retailerCache[$retailerSlug]->name,
                             'recorded_at' => $now,
                             'is_active' => true,
@@ -209,7 +172,7 @@ class NexardaLiveFetchCommand extends Command
                         ];
                     }
 
-                    if (!empty($priceRows)) {
+                    if (! empty($priceRows)) {
                         VideoGamePrice::upsert(
                             $priceRows,
                             ['video_game_id', 'retailer', 'country_code'],
@@ -224,6 +187,7 @@ class NexardaLiveFetchCommand extends Command
         $bar->finish();
         $this->newLine();
         $this->info('Catalogue ingestion complete.');
+
         return self::SUCCESS;
     }
 
@@ -240,16 +204,17 @@ class NexardaLiveFetchCommand extends Command
     private function handleSearchBackfill(NexardaClient $client, string $currency): int
     {
         $limit = (int) $this->option('limit');
-        
+
         // Find games without Nexarda mapping
         $titles = \App\Models\VideoGameTitle::whereDoesntHave('sources', function ($q) {
             $q->where('provider', 'nexarda');
         })
-        ->limit($limit)
-        ->get();
+            ->limit($limit)
+            ->get();
 
         if ($titles->isEmpty()) {
             $this->info('No titles found needing Nexarda mapping.');
+
             return self::SUCCESS;
         }
 
@@ -261,7 +226,7 @@ class NexardaLiveFetchCommand extends Command
             try {
                 $this->searchAndMap($client, $title, $currency);
             } catch (\Exception $e) {
-                Log::error("Nexarda Search Error for Title ID {$title->id}: " . $e->getMessage());
+                Log::error("Nexarda Search Error for Title ID {$title->id}: ".$e->getMessage());
             }
             $bar->advance();
             usleep(500000);
@@ -269,20 +234,21 @@ class NexardaLiveFetchCommand extends Command
 
         $bar->finish();
         $this->newLine();
+
         return self::SUCCESS;
     }
 
     private function searchAndMap(NexardaClient $client, \App\Models\VideoGameTitle $title, string $currency): void
     {
         $results = $client->search($title->name);
-        
+
         if (empty($results['results'])) {
             return;
         }
 
         // Take the first result (closest match)
         $match = $results['results'][0];
-        
+
         // Create source
         $source = VideoGameTitleSource::updateOrCreate(
             [
@@ -304,7 +270,7 @@ class NexardaLiveFetchCommand extends Command
     private function processSource(NexardaClient $client, VideoGameTitleSource $source, string $currency): void
     {
         $data = $client->getPrices($source->provider_item_id, $currency);
-        
+
         if (empty($data['prices']['list'])) {
             return;
         }
@@ -320,12 +286,12 @@ class NexardaLiveFetchCommand extends Command
             ->where('provider', 'nexarda')
             ->first();
 
-        if (!$videoGame) {
+        if (! $videoGame) {
             // If not found, try to find any video game linked to this title
             $videoGame = VideoGame::where('video_game_title_id', $source->video_game_title_id)->first();
         }
 
-        if (!$videoGame) {
+        if (! $videoGame) {
             return;
         }
 
@@ -334,16 +300,18 @@ class NexardaLiveFetchCommand extends Command
 
         foreach ($data['prices']['list'] as $offer) {
             $storeName = $offer['store']['name'] ?? 'Unknown Store';
-            $retailerSlug = 'nexarda_' . \Illuminate\Support\Str::slug($storeName);
-            
+            $retailerSlug = 'nexarda_'.\Illuminate\Support\Str::slug($storeName);
+
             $retailer = Retailer::firstOrCreate(
                 ['slug' => $retailerSlug],
-                ['name' => $storeName . ' (via Nexarda)']
+                ['name' => $storeName.' (via Nexarda)']
             );
 
             $amount = (int) round(($offer['price'] ?? 0) * 100);
-            
-            if ($amount <= 0) continue;
+
+            if ($amount <= 0) {
+                continue;
+            }
 
             $priceRows[] = [
                 'video_game_id' => $videoGame->id,
@@ -363,7 +331,7 @@ class NexardaLiveFetchCommand extends Command
             ];
         }
 
-        if (!empty($priceRows)) {
+        if (! empty($priceRows)) {
             VideoGamePrice::upsert(
                 $priceRows,
                 ['video_game_id', 'retailer', 'country_code'],

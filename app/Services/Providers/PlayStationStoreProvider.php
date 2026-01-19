@@ -127,7 +127,7 @@ class PlayStationStoreProvider
      *
      * @return array<string>
      */
-    private function fetchCatalogConceptIds(string $region, CategoryEnum $category, int $maxPages): array
+    public function fetchCatalogConceptIds(string $region, CategoryEnum $category, int $maxPages): array
     {
         $conceptIds = [];
 
@@ -171,7 +171,7 @@ class PlayStationStoreProvider
     /**
      * Ingest a single concept with pricing from ALL configured regions.
      */
-    private function ingestConceptWithMultiRegionPricing(string $conceptId): array
+    public function ingestConceptWithMultiRegionPricing(string $conceptId): array
     {
         // Fetch game metadata from primary region
         $primaryRegion = $this->regions[0] ?? 'en-us';
@@ -267,7 +267,12 @@ class PlayStationStoreProvider
         $priceRecordsCreated = 0;
 
         foreach ($this->regions as $region) {
-            $priceData = $this->fetchConceptPricing($conceptId, $region);
+            // OPTIMIZATION: Use price from metadata call if regions match
+            if ($region === $primaryRegion && isset($gameData['price'])) {
+                $priceData = $gameData['price'];
+            } else {
+                $priceData = $this->fetchConceptPricing($conceptId, $region);
+            }
 
             if ($priceData) {
                 $currency = $priceData['currency'] ?? null;
@@ -303,7 +308,7 @@ class PlayStationStoreProvider
     /**
      * Fetch game metadata (title, platform, genres, etc.) from a concept.
      */
-    private function fetchConceptMetadata(string $conceptId, string $region): ?array
+    public function fetchConceptMetadata(string $conceptId, string $region): ?array
     {
         try {
             $client = $this->createClient($region);
@@ -340,10 +345,14 @@ class PlayStationStoreProvider
             $ratingPercent = is_numeric($score) ? ($score / 5) * 100 : null;
             $ratingCount = Arr::get($starRating, 'count');
 
+            // Extract Price (Optimization)
+            $price = $this->extractPriceFromProduct($defaultProduct);
+
             return [
                 'title' => $name,
                 'platform' => $platforms,
                 'media' => $media,
+                'price' => $price, // Included for optimization
                 'metadata' => [
                     'concept_id' => $conceptId,
                     'product_id' => $productId,
@@ -372,12 +381,36 @@ class PlayStationStoreProvider
     }
 
     /**
+     * Helper to extract price from product data.
+     */
+    private function extractPriceFromProduct(array $product): ?array
+    {
+        $price = $product['price'] ?? null;
+        if (! $price) return null;
+
+        $currencyCode = $price['currencyCode'] ?? null;
+        $discountedValue = $price['discountedValue'] ?? null;
+        $basePriceValue = $price['basePriceValue'] ?? null;
+
+        if (! $currencyCode || ($discountedValue === null && $basePriceValue === null)) {
+            return null;
+        }
+
+        return [
+            'currency' => $currencyCode,
+            'amount_minor' => (int) ($discountedValue ?? $basePriceValue),
+            'base_price' => (int) ($basePriceValue ?? 0),
+            'is_discounted' => $discountedValue !== null && $discountedValue < $basePriceValue,
+        ];
+    }
+
+    /**
      * Extract and normalize media data from PlayStation Store API response.
      *
      * @param  array<mixed>  $mediaData
      * @return array{images: array<array{url: string, type: string, role: string}>, videos: array<array{url: string, type: string, role: string}>}
      */
-    private function extractMediaData(array $mediaData): array
+    public function extractMediaData(array $mediaData): array
     {
         $images = [];
         $videos = [];

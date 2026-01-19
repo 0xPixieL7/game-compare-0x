@@ -4,9 +4,15 @@ use i_miss_rust::util::env::{bootstrap_cli, db_url_prefer_session};
 use serde_json::Value;
 use sqlx::{Postgres, Row};
 use tracing::{info, warn};
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Initialize tracing
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
     bootstrap_cli("cross_reference_prices");
 
     let database_url = db_url_prefer_session().context("no database URL env vars set")?;

@@ -1,3 +1,4 @@
+import IgdbWebhookController from './IgdbWebhookController'
 import LandingController from './LandingController'
 import DashboardController from './DashboardController'
 import CompareController from './CompareController'
@@ -6,6 +7,7 @@ import AIAssistantController from './AIAssistantController'
 import Settings from './Settings'
 
 const Controllers = {
+    IgdbWebhookController: Object.assign(IgdbWebhookController, IgdbWebhookController),
     LandingController: Object.assign(LandingController, LandingController),
     DashboardController: Object.assign(DashboardController, DashboardController),
     CompareController: Object.assign(CompareController, CompareController),

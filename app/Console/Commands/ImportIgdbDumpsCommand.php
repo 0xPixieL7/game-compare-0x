@@ -266,6 +266,9 @@ class ImportIgdbDumpsCommand extends Command
         $this->loadGenreIdToNameMap($directory);
         $this->loadCompanyAndInvolvedCompanyMaps($directory);
 
+        // Pre-create/warm the source provider to avoid race conditions in parallel workers
+        VideoGameSource::query()->firstOrCreate(['provider' => $provider]);
+
         // Check for parallel worker mode
         $workers = max(1, (int) $this->option('workers'));
         $chunkSpec = $this->option('chunk');

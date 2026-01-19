@@ -116,13 +116,19 @@ class IgdbFetchFilteredDumpCommand extends Command
             'grant_type' => 'client_credentials',
         ]);
 
-        if (! $response->successful()) {
-            $this->error('Failed to obtain OAuth token: '.$response->body());
+        // If the response is a Promise, wait for it
+        if ($response instanceof \GuzzleHttp\Promise\PromiseInterface) {
+            $response = $response->wait();
+        }
+
+        if (method_exists($response, 'successful') && ! $response->successful()) {
+            $body = method_exists($response, 'body') ? $response->body() : '';
+            $this->error('Failed to obtain OAuth token: '.$body);
 
             return false;
         }
 
-        $this->accessToken = $response->json('access_token');
+        $this->accessToken = method_exists($response, 'json') ? $response->json('access_token') : null;
         $this->info('✓ OAuth token obtained');
         $this->newLine();
 
@@ -187,12 +193,18 @@ class IgdbFetchFilteredDumpCommand extends Command
                 'Authorization' => 'Bearer '.$this->accessToken,
             ])->withBody($query, 'text/plain')->post("{$this->baseUrl}/games");
 
-            if (! $response->successful()) {
-                $this->error("API request failed at offset {$offset}: ".$response->body());
+            // If the response is a Promise, wait for it
+            if ($response instanceof \GuzzleHttp\Promise\PromiseInterface) {
+                $response = $response->wait();
+            }
+
+            if (method_exists($response, 'successful') && ! $response->successful()) {
+                $body = method_exists($response, 'body') ? $response->body() : '';
+                $this->error("API request failed at offset {$offset}: ".$body);
                 break;
             }
 
-            $games = collect($response->json());
+            $games = method_exists($response, 'json') ? collect($response->json()) : collect();
 
             if ($games->isEmpty()) {
                 break;
@@ -299,11 +311,8 @@ class IgdbFetchFilteredDumpCommand extends Command
 
         if ($websites->isNotEmpty()) {
             $this->exportMediaToCsv($websites, $websitesFile, 'websites');
-            $this->info("  ✓ Extracted {$websites->count()}, websites");
-            'artworks' => 'id,game,image_id,url,height,width,checksum',
-            'game_videos' => 'id,game,video_id,name,checksum',
-            default => '*',
-        };
+            $this->info("  ✓ Extracted {$websites->count()} websites");
+        }
     }
 
     private function exportGamesToCsv(\Illuminate\Support\Collection $games, string $outputFile): void

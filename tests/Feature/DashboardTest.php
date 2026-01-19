@@ -11,3 +11,16 @@ test('authenticated users can visit the dashboard', function () {
 
     $this->get(route('dashboard'))->assertOk();
 });
+
+test('guests do not receive chart data on dashboard show', function () {
+    $game = \App\Models\VideoGame::factory()->create();
+
+    $response = $this->get(route('dashboard.show', ['gameId' => $game->id]));
+
+    $response->assertOk();
+    $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+        ->component('Dashboard/Show')
+        ->where('priceData', [])
+        ->where('availabilityData', [])
+    );
+});

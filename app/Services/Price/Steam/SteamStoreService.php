@@ -65,7 +65,7 @@ class SteamStoreService
     /**
      * Extract price data from Steam response.
      */
-    private function extractPrice(array $gameData, string $country): ?array
+    public function extractPrice(array $gameData, string $country): ?array
     {
         $priceOverview = $gameData['price_overview'] ?? null;
 
@@ -94,7 +94,7 @@ class SteamStoreService
     /**
      * Extract media URLs from Steam response.
      */
-    private function extractMedia(array $gameData): array
+    public function extractMedia(array $gameData): array
     {
         $screenshots = [];
         foreach ($gameData['screenshots'] ?? [] as $screenshot) {
@@ -134,7 +134,7 @@ class SteamStoreService
     /**
      * Extract metadata from Steam response.
      */
-    private function extractMetadata(array $gameData): array
+    public function extractMetadata(array $gameData): array
     {
         $genres = [];
         foreach ($gameData['genres'] ?? [] as $genre) {

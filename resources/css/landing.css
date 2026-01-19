@@ -1,0 +1,44 @@
+.landing-shell {
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(59, 130, 246, 0.18),
+            transparent 45%
+        ),
+        radial-gradient(
+            circle at 80% 10%,
+            rgba(139, 92, 246, 0.16),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 50% 80%,
+            rgba(14, 165, 233, 0.12),
+            transparent 40%
+        ),
+        #000000;
+}
+
+.landing-scanlines {
+    background-image: linear-gradient(
+        rgba(255, 255, 255, 0.03) 1px,
+        transparent 1px
+    );
+    background-size: 100% 6px;
+    opacity: 0.4;
+    mix-blend-mode: screen;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 75%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .landing-parallax {
+        transform: none !important;
+    }
+}
+
+.scrollbar-hidden {
+    scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+}

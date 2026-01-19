@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\Image;
 use App\Models\Product;
 use App\Models\VideoGameSource;
-use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
 use App\Services\Tgdb\TgdbClient;
 use Illuminate\Console\Command;
@@ -17,7 +15,7 @@ use Illuminate\Support\Str;
 
 class ImportTgdbMirror extends Command
 {
-    protected $signature = 'tgdb:import-mirror 
+    protected $signature = 'tgdb:import-mirror
                             {--platform-id= : Optional platform ID to only import specific console}
                             {--resume=1 : Resume from last checkpoint}
                             {--reset-checkpoint : Ignore existing checkpoint}
@@ -27,15 +25,21 @@ class ImportTgdbMirror extends Command
     protected $description = 'Mirror the entire TheGamesDB catalog locally for media backfilling';
 
     private array $productCache = [];
+
     private array $titleCache = [];
+
     private array $sourceCache = [];
-    
+
     private array $videoGameBatch = [];
+
     private array $videoGameTitleSourceBatch = [];
+
     private array $imageBatch = [];
 
     private int $batchSize = 5000;
+
     private int $recordBufferSize = 10000;
+
     private const MAX_SAFE_PARAMS = 65000;
 
     public function handle(TgdbClient $client): int
@@ -63,6 +67,7 @@ class ImportTgdbMirror extends Command
 
         if (empty($platforms)) {
             $this->error('No platforms found or API error.');
+
             return Command::FAILURE;
         }
 
@@ -70,9 +75,9 @@ class ImportTgdbMirror extends Command
             $platforms = array_filter($platforms, fn ($p) => $p['id'] == $reqId);
         }
 
-        $resumeEnabled = (int)$this->option('resume') !== 0;
-        $resetCheckpoint = (bool)$this->option('reset-checkpoint');
-        $checkpoint = ($resumeEnabled && !$resetCheckpoint) ? $this->loadCheckpoint() : null;
+        $resumeEnabled = (int) $this->option('resume') !== 0;
+        $resetCheckpoint = (bool) $this->option('reset-checkpoint');
+        $checkpoint = ($resumeEnabled && ! $resetCheckpoint) ? $this->loadCheckpoint() : null;
 
         if ($resetCheckpoint) {
             $this->forgetCheckpoint();
@@ -83,16 +88,17 @@ class ImportTgdbMirror extends Command
         $bar->start();
 
         foreach ($platforms as $platform) {
-            $pid = (int)$platform['id'];
-            
+            $pid = (int) $platform['id'];
+
             if ($checkpoint && isset($checkpoint['last_platform_id']) && $pid < $checkpoint['last_platform_id']) {
                 $bar->advance();
+
                 continue;
             }
 
             $bar->setMessage("Platform: {$platform['name']}");
             $this->processPlatform($client, $platform, $sourceId, $checkpoint);
-            
+
             // Clear checkpoint after platform finished or update it
             $this->storeCheckpoint(['last_platform_id' => $pid, 'last_page' => 0]);
             $checkpoint = null; // Clear so next platform starts from page 1
@@ -125,10 +131,10 @@ class ImportTgdbMirror extends Command
 
     private function processPlatform(TgdbClient $client, array $platform, int $sourceId, ?array $checkpoint): void
     {
-        $pid = (int)$platform['id'];
+        $pid = (int) $platform['id'];
         $pname = $platform['name'];
-        $page = ($checkpoint && isset($checkpoint['last_platform_id']) && $pid == $checkpoint['last_platform_id']) 
-            ? ($checkpoint['last_page'] ?: 1) 
+        $page = ($checkpoint && isset($checkpoint['last_platform_id']) && $pid == $checkpoint['last_platform_id'])
+            ? ($checkpoint['last_page'] ?: 1)
             : 1;
 
         if ($page > 1) {
@@ -138,18 +144,18 @@ class ImportTgdbMirror extends Command
         try {
             $response = $client->getGamesByPlatform($pid, $page);
             $this->processGamePage($response, $client, $sourceId, $pname);
-            
+
             $hasMore = isset($response['pages']['next']);
-            
+
             while ($hasMore) {
                 $page++;
                 $response = $client->getGamesByPlatform($pid, $page);
                 $this->processGamePage($response, $client, $sourceId, $pname);
-                
+
                 $this->storeCheckpoint(['last_platform_id' => $pid, 'last_page' => $page]);
 
                 $hasMore = isset($response['pages']['next']);
-                
+
                 if ($this->option('limit') && count($this->productCache) >= $this->option('limit')) {
                     $hasMore = false;
                 }
@@ -190,9 +196,11 @@ class ImportTgdbMirror extends Command
         foreach ($records as $record) {
             $name = $record['game_title'];
             $slug = Str::slug($name);
-            if ($slug === '') $slug = 'tgdb-' . $record['id'];
+            if ($slug === '') {
+                $slug = 'tgdb-'.$record['id'];
+            }
 
-            if (!isset($productRowsBySlug[$slug])) {
+            if (! isset($productRowsBySlug[$slug])) {
                 $productRowsBySlug[$slug] = [
                     'name' => $name,
                     'normalized_title' => $slug,
@@ -227,7 +235,9 @@ class ImportTgdbMirror extends Command
         $titleRows = [];
         foreach ($productRowsBySlug as $slug => $row) {
             $productId = $productIdBySlug[$slug] ?? null;
-            if (!$productId) continue;
+            if (! $productId) {
+                continue;
+            }
 
             $titleRows[] = [
                 'product_id' => $productId,
@@ -252,18 +262,22 @@ class ImportTgdbMirror extends Command
 
         // 6. Enqueue Sources and Video Games
         foreach ($records as $record) {
-            $gid = (string)$record['id'];
+            $gid = (string) $record['id'];
             $name = $record['game_title'];
             $slug = Str::slug($name);
-            if ($slug === '') $slug = 'tgdb-' . $gid;
+            if ($slug === '') {
+                $slug = 'tgdb-'.$gid;
+            }
 
             $title = $titleBySlug[$slug] ?? null;
-            if (!$title) continue;
+            if (! $title) {
+                continue;
+            }
 
             $this->videoGameTitleSourceBatch[] = [
                 'video_game_title_id' => $title->id,
                 'video_game_source_id' => $sourceId,
-                'external_id' => (int)$gid,
+                'external_id' => (int) $gid,
                 'provider_item_id' => $gid,
                 'provider' => $provider,
                 'slug' => $slug,
@@ -278,7 +292,7 @@ class ImportTgdbMirror extends Command
             $this->videoGameBatch[] = [
                 'video_game_title_id' => $title->id,
                 'provider' => $provider,
-                'external_id' => (int)$gid,
+                'external_id' => (int) $gid,
                 'slug' => $slug,
                 'name' => $name,
                 'release_date' => $record['release_date'] ?? null,
@@ -293,7 +307,7 @@ class ImportTgdbMirror extends Command
             // Media
             if (isset($imagesDict[$gid])) {
                 foreach ($imagesDict[$gid] as $img) {
-                    $url = $baseUrl . $img['filename'];
+                    $url = $baseUrl.$img['filename'];
                     $this->imageBatch[] = [
                         'imageable_type' => VideoGameTitleSource::class,
                         'provider_item_id' => $gid, // Temporary key for resolution
@@ -315,7 +329,9 @@ class ImportTgdbMirror extends Command
 
     private function flushBatches(): void
     {
-        if (empty($this->videoGameTitleSourceBatch)) return;
+        if (empty($this->videoGameTitleSourceBatch)) {
+            return;
+        }
 
         $now = now();
 
@@ -334,7 +350,7 @@ class ImportTgdbMirror extends Command
         );
 
         // 3. Handle Images
-        if (!empty($this->imageBatch)) {
+        if (! empty($this->imageBatch)) {
             // Need to map provider_item_id to title_source_id
             $itemIds = array_unique(array_column($this->imageBatch, 'provider_item_id'));
             $sourceIdMap = DB::table('video_game_title_sources')
@@ -346,14 +362,16 @@ class ImportTgdbMirror extends Command
             $finalImageRows = [];
             foreach ($this->imageBatch as $img) {
                 $sourceId = $sourceIdMap[$img['provider_item_id']] ?? null;
-                if (!$sourceId) continue;
+                if (! $sourceId) {
+                    continue;
+                }
 
                 unset($img['provider_item_id']);
                 $img['imageable_id'] = $sourceId;
                 $finalImageRows[] = $img;
             }
 
-            if (!empty($finalImageRows)) {
+            if (! empty($finalImageRows)) {
                 DB::table('images')->upsert(
                     $finalImageRows,
                     ['imageable_type', 'imageable_id', 'url'],
@@ -365,19 +383,27 @@ class ImportTgdbMirror extends Command
         $this->videoGameTitleSourceBatch = [];
         $this->videoGameBatch = [];
         $this->imageBatch = [];
+    }
+
     private function checkpointPath(): string
     {
         $dir = storage_path('app/checkpoints');
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-        return $dir . '/tgdb-mirror-checkpoint.json';
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        return $dir.'/tgdb-mirror-checkpoint.json';
     }
 
     private function loadCheckpoint(): ?array
     {
         $path = $this->checkpointPath();
-        if (!file_exists($path)) return null;
+        if (! file_exists($path)) {
+            return null;
+        }
 
         $data = json_decode(file_get_contents($path), true);
+
         return is_array($data) ? $data : null;
     }
 
@@ -389,6 +415,8 @@ class ImportTgdbMirror extends Command
     private function forgetCheckpoint(): void
     {
         $path = $this->checkpointPath();
-        if (file_exists($path)) unlink($path);
+        if (file_exists($path)) {
+            unlink($path);
+        }
     }
 }

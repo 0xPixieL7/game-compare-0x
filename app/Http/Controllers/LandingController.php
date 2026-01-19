@@ -44,11 +44,14 @@ class LandingController extends Controller
 
         $topRated = $this->fetchTopRated(self::ROW_LIMIT);
         $newReleases = $this->fetchNewReleases(self::ROW_LIMIT);
+        $upcoming = $this->fetchUpcoming(self::ROW_LIMIT);
         $mostReviewed = $this->fetchMostReviewed(self::ROW_LIMIT);
         $bestDealsData = $this->fetchBestDeals(self::ROW_LIMIT);
         $genreRows = $this->fetchGenreRows(self::ROW_LIMIT);
 
         $displayIds = $this->collectDisplayIds($topRated, $newReleases, $mostReviewed, $bestDealsData['games'], $genreRows);
+        $displayIds = array_unique(array_merge($displayIds, $upcoming->pluck('id')->all()));
+        
         $pricingMap = $isAuthenticated ? $this->buildPricingMapForIds($displayIds) : [];
         $pricingMap = array_replace($pricingMap, $bestDealsData['pricing']);
 
@@ -57,6 +60,11 @@ class LandingController extends Controller
                 'id' => 'top-rated',
                 'title' => 'Top Rated',
                 'games' => $this->mapGames($topRated, $pricingMap, $isAuthenticated),
+            ],
+            [
+                'id' => 'upcoming',
+                'title' => 'Upcoming Games',
+                'games' => $this->mapGames($upcoming, $pricingMap, $isAuthenticated),
             ],
             [
                 'id' => 'new-releases',
@@ -83,10 +91,11 @@ class LandingController extends Controller
             ];
         }
 
-        $hero = $topRated->first();
+        $hero = $this->selectHero($topRated, $newReleases, $mostReviewed);
 
         Log::info('Homepage data fetched', [
             'topRated' => $topRated->count(),
+            'upcoming' => $upcoming->count(),
             'newReleases' => $newReleases->count(),
             'mostReviewed' => $mostReviewed->count(),
             'bestDeals' => $bestDealsData['games']->count(),
@@ -107,8 +116,18 @@ class LandingController extends Controller
     {
         return $this->cacheStore()->remember('landing:top-rated', self::ROW_CACHE_TTL, function () use ($limit) {
             return $this->baseGameQuery()
-                ->whereNotNull('video_games.rating')
-                ->orderByDesc('video_games.rating')
+                ->whereNotNull('rating')
+                ->orderByDesc('rating')
+                ->limit($limit)
+                ->get();
+        });
+    }
+
+    private function fetchUpcoming(int $limit): Collection
+    {
+        return $this->cacheStore()->remember('landing:upcoming', self::ROW_CACHE_TTL, function () use ($limit) {
+            return DB::table('video_games_upcoming_mv')
+                ->select($this->mvColumns())
                 ->limit($limit)
                 ->get();
         });
@@ -118,8 +137,9 @@ class LandingController extends Controller
     {
         return $this->cacheStore()->remember('landing:new-releases', self::ROW_CACHE_TTL, function () use ($limit) {
             return $this->baseGameQuery()
-                ->whereNotNull('video_games.release_date')
-                ->orderByDesc('video_games.release_date')
+                ->whereNotNull('release_date')
+                ->where('release_date', '<=', now())
+                ->orderByDesc('release_date')
                 ->limit($limit)
                 ->get();
         });
@@ -133,6 +153,18 @@ class LandingController extends Controller
                 ->limit($limit)
                 ->get();
         });
+    }
+
+    private function selectHero(Collection $topRated, Collection $newReleases, Collection $mostReviewed): ?object
+    {
+        $candidates = $topRated
+            ->merge($newReleases)
+            ->merge($mostReviewed)
+            ->filter(fn ($game) => ! empty($game->image_url) || ! empty($game->image_urls))
+            ->sortByDesc(fn ($game) => $game->rating ?? 0)
+            ->values();
+
+        return $candidates->first();
     }
 
     /**
@@ -152,7 +184,7 @@ class LandingController extends Controller
             $games = $ids === []
                 ? collect()
                 : $this->baseGameQuery()
-                    ->whereIn('video_games.id', $ids)
+                    ->whereIn('id', $ids)
                     ->get()
                     ->sortBy(fn ($game) => array_search($game->id, $ids, true))
                     ->values();
@@ -170,41 +202,36 @@ class LandingController extends Controller
     private function fetchGenreRows(int $limit): array
     {
         return $this->cacheStore()->remember('landing:genre-rows', self::ROW_CACHE_TTL, function () use ($limit) {
-            $genrePool = $this->baseGameQuery()
-                ->whereNotNull('video_game_title_sources.genre')
-                ->orderByDesc('video_games.rating')
-                ->limit(self::GENRE_POOL_LIMIT)
-                ->get();
-
-            $genreCounts = [];
-
-            foreach ($genrePool as $game) {
-                $genres = $this->normalizeGenres($game->genre);
-                foreach ($genres as $genre) {
-                    $genreCounts[$genre] = ($genreCounts[$genre] ?? 0) + 1;
-                }
-            }
-
-            arsort($genreCounts);
-            $topGenres = array_slice(array_keys($genreCounts), 0, 4);
+            $targetGenres = [
+                'Action' => 'Action & Adventure',
+                'Role-playing (RPG)' => 'Top RPGs',
+                'Shooter' => 'FPS & Shooters',
+                'Strategy' => 'Strategy Games',
+                'Adventure' => 'Story & Adventure',
+                'Racing' => 'Racing & Speed',
+                'Sport' => 'Sports',
+                'Simulator' => 'Simulators',
+                'Fighting' => 'Fighting Games',
+                'Puzzle' => 'Puzzle & Brain',
+                'Indie' => 'Indie Gems',
+                'Arcade' => 'Arcade Classics',
+            ];
 
             $rows = [];
-            foreach ($topGenres as $genre) {
-                $games = $genrePool
-                    ->filter(function ($game) use ($genre) {
-                        return in_array($genre, $this->normalizeGenres($game->genre), true);
-                    })
-                    ->sortByDesc('rating')
-                    ->take($limit)
-                    ->values();
+            foreach ($targetGenres as $genreName => $displayTitle) {
+                $games = DB::table('video_games_genre_ranked_mv')
+                    ->select($this->mvColumns())
+                    ->where('genre_name', $genreName)
+                    ->limit($limit)
+                    ->get();
 
                 if ($games->isEmpty()) {
                     continue;
                 }
 
                 $rows[] = [
-                    'genre' => $genre,
-                    'title' => $genre,
+                    'genre' => $genreName,
+                    'title' => $displayTitle,
                     'games' => $games,
                 ];
             }
@@ -213,27 +240,26 @@ class LandingController extends Controller
         });
     }
 
+    private function mvColumns(): array
+    {
+        return [
+            'id',
+            'name',
+            'rating',
+            'release_date',
+            'rating_count',
+            'canonical_name',
+            'media',
+            'image_urls',
+            'image_url',
+            'review_score',
+        ];
+    }
+
     private function baseGameQuery(): Builder
     {
-        $reviewScore = $this->reviewScoreExpression();
-
-        return DB::table('video_games')
-            ->select([
-                'video_games.id',
-                'video_games.name',
-                'video_games.rating',
-                'video_games.release_date',
-                'video_game_title_sources.rating_count',
-                'video_game_titles.name as canonical_name',
-                'video_game_title_sources.genre',
-                'video_game_title_sources.raw_payload as media',
-                'images.urls as image_urls',
-                'images.url as image_url',
-                DB::raw("{$reviewScore} as review_score"),
-            ])
-            ->join('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
-            ->leftJoin('video_game_title_sources', 'video_game_titles.id', '=', 'video_game_title_sources.video_game_title_id')
-            ->leftJoin('images', 'images.video_game_id', '=', 'video_games.id');
+        return DB::table('video_games_ranked_mv')
+            ->select($this->mvColumns());
     }
 
     private function latestPriceQuery(): Builder
@@ -255,10 +281,6 @@ class LandingController extends Controller
             ->orderByDesc('recorded_at');
     }
 
-    private function reviewScoreExpression(): string
-    {
-        return 'COALESCE(video_game_title_sources.rating_count, 0)';
-    }
 
     /**
      * @param  Collection<int, mixed>  $topRated
@@ -409,13 +431,17 @@ class LandingController extends Controller
         $media = $this->normalizeMedia($game->media, $game->image_urls, $game->image_url);
         $pricing = $includePricing ? ($pricingMap[$game->id] ?? null) : null;
 
+        $genres = property_exists($game, 'genre') 
+            ? $this->normalizeGenres($game->genre) 
+            : (property_exists($game, 'genre_name') ? [$game->genre_name] : []);
+
         return [
             'id' => $game->id,
             'name' => $game->name,
             'canonical_name' => $game->canonical_name,
             'rating' => $game->rating,
             'release_date' => $game->release_date,
-            'genres' => $this->normalizeGenres($game->genre),
+            'genres' => $genres,
             'media' => $media,
             'pricing' => $pricing,
         ];

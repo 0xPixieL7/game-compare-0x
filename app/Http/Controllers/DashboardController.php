@@ -24,13 +24,18 @@ class DashboardController extends Controller
         }
 
         // Use parallel execution for price and availability data
-        $priceData = Cache::remember("price_analysis_{$gameId}", 600, function () use ($gameId) {
-            return $this->getPriceAnalysis($gameId);
-        });
+        $priceData = [];
+        $availabilityData = [];
 
-        $availabilityData = Cache::remember("availability_data_{$gameId}", 600, function () use ($gameId) {
-            return $this->getAvailabilityData($gameId);
-        });
+        if ($request->user() !== null) {
+            $priceData = Cache::remember("price_analysis_{$gameId}", 600, function () use ($gameId) {
+                return $this->getPriceAnalysis($gameId);
+            });
+
+            $availabilityData = Cache::remember("availability_data_{$gameId}", 600, function () use ($gameId) {
+                return $this->getAvailabilityData($gameId);
+            });
+        }
 
         return Inertia::render('Dashboard/Show', [
             'game' => $game,
@@ -40,8 +45,8 @@ class DashboardController extends Controller
                 'query_time' => microtime(true) - $startTime,
                 'cached' => [
                     'game' => Cache::has("game_with_media_{$gameId}"),
-                    'prices' => Cache::has("price_analysis_{$gameId}"),
-                    'availability' => Cache::has("availability_data_{$gameId}"),
+                    'prices' => $request->user() !== null && Cache::has("price_analysis_{$gameId}"),
+                    'availability' => $request->user() !== null && Cache::has("availability_data_{$gameId}"),
                 ],
             ],
         ]);
@@ -70,7 +75,14 @@ class DashboardController extends Controller
 
             // Get media from video_game_title_sources with efficient query
             $titleSource = DB::table('video_game_title_sources')
-                ->select(['description', 'developer', 'publisher', 'genre', 'platform', 'raw_payload'])
+                ->select([
+                    'video_game_title_sources.description',
+                    'video_game_title_sources.developer',
+                    'video_game_title_sources.publisher',
+                    'video_game_title_sources.genre',
+                    'video_game_title_sources.platform',
+                    'video_game_title_sources.raw_payload',
+                ])
                 ->join('video_game_titles', 'video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
                 ->join('video_games', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
                 ->where('video_games.id', $gameId)

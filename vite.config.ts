@@ -8,10 +8,37 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 export default defineConfig({
     build: {
-        manifest: true,
+        chunkSizeWarningLimit: 650,
+        manifest: 'manifest.json',
         outDir: 'public/build',
         rollupOptions: {
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) {
+                        return;
+                    }
+
+                    if (id.includes('apexcharts')) {
+                        return 'charts';
+                    }
+
+                    if (id.includes('@radix-ui')) {
+                        return 'radix';
+                    }
+
+                    if (
+                        id.includes('lucide-react') ||
+                        id.includes('class-variance-authority') ||
+                        id.includes('clsx') ||
+                        id.includes('tailwind-merge')
+                    ) {
+                        return 'ui';
+                    }
+
+                    return 'vendor';
+                },
+            },
         },
     },
     plugins: [
