@@ -15,12 +15,21 @@ class VideoGamePrice extends Model
 
     protected $fillable = [
         'video_game_id',
+        'product_id',
         'currency',
         'amount_minor',
         'recorded_at',
         'retailer',
+        'url',
         'tax_inclusive',
         'country_code',
+        'region_code',
+        'condition',
+        'sku',
+        'is_active',
+        'is_retail_buy',
+        'sales_volume',
+        'metadata',
     ];
 
     protected function casts(): array
@@ -31,6 +40,7 @@ class VideoGamePrice extends Model
             'recorded_at' => 'datetime',
             'tax_inclusive' => 'bool',
             'country_code' => 'string',
+            'metadata' => 'array',
         ];
     }
 

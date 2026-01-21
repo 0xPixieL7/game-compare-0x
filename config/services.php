@@ -105,4 +105,8 @@ return [
         'timeout' => env('NEXARDA_TIMEOUT', 30),
     ],
 
+    'playstation' => [
+        'regions' => env('PS_STORE_REGIONS', env('PLAYSTATION_REGIONS', 'en-us')),
+    ],
+
 ];

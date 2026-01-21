@@ -11,9 +11,10 @@ use PlaystationStoreApi\Enum\CategoryEnum;
 class IngestPlayStationStore extends Command
 {
     protected $signature = 'ingest:playstation
-        {--regions=en-us : Comma-separated regions (e.g., en-us,en-gb,ja-jp)}
-        {--category=ps5-games : Category to fetch (ps5-games, ps4-games, etc.)}
-        {--max-pages=1 : Maximum pages to fetch from catalog}
+        {--regions= : Comma-separated regions (defaults to env PLAYSTATION_REGIONS)}
+        {--category=all : Category to fetch (all, ps5-games, ps4-games, etc.)}
+        {--max-pages=1000 : Maximum pages to fetch from catalog}
+        {--stop-year=2015 : Stop discovery if game release year < this}
         {--mode=auto : Operation mode: auto, discover, ingest}
         {--file= : Path to concept IDs file (required for ingest mode if not auto)}
         {--workers=1 : Number of parallel workers for ingestion}
@@ -24,10 +25,21 @@ class IngestPlayStationStore extends Command
     public function handle(): int
     {
         $regionsInput = $this->option('regions');
-        $regions = array_map('trim', explode(',', $regionsInput));
+        
+        if (strtolower($regionsInput ?? '') === 'all') {
+             $regions = array_map(fn($r) => $r->value, \PlaystationStoreApi\Enum\RegionEnum::cases());
+             $regionsInput = implode(',', $regions); // For passing to workers
+        } else {
+             if (!$regionsInput) {
+                 $regionsInput = config('services.playstation.regions', 'en-us');
+             }
+             $regions = array_filter(array_map('trim', explode(',', $regionsInput)));
+        }
+
         $categoryStr = $this->option('category');
         $category = $this->resolveCategoryEnum($categoryStr);
         $maxPages = (int) $this->option('max-pages');
+        $stopYear = (int) $this->option('stop-year');
         $mode = $this->option('mode');
         $file = $this->option('file');
         $workers = (int) $this->option('workers');
@@ -40,16 +52,18 @@ class IngestPlayStationStore extends Command
 
         $this->info('Starting PlayStation Store ingestion...');
         $this->info("Mode: {$mode}");
+        $this->info("Regions: " . implode(',', $regions));
 
         // MODE: DISCOVER (or AUTO)
         if ($mode === 'discover' || $mode === 'auto') {
-            $this->info("Phase 1: Discovery ({$categoryStr}, max {$maxPages} pages)");
+            $this->info("Phase 1: Discovery ({$categoryStr}, max {$maxPages} pages, stop year {$stopYear})");
             $provider = new PlayStationStoreProvider($regions);
             
             // Allow file override or default
             $targetFile = $file ?? storage_path("app/ps_concepts_{$categoryStr}.json");
             
-            $conceptIds = $provider->fetchCatalogConceptIds($regions[0], $category, $maxPages);
+            $conceptIds = $provider->fetchCatalogConceptIds($regions[0], $category, $maxPages, $stopYear);
+            $conceptIds = array_values(array_unique($conceptIds)); // Deduplicate
             $count = count($conceptIds);
             
             $this->info("Discovered {$count} concepts.");
@@ -121,7 +135,13 @@ class IngestPlayStationStore extends Command
      */
     private function runParallelImport(string $filePath, int $workers, string $regionsInput): int
     {
-        $this->info("🚀 Starting parallel ingestion with {$workers} workers...");
+        $conceptIds = json_decode(file_get_contents($filePath), true);
+        $totalToProcess = $conceptIds ? count($conceptIds) : 0;
+        
+        $this->info("🚀 Starting parallel ingestion of {$totalToProcess} items with {$workers} workers...");
+
+        // Baseline count to track progress
+        $baseline = \App\Models\VideoGameTitleSource::where('provider', 'playstation_store')->count();
 
         $phpBinary = PHP_BINARY;
         $artisanPath = base_path('artisan');
@@ -147,6 +167,8 @@ class IngestPlayStationStore extends Command
             $this->info("Started worker {$i}");
         }
 
+        $this->newLine();
+
         // Monitoring Loop
         while (count($processes) > 0) {
             foreach ($processes as $key => $proc) {
@@ -158,9 +180,19 @@ class IngestPlayStationStore extends Command
                     unset($processes[$key]);
                 }
             }
-            sleep(1);
+
+            // Report Progress
+            $current = \App\Models\VideoGameTitleSource::where('provider', 'playstation_store')->count();
+            $progress = $current - $baseline;
+            $percent = $totalToProcess > 0 ? round(($progress / $totalToProcess) * 100, 2) : 0;
+            
+            // Overwrite current line with progress
+            $this->output->write("\r<info>Global Progress:</info> {$progress} / {$totalToProcess} games processed ({$percent}%)   ");
+            
+            sleep(2);
         }
 
+        $this->newLine();
         return self::SUCCESS;
     }
 
@@ -180,11 +212,16 @@ class IngestPlayStationStore extends Command
 
         $provider = new PlayStationStoreProvider($regions);
         
+        $i = 0;
         foreach ($myIds as $conceptId) {
             try {
                 $provider->ingestConceptWithMultiRegionPricing($conceptId);
+                // Log periodic success to avoid flooding, but often enough to see movement
+                if ($i++ % 5 === 0) {
+                    \Illuminate\Support\Facades\Log::info("PS Worker [Chunk {$index}/{$total}]: Processed {$conceptId}");
+                }
             } catch (\Throwable $e) {
-                // Squelch errors in worker, logs capture them
+                \Illuminate\Support\Facades\Log::error("PS Worker Error for {$conceptId}: " . $e->getMessage());
             }
         }
 
@@ -195,9 +232,11 @@ class IngestPlayStationStore extends Command
     private function resolveCategoryEnum(string $category): CategoryEnum
     {
         return match (strtolower($category)) {
+            'all', 'all-games' => CategoryEnum::ALL_CONCEPTS,
             'ps5-games', 'ps5_games' => CategoryEnum::PS5_GAMES,
             'ps4-games', 'ps4_games' => CategoryEnum::PS4_GAMES,
-            default => CategoryEnum::PS5_GAMES,
+            'new' => CategoryEnum::NEW_GAMES,
+            default => CategoryEnum::ALL_CONCEPTS,
         };
     }
 }

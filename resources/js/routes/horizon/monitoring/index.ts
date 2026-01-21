@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
@@ -44,43 +44,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-index.form = indexForm
-
-/**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
 * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
 * @route '/horizon/api/monitoring'
@@ -113,28 +76,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
-* @route '/horizon/api/monitoring'
-*/
-const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(options),
-    method: 'post',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
-* @route '/horizon/api/monitoring'
-*/
-storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(options),
-    method: 'post',
-})
-
-store.form = storeForm
 
 const monitoring = {
     index: Object.assign(index, index),

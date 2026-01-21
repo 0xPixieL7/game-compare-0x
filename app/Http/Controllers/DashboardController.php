@@ -12,8 +12,9 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function show(Request $request, int $gameId): Response
+    public function show(Request $request, string $gameId): Response
     {
+        $gameId = (int) $gameId;
         $startTime = microtime(true);
 
         // Execute multiple queries in parallel using multiple connections
@@ -73,24 +74,41 @@ class DashboardController extends Controller
                 return null;
             }
 
-            // Get media from video_game_title_sources with efficient query
-            $titleSource = DB::table('video_game_title_sources')
+            // Get all metadata sources for this title
+            $sources = DB::table('video_game_title_sources')
                 ->select([
-                    'video_game_title_sources.description',
-                    'video_game_title_sources.developer',
-                    'video_game_title_sources.publisher',
-                    'video_game_title_sources.genre',
-                    'video_game_title_sources.platform',
-                    'video_game_title_sources.raw_payload',
+                    'provider',
+                    'name',
+                    'rating',
+                    'external_id',
+                    'url'
                 ])
-                ->join('video_game_titles', 'video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
-                ->join('video_games', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
-                ->where('video_games.id', $gameId)
-                ->where('video_game_title_sources.provider', 'igdb')
+                ->where('video_game_title_id', $game->video_game_title_id)
+                ->get()
+                ->map(fn($s) => [
+                    'provider' => $s->provider,
+                    'name' => $s->name,
+                    'rating' => $s->rating,
+                    'external_id' => $s->external_id,
+                    'url' => $s->url,
+                ]);
+
+            // Get all platform variants for this title
+            $variants = DB::table('video_games')
+                ->select(['id', 'name', 'platform', 'rating'])
+                ->where('video_game_title_id', $game->video_game_title_id)
+                ->get();
+
+            // Use the primary IGDB source for the main description/media
+            $primarySource = DB::table('video_game_title_sources')
+                ->where('video_game_title_id', $game->video_game_title_id)
+                ->where('provider', 'igdb')
+                ->first() ?? DB::table('video_game_title_sources')
+                ->where('video_game_title_id', $game->video_game_title_id)
                 ->first();
 
             // Parse media from raw_payload
-            $rawPayload = $titleSource ? json_decode($titleSource->raw_payload, true) : [];
+            $rawPayload = $primarySource ? json_decode($primarySource->raw_payload, true) : [];
             $media = $this->extractMediaFromPayload($rawPayload);
 
             return [
@@ -100,13 +118,15 @@ class DashboardController extends Controller
                 'normalized_title' => $game->normalized_title,
                 'rating' => $game->rating,
                 'release_date' => $game->release_date,
-                'description' => $titleSource?->description ?? 'No description available',
+                'description' => $primarySource?->description ?? 'No description available',
                 'synopsis' => $rawPayload['summary'] ?? $rawPayload['storyline'] ?? '',
-                'developer' => $titleSource?->developer ?? 'Unknown',
-                'publisher' => $titleSource?->publisher ?? 'Unknown',
-                'platforms' => json_decode($titleSource?->platform ?? '[]', true),
-                'genres' => json_decode($titleSource?->genre ?? '[]', true),
+                'developer' => $primarySource?->developer ?? 'Unknown',
+                'publisher' => $primarySource?->publisher ?? 'Unknown',
+                'platforms' => json_decode($primarySource?->platform ?? '[]', true),
+                'genres' => json_decode($primarySource?->genre ?? '[]', true),
                 'media' => $media,
+                'sources' => $sources,
+                'variants' => $variants,
             ];
         });
     }

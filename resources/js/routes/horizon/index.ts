@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults, validateParameters } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults, validateParameters } from './../../wayfinder'
 import stats from './stats'
 import workload from './workload'
 import masters from './masters'
@@ -78,43 +78,6 @@ index.head = (args?: { view?: string | number } | [view: string | number ] | str
     url: index.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\HomeController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
-*/
-const indexForm = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\HomeController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
-*/
-indexForm.get = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\HomeController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
-*/
-indexForm.head = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-index.form = indexForm
 
 const horizon = {
     stats: Object.assign(stats, stats),

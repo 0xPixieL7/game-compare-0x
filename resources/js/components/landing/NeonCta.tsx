@@ -1,21 +1,13 @@
-import { dashboard, login } from '@/routes';
-import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 
 export default function NeonCta() {
-    const { auth } = usePage<SharedData>().props;
     const [phase, setPhase] = useState<'off' | 'flicker' | 'partial' | 'surge' | 'stable'>('off');
 
     // Animation orchestration
     useEffect(() => {
-        // 0-0.4s: Off
         const t1 = setTimeout(() => setPhase('flicker'), 400);
-        // 0.4-1.2s: Flicker
         const t2 = setTimeout(() => setPhase('partial'), 1200);
-        // 1.2-2.3s: Partial
         const t3 = setTimeout(() => setPhase('surge'), 2300);
-        // 2.3-3.2s: Surge -> Stable
         const t4 = setTimeout(() => setPhase('stable'), 3200);
 
         return () => {
@@ -25,8 +17,6 @@ export default function NeonCta() {
             clearTimeout(t4);
         };
     }, []);
-
-    const href = auth.user ? dashboard() : login();
 
     // Visual styles based on phase
     const getContainerStyle = () => {
@@ -39,33 +29,20 @@ export default function NeonCta() {
         }
     };
 
-    const getTextStyle = (letterIndex: number) => {
+    const getTextStyle = (index: number) => {
         const base = "transition-all duration-100";
         if (phase === 'off') return `${base} opacity-10 blur-[1px]`;
-        
-        if (phase === 'flicker') {
-            // Random flickering is hard with pure CSS classes without keyframes, 
-            // but we can simulate mostly-on with rapid changes if we had a loop.
-            // Simplified: alternating opacity
-            return `${base} animate-neon-flicker-text`;
-        }
-
+        if (phase === 'flicker') return `${base} animate-neon-flicker-text`;
         if (phase === 'partial') {
-            // "O" and "N" dim
-            if (letterIndex === 0 || letterIndex === 3) return `${base} opacity-50 blur-[0.5px]`;
+            if (index % 3 === 0) return `${base} opacity-50 blur-[0.5px]`;
             return `${base} opacity-100 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]`;
         }
-
-        if (phase === 'surge') {
-            return `${base} opacity-100 text-white drop-shadow-[0_0_15px_rgba(255,255,255,1)] scale-105`;
-        }
-
-        // Stable
+        if (phase === 'surge') return `${base} opacity-100 text-white drop-shadow-[0_0_15px_rgba(255,255,255,1)] scale-105`;
         return `${base} opacity-100 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]`;
     };
 
     return (
-        <div className="w-full flex justify-center py-12 relative z-30">
+        <div className="w-full flex justify-center py-8 relative z-30 pointer-events-none select-none">
             <style>{`
                 @keyframes neon-flicker {
                     0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 0.99; }
@@ -79,32 +56,29 @@ export default function NeonCta() {
                 .animate-neon-flicker-text { animation: neon-flicker-text 1.5s infinite; }
             `}</style>
 
-            <Link href={href} className="group relative">
-                {/* Border Container */}
+            <div className="group relative">
                 <div 
                     className={`
-                        relative px-12 py-4 rounded-xl border-4 
+                        relative px-8 py-3 rounded-xl border-2 
                         transition-all duration-300 ease-out
                         ${getContainerStyle()}
                     `}
                 >
-                    {/* Text */}
-                    <div className="flex gap-2 text-4xl md:text-6xl font-black tracking-[0.2em] font-mono text-white">
-                        {['O', 'P', 'E', 'N'].map((char, i) => (
+                    <div className="flex gap-1 text-2xl md:text-3xl font-black tracking-[0.1em] font-mono text-white whitespace-nowrap">
+                        {"SCROLL DOWN".split('').map((char, i) => (
                             <span key={i} className={getTextStyle(i)}>
-                                {char}
+                                {char === ' ' ? '\u00A0' : char}
                             </span>
                         ))}
                     </div>
                 </div>
 
-                {/* Reflection/Ground Glow */}
                 <div className={`
-                    absolute -bottom-8 left-1/2 -translate-x-1/2 w-3/4 h-4 
+                    absolute -bottom-6 left-1/2 -translate-x-1/2 w-3/4 h-3 
                     bg-white/20 blur-xl rounded-[100%] transition-opacity duration-500
                     ${phase === 'stable' || phase === 'surge' ? 'opacity-100' : 'opacity-0'}
                 `} />
-            </Link>
+            </div>
         </div>
     );
 }

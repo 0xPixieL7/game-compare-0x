@@ -11,6 +11,7 @@ import { useState } from 'react';
 interface WelcomeProps {
     canRegister?: boolean;
     hero: Game | null;
+    spotlightGames?: Game[];
     rows: GameRowData[];
     cta: { pricing: string };
 }
@@ -18,6 +19,7 @@ interface WelcomeProps {
 export default function Welcome({
     canRegister = true,
     hero,
+    spotlightGames = [],
     rows,
 }: WelcomeProps) {
     const { auth } = usePage<SharedData>().props;
@@ -49,7 +51,7 @@ export default function Welcome({
                                     className="h-8 w-auto lg:h-10"
                                 />
                                 <span className="text-xs font-semibold tracking-[0.3em] text-gray-300 uppercase">
-                                    Signal Lab
+                                    GAME COMPARE
                                 </span>
                             </div>
                             <div className="flex items-center gap-4">
@@ -82,10 +84,10 @@ export default function Welcome({
                         </nav>
                     </header>
 
-                    <HeroStage hero={hero} />
-
-                    {/* Neon Open Sign CTA */}
-                    <NeonCta />
+                    <HeroStage 
+                        hero={hero} 
+                        spotlightGames={spotlightGames} 
+                    />
 
                     <section
                         id="rows"

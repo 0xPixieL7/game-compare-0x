@@ -12,6 +12,7 @@ class VideoGameSourceSeeder extends Seeder
     {
         $sources = [
             [
+                'id' => 1,
                 'provider' => 'igdb',
                 'provider_key' => 'igdb',
                 'display_name' => 'IGDB',
@@ -19,6 +20,7 @@ class VideoGameSourceSeeder extends Seeder
                 'slug' => 'igdb',
             ],
             [
+                'id' => 2,
                 'provider' => 'steam',
                 'provider_key' => 'steam',
                 'display_name' => 'Steam',
@@ -26,6 +28,7 @@ class VideoGameSourceSeeder extends Seeder
                 'slug' => 'steam',
             ],
             [
+                'id' => 3,
                 'provider' => 'playstation_store',
                 'provider_key' => 'playstation_store',
                 'display_name' => 'PlayStation Store',
@@ -33,6 +36,7 @@ class VideoGameSourceSeeder extends Seeder
                 'slug' => 'ps-store',
             ],
             [
+                'id' => 4,
                 'provider' => 'xbox_store',
                 'provider_key' => 'xbox_store',
                 'display_name' => 'Xbox Store',
@@ -40,6 +44,7 @@ class VideoGameSourceSeeder extends Seeder
                 'slug' => 'xbox-store',
             ],
             [
+                'id' => 5,
                 'provider' => 'nintendo_eshop',
                 'provider_key' => 'nintendo_eshop',
                 'display_name' => 'Nintendo eShop',
@@ -50,7 +55,7 @@ class VideoGameSourceSeeder extends Seeder
 
         foreach ($sources as $source) {
             VideoGameSource::updateOrCreate(
-                ['provider' => $source['provider']], // Match on unique provider column
+                ['id' => $source['id']], // Force specific ID
                 $source
             );
         }

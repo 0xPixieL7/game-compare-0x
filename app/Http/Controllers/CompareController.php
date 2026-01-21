@@ -8,6 +8,7 @@ use App\Models\VideoGameTitleSource;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -169,6 +170,7 @@ class CompareController extends Controller
                 'video_game_title_sources.external_id',
                 'video_game_title_sources.rating',
                 'video_game_title_sources.release_date',
+                'video_game_title_sources.raw_payload',
                 'video_game_sources.display_name as source_name',
                 'video_game_titles.name as canonical_name',
             ])
@@ -209,8 +211,19 @@ class CompareController extends Controller
                 $platforms = ['Unknown'];
             }
 
-            // Placeholder image
-            $image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.webp'; 
+            // Try to extract image from raw_payload
+            $image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.webp'; // Default
+            
+            $igdbSource = $sources->firstWhere('provider', 'igdb');
+            if ($igdbSource && $igdbSource->raw_payload) {
+                $payload = json_decode($igdbSource->raw_payload, true);
+                if (!empty($payload['cover'])) {
+                    $imageId = is_string($payload['cover']) ? $payload['cover'] : ($payload['cover']['image_id'] ?? null);
+                    if ($imageId) {
+                        $image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co' . base_convert((string)$imageId, 10, 36) . '.webp';
+                    }
+                }
+            }
 
             return [
                 'product_id' => $sources->first()->id,

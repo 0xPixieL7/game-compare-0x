@@ -389,8 +389,7 @@ class ImportIgdbDumpsCommand extends Command
             AND NOT (p.metadata ?? 'official_url')
         ");
 
-        $this->info('🚀 Triggering Synchronous CSV Import...');
-        $this->call('import:csvs');
+        // Removed synchronous CSV import (import:csvs) per request
 
         // CRITICAL: Flush remaining batches after all CSV processing
         $this->flushBatches();

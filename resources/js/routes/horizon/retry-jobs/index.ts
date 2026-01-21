@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
@@ -50,28 +50,6 @@ show.post = (args: { id: string | number } | [id: string | number ] | string | n
     url: show.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\RetryController::show
-* @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
-*/
-const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: show.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\RetryController::show
-* @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
-*/
-showForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: show.url(args, options),
-    method: 'post',
-})
-
-show.form = showForm
 
 const retryJobs = {
     show: Object.assign(show, show),

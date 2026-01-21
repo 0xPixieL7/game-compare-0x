@@ -20,10 +20,11 @@ Route::post('/webhooks/igdb/{eventType}', [IgdbWebhookController::class, 'handle
 Route::get('/', [LandingController::class, 'index'])->name('home');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-Route::get('/dashboard/{gameId}', [DashboardController::class, 'show'])->name('dashboard.show');
+Route::get('/dashboard/{gameId}', [DashboardController::class, 'show'])->name('dashboard.show')->whereNumber('gameId');
 
 // Debug route
 Route::get('/debug/{gameId}', function ($gameId) {
+    $gameId = (int) $gameId;
     $start = microtime(true);
 
     $game = DB::table('video_games')
@@ -38,7 +39,7 @@ Route::get('/debug/{gameId}', function ($gameId) {
         'query_time' => $queryTime.'s',
         'status' => 'success',
     ]);
-});
+})->whereNumber('gameId');
 
 Route::group(['prefix' => 'compare', 'as' => 'compare.'], function () {
     Route::get('/', [\App\Http\Controllers\CompareController::class, 'index'])->name('index'); // This becomes compare.index (alias for /compare)

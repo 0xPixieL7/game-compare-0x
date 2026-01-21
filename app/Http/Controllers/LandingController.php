@@ -92,6 +92,7 @@ class LandingController extends Controller
         }
 
         $hero = $this->selectHero($topRated, $newReleases, $mostReviewed);
+        $spotlightGames = $this->fetchSpotlightGames(5);
 
         Log::info('Homepage data fetched', [
             'topRated' => $topRated->count(),
@@ -100,16 +101,122 @@ class LandingController extends Controller
             'mostReviewed' => $mostReviewed->count(),
             'bestDeals' => $bestDealsData['games']->count(),
             'genreRows' => count($genreRows),
-            'heroLinked' => $hero !== null
+            'heroLinked' => $hero !== null,
+            'spotlightCount' => count($spotlightGames)
         ]);
 
         return Inertia::render('welcome', [
             'hero' => $hero ? $this->mapGame($hero, $pricingMap, $isAuthenticated) : null,
+            'spotlightGames' => $spotlightGames,
             'rows' => $rows,
             'cta' => [
                 'pricing' => 'Join free for price data',
             ],
         ]);
+    }
+
+    private function fetchSpotlightGames(int $limit = 5): array
+    {
+        return $this->cacheStore()->remember('landing:spotlight-games-v6', self::ROW_CACHE_TTL, function () use ($limit) {
+            // Target IDs: GTA VI, EA FC 26, Witcher 3, Cloud Cutter, Skyrim Anniversary
+            $forcedIds = [121815, 741167, 1014215, 1018, 195630];
+            
+            // Use base video_games table but select columns required for mapping
+            $games = DB::table('video_games')
+                ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
+                ->leftJoin('video_game_title_sources', function ($join) {
+                    $join->on('video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
+                        ->where('video_game_title_sources.provider', '=', 'igdb');
+                })
+                ->leftJoin('videos', 'video_games.id', '=', 'videos.video_game_id')
+                ->select([
+                    'video_games.*',
+                    'video_game_titles.name as canonical_name',
+                    'video_game_title_sources.raw_payload',
+                    'video_game_title_sources.platform as source_platform',
+                    'video_game_title_sources.genre as source_genre',
+                    'videos.video_id',
+                    'videos.metadata as video_metadata'
+                ])
+                ->whereIn('video_games.id', $forcedIds)
+                ->get();
+
+            // Sort to match requested order and reset keys to ensure sequential array
+            $games = $games->sortBy(function($game) use ($forcedIds) {
+                return array_search($game->id, $forcedIds);
+            })->values();
+
+            return $games->map(function ($game) {
+                // Parse media from raw_payload for high-res screenshots/artworks
+                $rawPayload = property_exists($game, 'raw_payload') && $game->raw_payload 
+                    ? json_decode($game->raw_payload, true) 
+                    : [];
+                $baseUrl = 'https://images.igdb.com/igdb/image/upload/';
+                
+                $screenshots = [];
+                if (!empty($rawPayload['screenshots'])) {
+                    $ids = is_string($rawPayload['screenshots']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['screenshots'])) : $rawPayload['screenshots'];
+                    foreach (array_slice($ids, 0, 5) as $id) {
+                        if ($id) $screenshots[] = ['url' => $baseUrl . 't_1080p/sc' . base_convert((string)$id, 10, 36) . '.webp'];
+                    }
+                }
+
+                $artworks = [];
+                if (!empty($rawPayload['artworks'])) {
+                    $ids = is_string($rawPayload['artworks']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['artworks'])) : $rawPayload['artworks'];
+                    foreach (array_slice($ids, 0, 5) as $id) {
+                        if ($id) $artworks[] = ['url' => $baseUrl . 't_1080p/ar' . base_convert((string)$id, 10, 36) . '.webp'];
+                    }
+                }
+                
+                // Extract trailers
+                $trailers = [];
+                if ($game->video_metadata) {
+                    $metadata = json_decode($game->video_metadata, true);
+                    if (is_array($metadata)) {
+                        foreach ($metadata as $v) {
+                            if (!empty($v['video_id'])) {
+                                $trailers[] = [
+                                    'video_id' => $v['video_id'],
+                                    'name' => $v['name'] ?? 'Trailer',
+                                    'url' => 'https://www.youtube.com/watch?v=' . $v['video_id']
+                                ];
+                            }
+                        }
+                    }
+                }
+
+                if (empty($trailers) && $game->video_id) {
+                    $trailers[] = [
+                        'video_id' => $game->video_id,
+                        'name' => 'Trailer',
+                        'url' => 'https://www.youtube.com/watch?v=' . $game->video_id
+                    ];
+                }
+
+                // Manual fallback for Witcher 3 if no media found
+                if ($game->id == 1014215 && empty($trailers)) {
+                    $trailers[] = [
+                        'video_id' => 'rIoPrbzI5Z4',
+                        'name' => 'The Witcher 3: Wild Hunt Trailer',
+                        'url' => 'https://www.youtube.com/watch?v=rIoPrbzI5Z4'
+                    ];
+                }
+
+                $mapped = $this->mapGame($game, [], false);
+                $mapped['media']['trailers'] = $trailers;
+                
+                // Prioritize high-res screenshots/artworks from raw_payload if available
+                if (!empty($screenshots)) {
+                    $mapped['media']['screenshots'] = array_merge($screenshots, $mapped['media']['screenshots'] ?? []);
+                }
+                if (!empty($artworks)) {
+                    $mapped['media']['artworks'] = array_merge($artworks, $mapped['media']['artworks'] ?? []);
+                }
+                
+                return $mapped;
+            })->toArray();
+        });
     }
 
     private function fetchTopRated(int $limit): Collection
@@ -428,7 +535,11 @@ class LandingController extends Controller
      */
     private function mapGame(object $game, array $pricingMap, bool $includePricing): array
     {
-        $media = $this->normalizeMedia($game->media, $game->image_urls, $game->image_url);
+        $media = $this->normalizeMedia(
+            $game->media ?? null, 
+            $game->image_urls ?? null, 
+            $game->image_url ?? null
+        );
         $pricing = $includePricing ? ($pricingMap[$game->id] ?? null) : null;
 
         $genres = property_exists($game, 'genre') 
@@ -472,6 +583,7 @@ class LandingController extends Controller
         }
 
         $screenshots = $this->screenshotsFromMedia($media);
+        $artworks = $this->artworksFromMedia($media);
         $trailers = $this->videosFromMedia($media);
 
         return [
@@ -483,8 +595,41 @@ class LandingController extends Controller
             'cover_url' => $coverUrl,
             'cover_url_thumb' => $coverThumb,
             'screenshots' => $screenshots,
+            'artworks' => $artworks,
             'trailers' => $trailers,
         ];
+    }
+
+    /**
+     * @return array<int, array{url: string, width: int, height: int}>
+     */
+    private function artworksFromMedia(array $media): array
+    {
+        $images = Arr::get($media, 'images', []);
+
+        if (! is_array($images)) {
+            return [];
+        }
+
+        $artworks = [];
+
+        foreach ($images as $image) {
+            if (! is_array($image)) {
+                continue;
+            }
+
+            if (($image['role'] ?? '') !== 'artwork' || empty($image['url'])) {
+                continue;
+            }
+
+            $artworks[] = [
+                'url' => $image['url'],
+                'width' => 1920,
+                'height' => 1080,
+            ];
+        }
+
+        return $artworks;
     }
 
     private function findImageVariant(array $urls, string $size): ?string

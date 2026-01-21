@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::store
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
@@ -50,28 +50,6 @@ store.post = (args: { id: string | number } | [id: string | number ] | string | 
     url: store.url(args, options),
     method: 'post',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\RetryController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
-*/
-const storeForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(args, options),
-    method: 'post',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\RetryController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
-*/
-storeForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(args, options),
-    method: 'post',
-})
-
-store.form = storeForm
 
 const RetryController = { store }
 

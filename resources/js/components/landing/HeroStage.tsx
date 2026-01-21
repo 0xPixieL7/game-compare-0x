@@ -3,30 +3,80 @@ import BoxReveal from '@/components/landing/BoxReveal';
 import MetricBadge from '@/components/landing/MetricBadge';
 import OrbitStat from '@/components/landing/OrbitStat';
 import SignalPill from '@/components/landing/SignalPill';
+import NeonCta from '@/components/landing/NeonCta';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { dashboard, register } from '@/routes';
 import { type Game, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { motion } from 'framer-motion';
-import { Compass, Maximize2, Sparkles } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Compass, Maximize2, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface HeroStageProps {
     hero: Game | null;
+    spotlightGames?: Game[];
 }
 
-export default function HeroStage({ hero }: HeroStageProps) {
+export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps) {
     const { auth } = usePage<SharedData>().props;
+    
+    // Use the spotlight games provided by the controller
+    const games = useMemo(() => {
+        const list = Array.isArray(spotlightGames) 
+            ? spotlightGames 
+            : Object.values(spotlightGames || {});
+            
+        if (list.length > 0) return list;
+        return hero ? [hero] : [];
+    }, [hero, spotlightGames]);
+
+    const [activeIndex, setActiveIndex] = useState(0);
+    const activeGame = games[activeIndex];
+
     const heroTitle =
-        hero?.canonical_name || hero?.name || 'Global game markets';
-    const heroGenre = hero?.genres?.[0] ?? 'Market signal';
-    const heroImage = hero?.media?.cover_url ?? hero?.media?.cover_url_thumb;
-    const heroBackdrop = hero?.media?.screenshots?.[0]?.url ?? heroImage;
+        activeGame?.canonical_name || activeGame?.name || 'Global game markets';
+    const heroGenre = activeGame?.genres?.[0] ?? 'Market signal';
+    const heroImage = activeGame?.media?.cover_url ?? activeGame?.media?.cover_url_thumb;
+    const heroBackdrop = useMemo(() => {
+        return activeGame?.media?.screenshots?.[0]?.url ?? 
+               activeGame?.media?.artworks?.[0]?.url ?? 
+               heroImage;
+    }, [activeGame, heroImage]);
 
     // Trailer Logic
-    const trailer = hero?.media?.trailers?.[0];
+    const trailer = activeGame?.media?.trailers?.[0];
     const videoId = trailer?.video_id;
     const [isVideoOpen, setIsVideoOpen] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+
+    // Mute on scroll logic
+    useEffect(() => {
+        const handleScrollMute = () => {
+            if (window.scrollY > 100 && !isMuted) {
+                setIsMuted(true);
+            } else if (window.scrollY <= 100 && isMuted) {
+                setIsMuted(false);
+            }
+        };
+
+        window.addEventListener('scroll', handleScrollMute, { passive: true });
+        return () => window.removeEventListener('scroll', handleScrollMute);
+    }, [isMuted]);
+
+    // YouTube Autoplay/Sound Policy Helper
+    // Browsers block unmuted autoplay unless there's an interaction.
+    // We'll set mute=0 and add 'allow="autoplay"' to the iframe.
+    const getEmbedUrl = (id: string, muted: boolean) => {
+        return `https://www.youtube.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&origin=${window.location.origin}`;
+    };
+
+    const nextSlide = useCallback(() => {
+        setActiveIndex((current) => (current + 1) % games.length);
+    }, [games.length]);
+
+    const prevSlide = useCallback(() => {
+        setActiveIndex((current) => (current - 1 + games.length) % games.length);
+    }, [games.length]);
 
     const parallaxRef = useRef<HTMLImageElement>(null);
     const [enableParallax, setEnableParallax] = useState(true);
@@ -110,6 +160,7 @@ export default function HeroStage({ hero }: HeroStageProps) {
 
             <div className="relative z-10 grid gap-16 lg:grid-cols-[1.1fr_0.9fr]">
                 <motion.div
+                    key={activeGame?.id ?? 'empty'}
                     className="space-y-8"
                     variants={containerVariants}
                     initial="hidden"
@@ -196,16 +247,59 @@ export default function HeroStage({ hero }: HeroStageProps) {
                         <OrbitStat label="BTC Index" value="Realtime" />
                         <OrbitStat label="Latency" value="Sub 2s" />
                     </motion.div>
+
+                    {/* Carousel Navigation */}
+                    {games.length > 1 && (
+                        <motion.div 
+                            variants={itemVariants}
+                            className="flex items-center gap-3 pt-4"
+                        >
+                            {games.map((g, idx) => (
+                                <button
+                                    key={g.id}
+                                    onClick={() => setActiveIndex(idx)}
+                                    className={`h-1.5 rounded-full transition-all duration-500 ${
+                                        idx === activeIndex 
+                                            ? 'w-8 bg-blue-500' 
+                                            : 'w-2 bg-white/20 hover:bg-white/40'
+                                    }`}
+                                    aria-label={`Go to slide ${idx + 1}`}
+                                />
+                            ))}
+                        </motion.div>
+                    )}
                 </motion.div>
 
-                <div className="relative">
+                <div className="group relative">
                     <div className="absolute top-12 -left-6 hidden h-40 w-40 rounded-full border border-white/10 bg-white/5 blur-2xl lg:block" />
+                    
+                    {/* Carousel Controls */}
+                    {games.length > 1 && (
+                        <>
+                            <button 
+                                onClick={prevSlide}
+                                className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all hover:bg-black/60 group-hover:left-4 group-hover:opacity-100"
+                                aria-label="Previous game"
+                            >
+                                <ChevronLeft className="h-6 w-6" />
+                            </button>
+                            <button 
+                                onClick={nextSlide}
+                                className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all hover:bg-black/60 group-hover:right-4 group-hover:opacity-100"
+                                aria-label="Next game"
+                            >
+                                <ChevronRight className="h-6 w-6" />
+                            </button>
+                        </>
+                    )}
+
                     <motion.div
+                        key={activeGame?.id ?? 'card-empty'}
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -20 }}
                         transition={{
-                            delay: 0.5,
-                            duration: 0.8,
+                            duration: 0.6,
                             ease: 'easeOut',
                         }}
                     >
@@ -213,80 +307,95 @@ export default function HeroStage({ hero }: HeroStageProps) {
                             open={isVideoOpen}
                             onOpenChange={setIsVideoOpen}
                         >
-                            <AppleTvCard
-                                className="min-h-[420px] overflow-hidden border border-white/10 bg-black"
-                                shineClassName="mix-blend-screen"
-                            >
-                                {/* Video Background (Muted Loop) */}
-                                {videoId ? (
-                                    <div className="absolute inset-0 z-0">
-                                        <div className="absolute inset-0 z-10 bg-black/20" />{' '}
-                                        {/* Dim overlay */}
-                                        <iframe
-                                            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1`}
-                                            className="pointer-events-none absolute inset-0 h-[150%] w-[150%] -translate-x-[16.67%] -translate-y-[16.67%]"
-                                            allow="autoplay; encrypted-media"
-                                            title="Background Trailer"
-                                        />
-                                    </div>
-                                ) : (
-                                    heroImage && (
-                                        <img
-                                            src={heroImage}
-                                            alt=""
-                                            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-60"
-                                            loading="lazy"
-                                        />
-                                    )
-                                )}
+                            <DialogTrigger asChild>
+                                <button className="w-full text-left appearance-none outline-none ring-0 border-0 p-0 bg-transparent block cursor-pointer group/card">
+                                    <AppleTvCard
+                                        className="aspect-video w-full overflow-hidden border border-white/10 bg-black md:aspect-[4/3] lg:aspect-video"
+                                        shineClassName="mix-blend-screen"
+                                    >
+                                        {/* Full-bleed Video Background (Highest Resolution, Unmuted Autoplay) */}
+                                        {videoId ? (
+                                            <div className="absolute inset-0 z-0">
+                                                <iframe
+                                                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=0&loop=1&playlist=${videoId}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&vq=hd1080&origin=${window.location.origin}`}
+                                                    className="pointer-events-none absolute inset-0 h-full w-full border-0"
+                                                    style={{
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        objectFit: 'cover',
+                                                        transform: 'scale(1.4)', // Fills card perfectly
+                                                    }}
+                                                    allow="autoplay; encrypted-media"
+                                                    title="Spotlight Trailer"
+                                                />
+                                                <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-transparent to-black/30" />
+                                            </div>
+                                        ) : (
+                                            heroImage && (
+                                                <img
+                                                    src={heroImage}
+                                                    alt=""
+                                                    className="absolute inset-0 -z-10 h-full w-full object-cover"
+                                                    loading="lazy"
+                                                />
+                                            )
+                                        )}
 
-                                <div className="relative z-10 flex h-full flex-col justify-between p-6">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 text-xs tracking-[0.2em] text-blue-200/80 uppercase">
-                                            Spotlight
-                                        </div>
-                                        <div className="space-y-2">
-                                            <h2 className="text-2xl font-semibold text-white drop-shadow-md">
-                                                {heroTitle}
-                                            </h2>
-                                            <p className="max-w-xs text-sm text-slate-200/90 drop-shadow-sm">
-                                                {hero?.pricing?.is_free
-                                                    ? 'Free-to-play surge across multiple regions.'
-                                                    : 'Cinematic experience. Watch the trailer now.'}
-                                            </p>
-                                        </div>
-                                    </div>
+                                        <div className="relative z-20 flex h-full flex-col justify-between p-8">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.3em] text-blue-400 uppercase">
+                                                    <Sparkles className="h-3 w-3" />
+                                                    Featured Spotlight
+                                                </div>
+                                                
+                                                <div className="flex gap-1">
+                                                    {games.map((_, i) => (
+                                                        <div 
+                                                            key={i} 
+                                                            className={`h-1 w-4 rounded-full transition-colors ${i === activeIndex ? 'bg-blue-500' : 'bg-white/20'}`} 
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
 
-                                    {/* Action Area (Replaces Chart) */}
-                                    <div className="flex items-end justify-between">
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2 text-xs text-white/60">
-                                                <span>Powered by IGDB</span>
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-2xl">
+                                                        {heroTitle}
+                                                    </h2>
+                                                    <p className="max-w-sm text-sm font-medium text-slate-200/90 line-clamp-2 drop-shadow-md">
+                                                        {activeGame?.description || activeGame?.synopsis || 'Cinematic pricing intelligence remixed.'}
+                                                    </p>
+                                                </div>
+
+                                                <div className="flex items-center gap-4">
+                                                    {videoId && (
+                                                        <div className="group flex items-center gap-3 rounded-full bg-white px-6 py-2.5 text-sm font-bold text-black transition-all hover:scale-105 active:scale-95">
+                                                            <Maximize2 className="h-4 w-4" />
+                                                            Expand Cinema
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <Link 
+                                                        href={`/dashboard/${activeGame?.id}`}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20"
+                                                    >
+                                                        View Analysis
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </div>
+                                    </AppleTvCard>
+                                </button>
+                            </DialogTrigger>
 
-                                        {videoId && (
-                                            <DialogTrigger asChild>
-                                                <button className="group flex items-center gap-3 rounded-xl border border-white/10 bg-black/60 px-4 py-3 text-sm font-medium text-white backdrop-blur transition hover:border-white/30 hover:bg-white/10">
-                                                    <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-white text-black transition group-hover:scale-110">
-                                                        <Maximize2 className="h-4 w-4" />
-                                                    </div>
-                                                    <span className="pr-1">
-                                                        Expand Trailer
-                                                    </span>
-                                                </button>
-                                            </DialogTrigger>
-                                        )}
-                                    </div>
-                                </div>
-                            </AppleTvCard>
-
-                            {/* Fullscreen Video Modal */}
+                            {/* Fullscreen Video Modal (Highest Quality, Unmuted) */}
                             {videoId && (
-                                <DialogContent className="aspect-video max-w-5xl overflow-hidden border-white/10 bg-black/95 p-0 sm:rounded-2xl">
+                                <DialogContent className="aspect-video w-[98vw] max-w-[90rem] overflow-hidden border-white/10 bg-black/95 p-0 sm:rounded-2xl shadow-2xl">
                                     <iframe
-                                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1&modestbranding=1&rel=0&fs=1`}
-                                        className="h-full w-full"
+                                        src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&fs=1&vq=hd1080`}
+                                        className="h-full w-full border-0"
                                         allow="autoplay; encrypted-media; fullscreen"
                                         allowFullScreen
                                         title="Trailer Fullscreen"
@@ -296,6 +405,11 @@ export default function HeroStage({ hero }: HeroStageProps) {
                         </Dialog>
                     </motion.div>
                 </div>
+            </div>
+
+            {/* Scroll Instruction */}
+            <div className="mt-12 lg:mt-0 lg:absolute lg:bottom-12 lg:left-1/2 lg:-translate-x-1/2">
+                <NeonCta />
             </div>
         </section>
     );

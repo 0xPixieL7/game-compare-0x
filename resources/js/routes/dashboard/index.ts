@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
@@ -60,43 +60,6 @@ show.head = (args: { gameId: string | number } | [gameId: string | number ] | st
     url: show.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \App\Http\Controllers\DashboardController::show
-* @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
-*/
-const showForm = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\DashboardController::show
-* @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
-*/
-showForm.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \App\Http\Controllers\DashboardController::show
-* @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
-*/
-showForm.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-show.form = showForm
 
 const dashboard = {
     show: Object.assign(show, show),

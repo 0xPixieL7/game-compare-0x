@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
@@ -44,43 +44,6 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url(options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::index
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:47
-* @route '/horizon/api/monitoring'
-*/
-indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: index.url({
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-index.form = indexForm
-
-/**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
 * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
 * @route '/horizon/api/monitoring'
@@ -113,28 +76,6 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
     method: 'post',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
-* @route '/horizon/api/monitoring'
-*/
-const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(options),
-    method: 'post',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::store
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:104
-* @route '/horizon/api/monitoring'
-*/
-storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: store.url(options),
-    method: 'post',
-})
-
-store.form = storeForm
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
@@ -199,43 +140,6 @@ paginate.head = (args: { tag: string | number } | [tag: string | number ] | stri
 })
 
 /**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
-* @route '/horizon/api/monitoring/{tag}'
-*/
-const paginateForm = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: paginate.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
-* @route '/horizon/api/monitoring/{tag}'
-*/
-paginateForm.get = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: paginate.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::paginate
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:64
-* @route '/horizon/api/monitoring/{tag}'
-*/
-paginateForm.head = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: paginate.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-paginate.form = paginateForm
-
-/**
 * @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
 * @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
 * @route '/horizon/api/monitoring/{tag}'
@@ -286,38 +190,6 @@ destroy.delete = (args: { tag: string | number } | [tag: string | number ] | str
     url: destroy.url(args, options),
     method: 'delete',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
-* @route '/horizon/api/monitoring/{tag}'
-*/
-const destroyForm = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: destroy.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'DELETE',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\MonitoringController::destroy
-* @see vendor/laravel/horizon/src/Http/Controllers/MonitoringController.php:115
-* @route '/horizon/api/monitoring/{tag}'
-*/
-destroyForm.delete = (args: { tag: string | number } | [tag: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
-    action: destroy.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'DELETE',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'post',
-})
-
-destroy.form = destroyForm
 
 const MonitoringController = { index, store, paginate, destroy }
 

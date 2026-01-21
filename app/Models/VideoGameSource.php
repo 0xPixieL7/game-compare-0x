@@ -52,16 +52,13 @@ class VideoGameSource extends Model
 
     public function recordVideoGameId(int $videoGameId): void
     {
-        $ids = $this->video_game_ids ?? [];
-
-        if (! in_array($videoGameId, $ids, true)) {
-            $ids[] = $videoGameId;
-            $ids = array_values(array_unique($ids));
-
-            $this->forceFill([
-                'video_game_ids' => $ids,
-                'items_count' => count($ids),
-            ])->save();
+        // For performance and schema reasons, we don't store the full list of IDs in a JSON column anymore.
+        // Just increment the count.
+        try {
+            $this->increment('items_count');
+        } catch (\Throwable $e) {
+            // Ignore stats update failures (timeouts/locks) to prioritize ingestion
+            \Illuminate\Support\Facades\Log::warning('Failed to update VideoGameSource items_count: ' . $e->getMessage());
         }
     }
 }

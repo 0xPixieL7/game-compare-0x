@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from '@inertiajs/react';
+import { GameCard } from '@/components/GameCard';
 import { AppleTvCard } from '@/components/apple-tv-card';
 
 interface SpotlightScore {
@@ -121,10 +122,21 @@ export function SpotlightCarousel({ spotlight = [], hero }: SpotlightCarouselPro
     const currentContext = currentScore.context || {};
     const metrics = currentScore.breakdown || []; // 'breakdown' maps to 'metrics' in legacy logic?
 
-    // Resolve cover image
+    // Resolve media
     const gallery = currentItem.spotlight_gallery || [];
     const primaryMedia = gallery.find(m => m && m.type === 'image') || gallery[0] || {};
     const coverImage = primaryMedia.url || currentItem.image || '/images/placeholders/game-cover.svg';
+
+    // Map currentItem to GameCard format
+    const gameCardData = useMemo(() => ({
+        id: currentItem.id,
+        name: currentItem.name,
+        media: {
+            cover_url: currentItem.image,
+            cover_url_high_res: coverImage,
+        },
+        rating: currentItem.spotlight_score?.total || 0,
+    }), [currentItem, coverImage]);
 
     return (
         <div id="compareBackdrop" className="relative text-white col-span-12" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
@@ -193,50 +205,14 @@ export function SpotlightCarousel({ spotlight = [], hero }: SpotlightCarouselPro
                             </div>
                         </div>
 
-                        {/* The Large Card */}
-                        <div className="flex-1 relative perspective-1000">
-                            <AppleTvCard className="h-full min-h-[500px]">
-                                <div className="apple-tv-media absolute inset-0">
-                                    {/* Placeholder for video/large image - reusing cover for now or random gallery image */}
-                                    <img
-                                        src={coverImage}
-                                        alt="Presentation"
-                                        className="w-full h-full object-cover"
-                                    />
-                                    <div className="video-overlay">
-                                        <div className="play-pause-btn">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="apple-tv-overlay pointer-events-none relative z-10 h-full">
-                                    <div className="apple-tv-content pointer-events-auto mt-auto">
-                                        <div className="apple-tv-badges">
-                                            {currentContext.media_count > 0 && (
-                                                <span className="apple-tv-badge">{currentContext.media_count} Assets</span>
-                                            )}
-                                            {currentContext.retailer_count > 0 && (
-                                                <span className="apple-tv-badge">{currentContext.retailer_count} Retailers</span>
-                                            )}
-                                        </div>
-                                        <h2 className="apple-tv-title">{currentItem.name}</h2>
-                                        <p className="apple-tv-subtitle">
-                                            Compare prices across {currentItem.region_codes?.length || 0} regions and {currentContext.retailer_count || 0} stores.
-                                        </p>
-                                        <Link href={`/games/${currentItem.id}`} className="apple-tv-cta">
-                                            View Analysis
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                                            </svg>
-                                        </Link>
-                                    </div>
-                                    <div className="apple-tv-source absolute top-4 right-4">
-                                        {primaryMedia.source || 'LIVE'}
-                                    </div>
-                                </div>
-                            </AppleTvCard>
+                        {/* The Large Card (Apple Card style) */}
+                        <div className="flex-1 relative">
+                            <div className="h-full min-h-[500px]">
+                                <GameCard 
+                                    game={gameCardData as any} 
+                                    className="!max-w-full h-full"
+                                />
+                            </div>
                         </div>
 
                         {/* Dots */}

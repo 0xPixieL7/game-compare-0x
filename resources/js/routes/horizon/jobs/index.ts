@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../wayfinder'
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
@@ -60,43 +60,6 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
     url: show.url(args, options),
     method: 'head',
 })
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\JobsController::show
-* @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
-*/
-const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\JobsController::show
-* @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
-*/
-showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, options),
-    method: 'get',
-})
-
-/**
-* @see \Laravel\Horizon\Http\Controllers\JobsController::show
-* @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
-*/
-showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
-    action: show.url(args, {
-        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
-            _method: 'HEAD',
-            ...(options?.query ?? options?.mergeQuery ?? {}),
-        }
-    }),
-    method: 'get',
-})
-
-show.form = showForm
 
 const jobs = {
     show: Object.assign(show, show),
