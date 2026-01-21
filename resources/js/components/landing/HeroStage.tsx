@@ -1,15 +1,23 @@
 import { AppleTvCard } from '@/components/apple-tv-card';
 import BoxReveal from '@/components/landing/BoxReveal';
 import MetricBadge from '@/components/landing/MetricBadge';
+import NeonCta from '@/components/landing/NeonCta';
 import OrbitStat from '@/components/landing/OrbitStat';
 import SignalPill from '@/components/landing/SignalPill';
-import NeonCta from '@/components/landing/NeonCta';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { dashboard, register } from '@/routes';
 import { type Game, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Compass, Maximize2, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Compass,
+    Maximize2,
+    Sparkles,
+    Volume2,
+    VolumeX,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface HeroStageProps {
@@ -17,15 +25,18 @@ interface HeroStageProps {
     spotlightGames?: Game[];
 }
 
-export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps) {
+export default function HeroStage({
+    hero,
+    spotlightGames = [],
+}: HeroStageProps) {
     const { auth } = usePage<SharedData>().props;
-    
+
     // Use the spotlight games provided by the controller
     const games = useMemo(() => {
-        const list = Array.isArray(spotlightGames) 
-            ? spotlightGames 
+        const list = Array.isArray(spotlightGames)
+            ? spotlightGames
             : Object.values(spotlightGames || {});
-            
+
         if (list.length > 0) return list;
         return hero ? [hero] : [];
     }, [hero, spotlightGames]);
@@ -36,18 +47,32 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
     const heroTitle =
         activeGame?.canonical_name || activeGame?.name || 'Global game markets';
     const heroGenre = activeGame?.genres?.[0] ?? 'Market signal';
-    const heroImage = activeGame?.media?.cover_url ?? activeGame?.media?.cover_url_thumb;
-    const heroBackdrop = useMemo(() => {
-        return activeGame?.media?.screenshots?.[0]?.url ?? 
-               activeGame?.media?.artworks?.[0]?.url ?? 
-               heroImage;
-    }, [activeGame, heroImage]);
+    const heroImage =
+        activeGame?.media?.cover_url ?? activeGame?.media?.cover_url_thumb;
+
+    // Force the backdrop to always be the high-res artwork/screenshot (preferred) or cover art
+    // @ts-expect-error - backdrop_url is added dynamically in controller
+    const heroBackdrop =
+        activeGame?.backdrop_url ??
+        activeGame?.media?.cover_url_high_res ??
+        heroImage;
 
     // Trailer Logic
-    const trailer = activeGame?.media?.trailers?.[0];
-    const videoId = trailer?.video_id;
+    const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+    const trailers = useMemo(
+        () => activeGame?.media?.trailers || [],
+        [activeGame],
+    );
+    const activeTrailer = trailers[activeVideoIndex];
+    const videoId = activeTrailer?.video_id;
+
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
+
+    // Reset video index when game changes
+    useEffect(() => {
+        setActiveVideoIndex(0);
+    }, [activeGame?.id]);
 
     // Mute on scroll logic
     useEffect(() => {
@@ -66,16 +91,18 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
     // YouTube Autoplay/Sound Policy Helper
     // Browsers block unmuted autoplay unless there's an interaction.
     // We'll set mute=0 and add 'allow="autoplay"' to the iframe.
-    const getEmbedUrl = (id: string, muted: boolean) => {
-        return `https://www.youtube.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&origin=${window.location.origin}`;
-    };
+    // const getEmbedUrl = (id: string, muted: boolean) => {
+    //    return `https://www.youtube.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&controls=0&loop=1&playlist=${id}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&origin=${window.location.origin}`;
+    // };
 
     const nextSlide = useCallback(() => {
         setActiveIndex((current) => (current + 1) % games.length);
     }, [games.length]);
 
     const prevSlide = useCallback(() => {
-        setActiveIndex((current) => (current - 1 + games.length) % games.length);
+        setActiveIndex(
+            (current) => (current - 1 + games.length) % games.length,
+        );
     }, [games.length]);
 
     const parallaxRef = useRef<HTMLImageElement>(null);
@@ -158,7 +185,7 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                 <div className="absolute top-1/3 right-0 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
             </div>
 
-            <div className="relative z-10 grid gap-16 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="relative z-10 grid items-center gap-16 lg:grid-cols-[0.9fr_1.1fr]">
                 <motion.div
                     key={activeGame?.id ?? 'empty'}
                     className="space-y-8"
@@ -250,7 +277,7 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
 
                     {/* Carousel Navigation */}
                     {games.length > 1 && (
-                        <motion.div 
+                        <motion.div
                             variants={itemVariants}
                             className="flex items-center gap-3 pt-4"
                         >
@@ -259,8 +286,8 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                                     key={g.id}
                                     onClick={() => setActiveIndex(idx)}
                                     className={`h-1.5 rounded-full transition-all duration-500 ${
-                                        idx === activeIndex 
-                                            ? 'w-8 bg-blue-500' 
+                                        idx === activeIndex
+                                            ? 'w-8 bg-blue-500'
                                             : 'w-2 bg-white/20 hover:bg-white/40'
                                     }`}
                                     aria-label={`Go to slide ${idx + 1}`}
@@ -272,20 +299,20 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
 
                 <div className="group relative">
                     <div className="absolute top-12 -left-6 hidden h-40 w-40 rounded-full border border-white/10 bg-white/5 blur-2xl lg:block" />
-                    
+
                     {/* Carousel Controls */}
                     {games.length > 1 && (
                         <>
-                            <button 
+                            <button
                                 onClick={prevSlide}
-                                className="absolute -left-12 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all hover:bg-black/60 group-hover:left-4 group-hover:opacity-100"
+                                className="absolute top-1/2 -left-12 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all group-hover:left-4 group-hover:opacity-100 hover:bg-black/60"
                                 aria-label="Previous game"
                             >
                                 <ChevronLeft className="h-6 w-6" />
                             </button>
-                            <button 
+                            <button
                                 onClick={nextSlide}
-                                className="absolute -right-12 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all hover:bg-black/60 group-hover:right-4 group-hover:opacity-100"
+                                className="absolute top-1/2 -right-12 z-20 -translate-y-1/2 rounded-full border border-white/10 bg-black/40 p-2 text-white opacity-0 transition-all group-hover:right-4 group-hover:opacity-100 hover:bg-black/60"
                                 aria-label="Next game"
                             >
                                 <ChevronRight className="h-6 w-6" />
@@ -308,27 +335,56 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                             onOpenChange={setIsVideoOpen}
                         >
                             <DialogTrigger asChild>
-                                <button className="w-full text-left appearance-none outline-none ring-0 border-0 p-0 bg-transparent block cursor-pointer group/card">
+                                <div
+                                    className="group/card block w-full cursor-pointer border-0 bg-transparent p-0 text-left ring-0 outline-none"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setIsVideoOpen(true)}
+                                    onKeyDown={(e) => {
+                                        if (
+                                            e.key === 'Enter' ||
+                                            e.key === ' '
+                                        ) {
+                                            e.preventDefault();
+                                            setIsVideoOpen(true);
+                                        }
+                                    }}
+                                >
                                     <AppleTvCard
                                         className="aspect-video w-full overflow-hidden border border-white/10 bg-black md:aspect-[4/3] lg:aspect-video"
                                         shineClassName="mix-blend-screen"
                                     >
-                                        {/* Full-bleed Video Background (Highest Resolution, Unmuted Autoplay) */}
+                                        {/* Full-bleed Video Background (Unmuted Autoplay) */}
                                         {videoId ? (
-                                            <div className="absolute inset-0 z-0">
+                                            <div className="absolute inset-0 z-0 overflow-hidden">
                                                 <iframe
                                                     src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=0&loop=1&playlist=${videoId}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&vq=hd1080&origin=${window.location.origin}`}
-                                                    className="pointer-events-none absolute inset-0 h-full w-full border-0"
-                                                    style={{
-                                                        width: '100%',
-                                                        height: '100%',
-                                                        objectFit: 'cover',
-                                                        transform: 'scale(1.4)', // Fills card perfectly
-                                                    }}
+                                                    className="pointer-events-none absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 border-0 object-cover"
                                                     allow="autoplay; encrypted-media"
                                                     title="Spotlight Trailer"
                                                 />
                                                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-transparent to-black/30" />
+
+                                                {/* Mute Toggle */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        setIsMuted(!isMuted);
+                                                    }}
+                                                    className="pointer-events-auto absolute right-8 bottom-8 z-30 flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-black/60 text-white shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:bg-black/80 active:scale-95"
+                                                    aria-label={
+                                                        isMuted
+                                                            ? 'Unmute'
+                                                            : 'Mute'
+                                                    }
+                                                >
+                                                    {isMuted ? (
+                                                        <VolumeX className="h-6 w-6" />
+                                                    ) : (
+                                                        <Volume2 className="h-6 w-6" />
+                                                    )}
+                                                </button>
                                             </div>
                                         ) : (
                                             heroImage && (
@@ -341,32 +397,68 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                                             )
                                         )}
 
-                                        <div className="relative z-20 flex h-full flex-col justify-between p-8">
-                                            <div className="flex items-center justify-between">
+                                        <div className="pointer-events-none relative z-20 flex h-full flex-col justify-between p-8">
+                                            <div className="pointer-events-auto flex items-center justify-between">
                                                 <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.3em] text-blue-400 uppercase">
                                                     <Sparkles className="h-3 w-3" />
                                                     Featured Spotlight
                                                 </div>
-                                                
+
                                                 <div className="flex gap-1">
                                                     {games.map((_, i) => (
-                                                        <div 
-                                                            key={i} 
-                                                            className={`h-1 w-4 rounded-full transition-colors ${i === activeIndex ? 'bg-blue-500' : 'bg-white/20'}`} 
+                                                        <div
+                                                            key={i}
+                                                            className={`h-1 w-4 rounded-full transition-colors ${i === activeIndex ? 'bg-blue-500' : 'bg-white/20'}`}
                                                         />
                                                     ))}
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-4">
+                                            <div className="pointer-events-auto space-y-4">
                                                 <div className="space-y-2">
-                                                    <h2 className="text-3xl font-black text-white tracking-tight drop-shadow-2xl">
+                                                    <h2 className="text-3xl font-black tracking-tight text-white drop-shadow-2xl">
                                                         {heroTitle}
                                                     </h2>
-                                                    <p className="max-w-sm text-sm font-medium text-slate-200/90 line-clamp-2 drop-shadow-md">
-                                                        {activeGame?.description || activeGame?.synopsis || 'Cinematic pricing intelligence remixed.'}
+                                                    <p className="line-clamp-2 max-w-sm text-sm font-medium text-slate-200/90 drop-shadow-md">
+                                                        {activeGame?.description ||
+                                                            activeGame?.synopsis ||
+                                                            'Cinematic pricing intelligence remixed.'}
                                                     </p>
                                                 </div>
+
+                                                {/* Video Switcher */}
+                                                {trailers.length > 1 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {trailers.map(
+                                                            (t, idx) => (
+                                                                <button
+                                                                    key={
+                                                                        t.video_id ||
+                                                                        idx
+                                                                    }
+                                                                    onClick={(
+                                                                        e,
+                                                                    ) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        setActiveVideoIndex(
+                                                                            idx,
+                                                                        );
+                                                                    }}
+                                                                    className={`rounded-md border px-2 py-1 text-[10px] font-bold tracking-wider uppercase transition-all ${
+                                                                        idx ===
+                                                                        activeVideoIndex
+                                                                            ? 'border-blue-500 bg-blue-500/20 text-blue-300'
+                                                                            : 'border-white/10 bg-black/40 text-white/60 hover:bg-white/10 hover:text-white'
+                                                                    }`}
+                                                                >
+                                                                    {t.name ||
+                                                                        `Video ${idx + 1}`}
+                                                                </button>
+                                                            ),
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 <div className="flex items-center gap-4">
                                                     {videoId && (
@@ -375,10 +467,12 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                                                             Expand Cinema
                                                         </div>
                                                     )}
-                                                    
-                                                    <Link 
+
+                                                    <Link
                                                         href={`/dashboard/${activeGame?.id}`}
-                                                        onClick={(e) => e.stopPropagation()}
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
                                                         className="rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20"
                                                     >
                                                         View Analysis
@@ -387,12 +481,12 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
                                             </div>
                                         </div>
                                     </AppleTvCard>
-                                </button>
+                                </div>
                             </DialogTrigger>
 
                             {/* Fullscreen Video Modal (Highest Quality, Unmuted) */}
                             {videoId && (
-                                <DialogContent className="aspect-video w-[98vw] max-w-[90rem] overflow-hidden border-white/10 bg-black/95 p-0 sm:rounded-2xl shadow-2xl">
+                                <DialogContent className="aspect-video w-[98vw] max-w-[90rem] overflow-hidden border-white/10 bg-black/95 p-0 shadow-2xl sm:rounded-2xl">
                                     <iframe
                                         src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&fs=1&vq=hd1080`}
                                         className="h-full w-full border-0"
@@ -408,7 +502,7 @@ export default function HeroStage({ hero, spotlightGames = [] }: HeroStageProps)
             </div>
 
             {/* Scroll Instruction */}
-            <div className="mt-12 lg:mt-0 lg:absolute lg:bottom-12 lg:left-1/2 lg:-translate-x-1/2">
+            <div className="mt-12 lg:absolute lg:bottom-12 lg:left-1/2 lg:mt-0 lg:-translate-x-1/2">
                 <NeonCta />
             </div>
         </section>

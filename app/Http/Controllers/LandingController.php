@@ -92,7 +92,7 @@ class LandingController extends Controller
         }
 
         $hero = $this->selectHero($topRated, $newReleases, $mostReviewed);
-        $spotlightGames = $this->fetchSpotlightGames(5);
+        $spotlightGames = $this->fetchSpotlightGames(6);
 
         Log::info('Homepage data fetched', [
             'topRated' => $topRated->count(),
@@ -115,11 +115,11 @@ class LandingController extends Controller
         ]);
     }
 
-    private function fetchSpotlightGames(int $limit = 5): array
+    private function fetchSpotlightGames(int $limit = 6): array
     {
-        return $this->cacheStore()->remember('landing:spotlight-games-v6', self::ROW_CACHE_TTL, function () use ($limit) {
-            // Target IDs: GTA VI, EA FC 26, Witcher 3, Cloud Cutter, Skyrim Anniversary
-            $forcedIds = [121815, 741167, 1014215, 1018, 195630];
+        return $this->cacheStore()->remember('landing:spotlight-games-v7', self::ROW_CACHE_TTL, function () use ($limit) {
+            // Target IDs: GTA VI, EA FC 26, NBA 2K26, Witcher 3, Cloud Cutter, Skyrim Anniversary
+            $forcedIds = [121815, 741167, 741505, 1014215, 1018, 195630];
             
             // Use base video_games table but select columns required for mapping
             $games = DB::table('video_games')
@@ -141,12 +141,19 @@ class LandingController extends Controller
                 ->whereIn('video_games.id', $forcedIds)
                 ->get();
 
+            // Fetch enriched images for backdrop selection
+            $images = DB::table('images')
+                ->whereIn('imageable_id', $forcedIds)
+                ->where('imageable_type', 'App\Models\VideoGame')
+                ->get()
+                ->keyBy('imageable_id');
+
             // Sort to match requested order and reset keys to ensure sequential array
             $games = $games->sortBy(function($game) use ($forcedIds) {
                 return array_search($game->id, $forcedIds);
             })->values();
 
-            return $games->map(function ($game) {
+            return $games->map(function ($game) use ($images) {
                 // Parse media from raw_payload for high-res screenshots/artworks
                 $rawPayload = property_exists($game, 'raw_payload') && $game->raw_payload 
                     ? json_decode($game->raw_payload, true) 
@@ -212,6 +219,92 @@ class LandingController extends Controller
                 }
                 if (!empty($artworks)) {
                     $mapped['media']['artworks'] = array_merge($artworks, $mapped['media']['artworks'] ?? []);
+                }
+                
+                // Determine Backdrop URL
+                // Strategy: Check local images table first (metadata > details), then fall back to raw_payload
+                $backdropUrl = null;
+                $dbImage = $images->get($game->id);
+
+                if ($dbImage && $dbImage->metadata) {
+                    $metadata = json_decode($dbImage->metadata, true);
+                    $details = $metadata['details'] ?? $metadata['all_details'] ?? [];
+                    
+                    if (!empty($details)) {
+                        // Filter for artworks and screenshots
+                        $artworksList = array_filter($details, fn($d) => ($d['collection'] ?? '') === 'artworks');
+                        $screenshotsList = array_filter($details, fn($d) => ($d['collection'] ?? '') === 'screenshots');
+
+                        // Sort by resolution (width * height) descending
+                        $sortByRes = function($a, $b) {
+                            $resA = ($a['width'] ?? 0) * ($a['height'] ?? 0);
+                            $resB = ($b['width'] ?? 0) * ($b['height'] ?? 0);
+                            return $resB <=> $resA;
+                        };
+
+                        usort($artworksList, $sortByRes);
+                        usort($screenshotsList, $sortByRes);
+
+                        // Pick best candidate: Best Artwork > Best Screenshot
+                        $bestCandidate = $artworksList[0] ?? $screenshotsList[0] ?? null;
+
+                        if ($bestCandidate && isset($bestCandidate['url'])) {
+                            $url = $bestCandidate['url'];
+                            // If it's an IGDB URL, upgrade to original size if possible
+                            // IGDB usually puts size variants in 'size_variants' or we can replace the size in URL
+                            // Check 'size_variants' first if available
+                            $foundOriginal = false;
+                            if (isset($bestCandidate['size_variants']) && is_array($bestCandidate['size_variants'])) {
+                                foreach ($bestCandidate['size_variants'] as $variant) {
+                                    if (str_contains($variant, 't_original') || str_contains($variant, 't_1080p')) {
+                                        // Prefer original if found, or 1080p
+                                        if (str_contains($variant, 't_original')) {
+                                            $backdropUrl = $variant;
+                                            $foundOriginal = true;
+                                            break;
+                                        }
+                                        $backdropUrl = $variant; // Keep 1080p as fallback
+                                    }
+                                }
+                            }
+                            
+                            if (!$foundOriginal && str_contains($url, 'images.igdb.com')) {
+                                // Manual upgrade if variants didn't yield 't_original'
+                                $backdropUrl = preg_replace('/\/t_[a-zA-Z0-9_]+\//', '/t_original/', $url);
+                            } elseif (!$backdropUrl) {
+                                $backdropUrl = $url;
+                            }
+                        }
+                    }
+                }
+
+                // Fallback to raw_payload logic if DB image yielded nothing
+                if (!$backdropUrl) {
+                    // 1. Try first Artwork (usually landscape/high-res)
+                    if (!empty($artworks) && isset($artworks[0]['url'])) {
+                        $backdropUrl = str_replace('t_1080p', 't_original', $artworks[0]['url']);
+                    }
+                    // 2. Fallback to first Screenshot
+                    elseif (!empty($screenshots) && isset($screenshots[0]['url'])) {
+                        $backdropUrl = str_replace('t_1080p', 't_original', $screenshots[0]['url']);
+                    }
+                }
+
+                $mapped['backdrop_url'] = $backdropUrl;
+                
+                // Fallback: Check images table if no cover found in payload
+                if (empty($mapped['media']['cover_url']) && $dbImage) {
+                    $mapped['media']['cover_url'] = $dbImage->url;
+                    // Use higher res variant if available in urls array
+                    if ($dbImage->urls) {
+                        $urls = json_decode($dbImage->urls, true);
+                        foreach ($urls as $url) {
+                            if (str_contains($url, 't_1080p') || str_contains($url, 't_cover_big')) {
+                                $mapped['media']['cover_url_high_res'] = $url;
+                                break;
+                            }
+                        }
+                    }
                 }
                 
                 return $mapped;
