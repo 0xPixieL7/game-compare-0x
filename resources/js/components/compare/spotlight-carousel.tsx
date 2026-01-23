@@ -348,7 +348,7 @@ export function SpotlightCarousel({
                         {backgroundImage && (
                             <img
                                 alt={currentGame.name || ''}
-                                className={`h-full w-full object-cover transition-opacity duration-1000 ${isImageLoading ? 'opacity-0' : 'opacity-60'}`}
+                                className={`h-full w-full object-cover object-center transition-opacity duration-1000 ${isImageLoading ? 'opacity-0' : 'opacity-60'}`}
                                 loading="eager"
                                 onLoad={() => setIsImageLoading(false)}
                                 onError={() => setIsImageLoading(false)}
@@ -633,7 +633,7 @@ export function SpotlightCarousel({
                         className="inline-block w-full cursor-pointer lg:w-full"
                     >
                         <AppleTvCard
-                            className="group/atv aspect-video !min-h-0 !h-auto w-full overflow-hidden border border-white/10 bg-black shadow-2xl"
+                            className="group/atv aspect-video !min-h-0 !h-auto w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
                             enableTilt={activeMedia.type === 'image'}
                         >
                             <div className="relative z-20 flex h-full flex-col justify-between p-8">
@@ -780,7 +780,7 @@ export function SpotlightCarousel({
                                         alt=""
                                         loading="lazy"
                                         onLoad={() => setIsImageLoading(false)}
-                                        className={`h-full w-full object-cover transition-all duration-700 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
+                                        className={`h-full w-full object-cover object-center transition-all duration-700 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
                                         onError={(e) => {
                                             setIsImageLoading(false);
                                             e.currentTarget.src =
@@ -797,7 +797,7 @@ export function SpotlightCarousel({
                                         <iframe
                                             ref={iframeRef}
                                             src={`https://www.youtube.com/embed/${String(activeMedia.url).includes('v=') ? String(activeMedia.url).split('v=')[1] : activeMedia.url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}&iv_load_policy=3&disablekb=1&fs=0`}
-                                            className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 scale-[1.35] object-cover transition-opacity duration-1000"
+                                            className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-opacity duration-1000"
                                             allow="autoplay; encrypted-media"
                                             style={{
                                                 width: '100%',

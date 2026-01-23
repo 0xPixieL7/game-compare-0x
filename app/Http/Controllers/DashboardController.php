@@ -515,6 +515,10 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
+                // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
+                if (!is_array($rawPayload)) {
+                    $rawPayload = [];
+                }
                 $cover = $this->getCoverFromPayload($rawPayload);
 
                 return [
@@ -559,6 +563,10 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
+                // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
+                if (!is_array($rawPayload)) {
+                    $rawPayload = [];
+                }
                 $cover = $this->getCoverFromPayload($rawPayload);
 
                 return [
@@ -604,6 +612,10 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
+                // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
+                if (!is_array($rawPayload)) {
+                    $rawPayload = [];
+                }
                 $cover = $this->getCoverFromPayload($rawPayload);
 
                 return [
@@ -652,6 +664,10 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
+                // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
+                if (!is_array($rawPayload)) {
+                    $rawPayload = [];
+                }
                 $cover = $this->getCoverFromPayload($rawPayload);
 
                 return [
