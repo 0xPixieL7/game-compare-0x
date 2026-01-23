@@ -1,4 +1,4 @@
-import { show as dashboardShow } from '@/actions/App/Http/Controllers/DashboardController';
+import { show as gameShow } from '@/actions/App/Http/Controllers/VideoGameController';
 import { AppleTvCard } from '@/components/apple-tv-card';
 import { useTransitionNav } from '@/components/transition/TransitionProvider';
 import Image from '@/components/ui/image';
@@ -59,8 +59,8 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
     const currency = isListItem ? game.currency : game.pricing?.currency;
 
     // Use Wayfinder for the link
-    const wayfinderRoute = dashboardShow(game.id);
-    const href = wayfinderRoute?.url || `/dashboard/${game.id}`;
+    const wayfinderRoute = gameShow(game.id);
+    const href = wayfinderRoute?.url || `/games/${game.id}`;
 
     // Dynamic Label Strategy
     let label = 'NEW';

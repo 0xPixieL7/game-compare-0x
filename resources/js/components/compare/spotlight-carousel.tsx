@@ -629,7 +629,7 @@ export function SpotlightCarousel({
 
                     {/* Apple TV Card (Billboard Style) */}
                     <Link
-                        href={`/dashboard/${currentGame.id}`}
+                        href={`/games/${currentGame.id}`}
                         className="inline-block w-full cursor-pointer lg:w-full"
                     >
                         <AppleTvCard
