@@ -55,8 +55,7 @@ class BatchFetchIgdbDataJob implements ShouldQueue
      */
     public function __construct(
         public array $gamesMappings
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, object>

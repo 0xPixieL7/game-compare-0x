@@ -18,10 +18,13 @@ trait ExtractsStoreUrls
      * @var array<int, string>
      */
     protected const IGDB_STORE_CATEGORIES = [
+        1 => 'official',
         13 => 'steam',
         15 => 'itch',
         16 => 'epicgames',
         17 => 'gog',
+        26 => 'xbox',
+        27 => 'playstation',
     ];
 
     /**
@@ -32,13 +35,13 @@ trait ExtractsStoreUrls
     protected function extractStoreAppId(string $url, string $store): ?string
     {
         return match (strtolower($store)) {
-            'steam' => $this->extractSteamAppId($url),
+            'steam', 'steam_store' => $this->extractSteamAppId($url),
             'gog' => $this->extractGogProductId($url),
             'epicgames', 'epic_games', 'epic' => $this->extractEpicSlug($url),
             'itch', 'itch_io' => $this->extractItchSlug($url),
-            'playstation', 'psn', 'playstation_store' => $this->extractPsnProductId($url),
-            'xbox', 'microsoft' => $this->extractXboxProductId($url),
-            'nintendo', 'eshop' => $this->extractNintendoProductId($url),
+            'playstation', 'psn', 'playstation store', 'playstation-store', 'playstation_store' => $this->extractPsnProductId($url),
+            'xbox', 'xbox store', 'xbox-store', 'microsoft', 'microsoft store', 'microsoft-store' => $this->extractXboxProductId($url),
+            'nintendo', 'eshop', 'nintendo_eshop' => $this->extractNintendoProductId($url),
             default => null,
         };
     }
@@ -107,7 +110,11 @@ trait ExtractsStoreUrls
      */
     protected function extractPsnProductId(string $url): ?string
     {
-        if (preg_match('/store\.playstation\.com\/[a-z]{2}-[a-z]{2}\/product\/([A-Z0-9_-]+)/', $url, $matches)) {
+        // product URLs:
+        // - store.playstation.com/en-us/product/UP0001-CUSA00001_00-...
+        // concept URLs (also used in our own ingestion):
+        // - store.playstation.com/en-us/concept/UP0001-PPSA00001_00-...
+        if (preg_match('/store\.playstation\.com\/[a-z]{2}-[a-z]{2}\/(?:product|concept)\/([A-Z0-9_-]+)/', $url, $matches)) {
             return $matches[1];
         }
 
@@ -121,12 +128,12 @@ trait ExtractsStoreUrls
      */
     protected function extractXboxProductId(string $url): ?string
     {
-        if (preg_match('/xbox\.com\/[a-z]{2}-[a-z]{2}\/games\/store\/[^\/]+\/([A-Z0-9]+)/', $url, $matches)) {
+        if (preg_match('/xbox\.com\/[a-z]{2}-[a-z]{2}\/games\/store\/[^\/]+\/([A-Za-z0-9]{12})/i', $url, $matches)) {
             return $matches[1];
         }
 
         // Also handle microsoft.com store URLs
-        if (preg_match('/microsoft\.com\/[a-z]{2}-[a-z]{2}\/p\/[^\/]+\/([A-Z0-9]+)/', $url, $matches)) {
+        if (preg_match('/microsoft\.com\/[a-z]{2}-[a-z]{2}\/p\/[^\/]+\/([A-Za-z0-9]{12})/i', $url, $matches)) {
             return $matches[1];
         }
 
@@ -157,9 +164,9 @@ trait ExtractsStoreUrls
             'gog' => 'gog',
             'epicgames', 'epic games', 'epic' => 'epic_games',
             'itch', 'itch.io' => 'itch_io',
-            'playstation', 'psn', 'playstation store' => 'playstation_store',
-            'xbox', 'microsoft', 'microsoft store' => 'xbox',
-            'nintendo', 'eshop', 'nintendo eshop' => 'nintendo_eshop',
+            'playstation', 'psn', 'playstation store', 'playstation-store', 'playstation_store' => 'playstation_store',
+            'xbox', 'xbox store', 'xbox-store', 'microsoft', 'microsoft store', 'microsoft-store' => 'xbox',
+            'nintendo', 'eshop', 'nintendo eshop', 'nintendo-eshop', 'nintendo_eshop' => 'nintendo_eshop',
             default => null,
         };
     }

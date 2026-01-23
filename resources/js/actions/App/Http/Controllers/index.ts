@@ -1,3 +1,4 @@
+import Api from './Api'
 import IgdbWebhookController from './IgdbWebhookController'
 import LandingController from './LandingController'
 import DashboardController from './DashboardController'
@@ -7,6 +8,7 @@ import AIAssistantController from './AIAssistantController'
 import Settings from './Settings'
 
 const Controllers = {
+    Api: Object.assign(Api, Api),
     IgdbWebhookController: Object.assign(IgdbWebhookController, IgdbWebhookController),
     LandingController: Object.assign(LandingController, LandingController),
     DashboardController: Object.assign(DashboardController, DashboardController),

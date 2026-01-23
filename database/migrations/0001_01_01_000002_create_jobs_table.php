@@ -14,8 +14,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // `migrate:fresh` drops tables but not necessarily views/materialized views.
-        // Some managed Postgres environments may leave views behind that collide with these names.
+        // Some managed Postgres environments may leave views/materialized views behind that collide with these names.
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             foreach (['failed_jobs', 'job_batches', 'jobs'] as $relation) {
                 DB::statement("DROP MATERIALIZED VIEW IF EXISTS {$relation} CASCADE");

@@ -7,10 +7,7 @@ use App\Jobs\Propagation\PropagateSourceMetadataJob;
 use App\Models\VideoGame;
 use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 test('full pipeline: VideoGameTitleSource created triggers complete enrichment flow', function () {
     Queue::fake();

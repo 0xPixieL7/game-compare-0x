@@ -22,7 +22,12 @@ class FetchGamePriceJob implements ShouldQueue
         public string $country = 'US'
     ) {}
 
-    public function handle(SteamStoreService $steamService): void
+    public function handle(
+        SteamStoreService $steamService, 
+        \App\Services\Price\Amazon\AmazonScraperService $amazonService,
+        \App\Services\Price\EpicGames\EpicGamesStoreService $epicService,
+        \App\Services\Price\Gog\GogStoreService $gogService
+    ): void
     {
         $retailer = Retailer::find($this->retailerId);
         if (! $retailer) {
@@ -36,12 +41,19 @@ class FetchGamePriceJob implements ShouldQueue
                 $appId = $matches[1];
                 $priceData = $steamService->getPrice($appId, $this->country);
             }
+        } elseif ($retailer->name === 'Amazon') { 
+             $priceData = $amazonService->getPrice($this->url, $this->country);
+        } elseif ($retailer->name === 'Epic Games') {
+             $priceData = $epicService->getPrice($this->url, $this->country);
+        } elseif ($retailer->name === 'GOG') {
+             $priceData = $gogService->getPrice($this->url, $this->country);
         }
 
         if ($priceData) {
             $currency = $priceData['currency'] ?? null;
             $amountMinor = $priceData['amount_minor'] ?? null;
-
+            
+            // Allow 0 for free games, but ignore nulls
             if ($currency === null || $amountMinor === null) {
                 return;
             }

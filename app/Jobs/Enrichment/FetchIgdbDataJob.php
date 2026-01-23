@@ -11,7 +11,9 @@ use App\Models\Video;
 use App\Models\VideoGame;
 use App\Models\VideoGameTitleSource;
 use App\Services\Igdb\IgdbMediaService;
+use App\Services\Theme\ThemeArtifactService;
 use Illuminate\Bus\Queueable;
+
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -41,8 +43,7 @@ class FetchIgdbDataJob implements ShouldQueue
     public function __construct(
         public int $videoGameId,
         public int $igdbId
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, object>
@@ -52,9 +53,10 @@ class FetchIgdbDataJob implements ShouldQueue
         return [new RateLimited('igdb')];
     }
 
-    public function handle(IgdbMediaService $igdb): void
+    public function handle(IgdbMediaService $igdb, ThemeArtifactService $themeService): void
     {
-        $game = VideoGame::with('title')->find($this->videoGameId);
+        $game = VideoGame::with('images')->find($this->videoGameId);
+
 
         if (! $game) {
             Log::warning('FetchIgdbDataJob: Game not found', ['game_id' => $this->videoGameId]);
@@ -82,7 +84,11 @@ class FetchIgdbDataJob implements ShouldQueue
             $this->storeDiscoveredSources($game, $data['stores'] ?? []);
         });
 
+        // Collect theme artifacts based on new media
+        $themeService->collectArtifacts($game->fresh());
+
         // Dispatch price jobs for discovered stores
+
         $this->dispatchPriceJobs($game, $data['stores'] ?? []);
 
         Log::info('FetchIgdbDataJob: Complete', [
@@ -289,5 +295,4 @@ class FetchIgdbDataJob implements ShouldQueue
             };
         }
     }
-
 }

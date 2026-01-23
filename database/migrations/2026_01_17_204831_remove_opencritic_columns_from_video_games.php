@@ -26,7 +26,7 @@ return new class extends Migration
                 } catch (\Exception $e) {
                     // Index might not exist - safe to ignore
                 }
-                
+
                 try {
                     $table->dropIndex(['opencritic_score', 'opencritic_review_count']); // composite index
                 } catch (\Exception $e) {

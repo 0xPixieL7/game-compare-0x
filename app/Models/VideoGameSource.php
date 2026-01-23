@@ -58,7 +58,7 @@ class VideoGameSource extends Model
             $this->increment('items_count');
         } catch (\Throwable $e) {
             // Ignore stats update failures (timeouts/locks) to prioritize ingestion
-            \Illuminate\Support\Facades\Log::warning('Failed to update VideoGameSource items_count: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::warning('Failed to update VideoGameSource items_count: '.$e->getMessage());
         }
     }
 }

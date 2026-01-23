@@ -19,10 +19,10 @@ class ProductFactory extends Factory
     public function definition(): array
     {
         $title = fake()->words(3, true);
-        
+
         return [
             'name' => $title,
-            'slug' => \Illuminate\Support\Str::slug($title) . '-' . fake()->randomNumber(5),
+            'slug' => \Illuminate\Support\Str::slug($title).'-'.fake()->randomNumber(5),
             'type' => 'video_game',
             'title' => $title,
             'normalized_title' => \Illuminate\Support\Str::slug($title),

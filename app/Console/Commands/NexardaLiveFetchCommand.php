@@ -316,7 +316,7 @@ class NexardaLiveFetchCommand extends Command
             $priceRows[] = [
                 'video_game_id' => $videoGame->id,
                 'currency' => strtoupper($currency),
-                'country_code' => 'US', // Default to US for now
+                'country_code' => ['US', 'FR', 'GB', 'GER'], // Default to US for now
                 'amount_minor' => $amount,
                 'retailer' => $retailer->name,
                 'url' => $offer['url'] ?? $source->provider_url,

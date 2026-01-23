@@ -6,11 +6,8 @@ use App\Jobs\Enrichment\EnrichGameMediaJob;
 use App\Jobs\Enrichment\EnrichGamePricesJob;
 use App\Jobs\Enrichment\EnrichVideoGameJob;
 use App\Models\VideoGame;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 test('EnrichVideoGameJob dispatches price and media enrichment jobs', function () {
     Queue::fake();

@@ -13,6 +13,8 @@ Route::get('/up', function () {
     return response()->json(['status' => 'ok'], 200);
 });
 
+
+
 // IGDB Webhooks (no CSRF protection needed - verified via X-Secret header)
 Route::post('/webhooks/igdb/{eventType}', [IgdbWebhookController::class, 'handle'])
     ->where('eventType', 'create|update|delete');
@@ -69,6 +71,8 @@ Route::prefix('api/ai')->group(function () {
 Route::get('/privacy-policy', function () {
     return Inertia::render('Legal/PrivacyPolicy');
 })->name('privacy-policy');
+
+Route::get('/api/debug/spotlight', [LandingController::class, 'debugSpotlight']);
 
 Route::get('/terms-of-service', function () {
     return Inertia::render('Legal/TermsOfService');

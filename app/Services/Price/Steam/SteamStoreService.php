@@ -29,9 +29,13 @@ class SteamStoreService
      *     ],
      * ]
      */
-    public function getFullDetails(string $appId, string $country = 'US'): ?array
+    public function getFullDetails(string $appId, string $country = 'US', ?string $language = null): ?array
     {
         $apiUrl = "https://store.steampowered.com/api/appdetails?appids={$appId}&cc={$country}";
+
+        if ($language) {
+            $apiUrl .= '&l='.$this->mapLanguage($language);
+        }
 
         try {
             $response = Http::get($apiUrl);
@@ -43,6 +47,9 @@ class SteamStoreService
             }
 
             $data = $response->json();
+
+            // Log full details for debugging
+            Log::debug("SteamStoreService: Details for App ID {$appId} in {$country}: ".json_encode($data));
 
             if (empty($data[$appId]['success'])) {
                 return null;
@@ -156,9 +163,13 @@ class SteamStoreService
     /**
      * Fetch price for a given Steam App ID (legacy method for backward compatibility).
      */
-    public function getPrice(string $appId, string $country = 'US'): ?array
+    public function getPrice(string $appId, string $country = 'US', ?string $language = null): ?array
     {
-        $apiUrl = "https://store.steampowered.com/api/appdetails?appids={$appId}&cc={$country}&filters=price_overview";
+        $apiUrl = "https://store.steampowered.com/api/appdetails?appids={$appId}&cc={$country}";
+
+        if ($language) {
+            $apiUrl .= '&l='.$this->mapLanguage($language);
+        }
 
         try {
             $response = Http::get($apiUrl);
@@ -170,6 +181,9 @@ class SteamStoreService
             }
 
             $data = $response->json();
+
+            // Log full price response for debugging
+            Log::debug("SteamStoreService: Price for App ID {$appId} in {$country}: ".json_encode($data));
 
             if (empty($data[$appId]['success'])) {
                 return null;
@@ -202,17 +216,77 @@ class SteamStoreService
     }
 
     /**
+     * Map common locale/language codes to Steam language strings.
+     */
+    private function mapLanguage(string $language): string
+    {
+        $language = strtolower($language);
+
+        // Handle full locales like en-US, ja-JP
+        if (str_contains($language, '-') || str_contains($language, '_')) {
+            $language = explode('-', str_replace('_', '-', $language))[0];
+        }
+
+        return match ($language) {
+            'en', 'english' => 'english',
+            'dk', 'danish' => 'danish',
+            'ru', 'russian' => 'russian',
+            'kr', 'ko', 'korean' => 'korean',
+            'jp', 'ja', 'japanese' => 'japanese',
+            'de', 'german' => 'german',
+            'fr', 'french' => 'french',
+            'es', 'spanish' => 'spanish',
+            'it', 'italian' => 'italian',
+            'pt', 'portuguese' => 'portuguese',
+            'br', 'brazilian' => 'brazilian',
+            'cn', 'zh-cn', 'schinese' => 'schinese',
+            'tw', 'zh-tw', 'tchinese' => 'tchinese',
+            'tr', 'turkish' => 'turkish',
+            'pl', 'polish' => 'polish',
+            'se', 'sv', 'swedish' => 'swedish',
+            'no', 'nb', 'norwegian' => 'norwegian',
+            'fi', 'finnish' => 'finnish',
+            default => $language,
+        };
+    }
+
+    /**
      * Helper to guess currency if price_overview is missing but game is free.
      */
     private function getCurrencyForCountry(string $country): string
     {
         return match (strtoupper($country)) {
             'GB' => 'GBP',
-            'DE', 'FR', 'ES', 'IT', 'NL' => 'EUR',
             'JP' => 'JPY',
+            'KR' => 'KRW',
             'BR' => 'BRL',
             'CA' => 'CAD',
             'AU' => 'AUD',
+            'NZ' => 'NZD',
+            'RU' => 'RUB',
+            'IN' => 'INR',
+            'CN' => 'CNY',
+            'UA' => 'UAH',
+            'PL' => 'PLN',
+            'SE' => 'SEK',
+            'NO' => 'NOK',
+            'DK' => 'DKK',
+            'CH' => 'CHF',
+            'ZA' => 'ZAR',
+            'MX' => 'MXN',
+            'CL' => 'CLP',
+            'CO' => 'COP',
+            'PE' => 'PEN',
+            'TH' => 'THB',
+            'PH' => 'PHP',
+            'MY' => 'MYR',
+            'VN' => 'VND',
+            'ID' => 'IDR',
+            'SG' => 'SGD',
+            'HK' => 'HKD',
+            'TW' => 'TWD',
+            'KZ' => 'KZT',
+            'DE', 'FR', 'ES', 'IT', 'NL', 'AT', 'BE', 'PT', 'IE', 'FI' => 'EUR',
             default => 'USD',
         };
     }

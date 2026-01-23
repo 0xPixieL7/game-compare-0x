@@ -182,7 +182,10 @@ export default function EndlessCarousel({
                                 className="flex-none px-2"
                                 style={{ width: `${itemWidth}px` }}
                             >
-                                <GameCard game={game} />
+                                <GameCard
+                                    game={game}
+                                    className="aspect-[2/3]"
+                                />
                             </div>
                         ))}
                     </div>

@@ -30,9 +30,7 @@ class FetchExchangeRatesJob implements ShouldQueue
 
     public int $backoff = 60;
 
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     public function handle(BybitClient $bybitClient, ForexClient $forexClient): void
     {

@@ -13,11 +13,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Initial Data Baselines
+        $this->call([
+            ComprehensiveCurrencySeeder::class,
+            ComprehensiveCountrySeeder::class,
         ]);
+
+        // Immediate Data Availability
+        $this->command->info('Syncing market data and rebasing prices...');
+        \App\Jobs\SynchronizeGlobalMarketDataJob::dispatchSync(true);
+
+
     }
 }

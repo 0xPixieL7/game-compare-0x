@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\VideoGameSource;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class VideoGameSourceSeeder extends Seeder
 {
@@ -59,7 +58,7 @@ class VideoGameSourceSeeder extends Seeder
                 $source
             );
         }
-        
-        $this->command->info('✅ Seeded ' . count($sources) . ' video game sources');
+
+        $this->command->info('✅ Seeded '.count($sources).' video game sources');
     }
 }

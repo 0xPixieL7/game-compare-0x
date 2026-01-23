@@ -16,7 +16,7 @@ export default function AppSidebarLayout({
             <AppContent variant="sidebar" className="overflow-x-hidden">
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
-                
+
                 <div className="mt-10 flex justify-center border-t border-sidebar-border/50 py-6 opacity-80">
                     <IgdbAttribution />
                 </div>

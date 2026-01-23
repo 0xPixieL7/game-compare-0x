@@ -91,4 +91,51 @@ class Product extends Model
     {
         return $this->hasMany(SkuRegion::class, 'product_id');
     }
+
+    public function refreshPricingSnapshot(int $limit = 50): void
+    {
+        $offers = $this->skuRegions()
+            ->where('is_active', true)
+            ->orderBy('amount_minor')
+            ->limit($limit)
+            ->get([
+                'retailer',
+                'country_code',
+                'currency',
+                'amount_minor',
+                'recorded_at',
+                'url',
+                'condition',
+                'sku',
+                'video_game_id',
+            ])
+            ->map(fn (SkuRegion $r) => [
+                'video_game_id' => (int) $r->video_game_id,
+                'retailer' => $r->retailer,
+                'country' => $r->country_code,
+                'currency' => $r->currency,
+                'amount_minor' => (int) $r->amount_minor,
+                'recorded_at' => optional($r->recorded_at)->toISOString(),
+                'url' => $r->url,
+                'condition' => $r->condition,
+                'sku' => $r->sku,
+            ])
+            ->values()
+            ->all();
+
+        $bestByCurrency = collect($offers)
+            ->groupBy('currency')
+            ->map(fn ($rows) => collect($rows)->sortBy('amount_minor')->first())
+            ->all();
+
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $metadata['pricing'] = [
+            'updated_at' => now()->toISOString(),
+            'offers' => $offers,
+            'best_by_currency' => $bestByCurrency,
+        ];
+
+        $this->metadata = $metadata;
+        $this->save();
+    }
 }

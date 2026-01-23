@@ -10,7 +10,7 @@ $tables = [
     'products',
     'images',
     'videos',
-    'video_game_prices'
+    'video_game_prices',
 ];
 
 foreach ($tables as $table) {
@@ -18,7 +18,7 @@ foreach ($tables as $table) {
         $count = DB::table($table)->count();
         echo "Table '{$table}': {$count} rows\n";
     } catch (\Exception $e) {
-        echo "Table '{$table}': Error - " . $e->getMessage() . "\n";
+        echo "Table '{$table}': Error - ".$e->getMessage()."\n";
     }
 }
 
@@ -42,11 +42,11 @@ if ($joinCount > 0) {
     $titlesCount = DB::table('video_game_titles')->count();
     $gamesCount = DB::table('video_games')->count();
     $titlesWithProductId = DB::table('video_game_titles')->whereNotNull('product_id')->count();
-    
+
     echo "Titles total: $titlesCount\n";
     echo "Games total: $gamesCount\n";
     echo "Titles with Product ID: $titlesWithProductId\n";
-    
+
     // Check if any video_game_title_id in video_games exists in video_game_titles
     $orphanGames = DB::table('video_games')
         ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')

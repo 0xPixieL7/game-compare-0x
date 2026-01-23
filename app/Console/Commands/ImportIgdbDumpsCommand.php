@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Jobs\Enrichment\Traits\CategorizesVideoTypes;
 use App\Models\Image;
 use App\Models\Product;
 use App\Models\Video;
@@ -26,6 +27,7 @@ use Symfony\Component\Console\Helper\ProgressBar;
 class ImportIgdbDumpsCommand extends Command
 {
     use CanOptimizeImport;
+    use CategorizesVideoTypes;
     use HasProgressBar;
 
     protected $signature = 'gc:import-igdb {--path= : Directory containing IGDB dump files, or a specific dump file path (e.g. *_games.csv)} {--games-file= : Internal: specific games CSV file to process (used by parallel workers)} {--provider=igdb : Provider key for video_game_sources.provider} {--limit=0 : Optional record limit for games} {--resume=1 : Resume from the last saved checkpoint (1/0)} {--reset-checkpoint : Ignore and delete any existing checkpoint for this import target} {--merge-media=0 : Merge with existing media (1) or skip lookups for speed (0)} {--progress-chunk=0 : Only refresh progress bar every N records (0 = auto)} {--fixed-offsets : Use original fixed ID offsets to avoid clashes across reruns} {--fast=0 : Skip per-record fallback and expensive lookups for speed} {--workers=1 : Number of parallel workers for CSV processing} {--chunk= : Internal: process specific chunk (format: N/TOTAL, e.g., 1/4)}';
@@ -116,6 +118,8 @@ class ImportIgdbDumpsCommand extends Command
 
     private ?GameGraphService $graphService = null;
 
+    private bool $isChildWorker = false;
+
     /**
      * Map IGDB platform family IDs to names.
      *
@@ -129,6 +133,48 @@ class ImportIgdbDumpsCommand extends Command
      * @var array<int, string>
      */
     private array $platformLogoIdToUrl = [];
+
+    /** @var array<int, string> */
+    private array $platformIdToName = [];
+
+    /** @var array<int, string> */
+    private array $genreIdToName = [];
+
+    /** @var array<int, string> */
+    private array $companyIdToName = [];
+
+    /** @var array<int, string> */
+    private array $gameModeIdToName = [];
+
+    /** @var array<int, string> */
+    private array $playerPerspectiveIdToName = [];
+
+    /** @var array<int, string> */
+    private array $themeIdToName = [];
+
+    /** @var array<int, string> */
+    private array $gameEngineIdToName = [];
+
+    /** @var array<int, string> */
+    private array $franchiseIdToName = [];
+
+    /** @var array<int, string> */
+    private array $collectionIdToName = [];
+
+    /** @var array<int, string> */
+    private array $keywordIdToName = [];
+
+    /** @var array<int, string> */
+    private array $languageIdToName = [];
+
+    /** @var array<int, string> */
+    private array $statusIdToName = [];
+
+    /** @var array<int, string> */
+    private array $regionIdToName = [];
+
+    /** @var array<int, string> */
+    private array $websiteTypeIdToName = [];
 
     public function getName(): ?string
     {
@@ -149,11 +195,11 @@ class ImportIgdbDumpsCommand extends Command
         config(['telescope.enabled' => false]);
 
         // Detect if running as child worker (parallel import)
-        $isChildWorker = $this->option('chunk') !== null;
+        $this->isChildWorker = $this->option('chunk') !== null;
 
         // Start optimized import session (UNLOGGED tables, deferred constraints)
         // Only parent process should toggle table state to avoid race conditions
-        if (! $isChildWorker) {
+        if (! $this->isChildWorker) {
             $this->startOptimizedImport();
 
             // CRITICAL: Guarantee cleanup runs even if command crashes
@@ -181,15 +227,24 @@ class ImportIgdbDumpsCommand extends Command
         $this->graphService->beginTransaction();
         $this->graphService->commit();
 
-        // Download new dumps if requested or if directory is empty
+        // Download new dumps if requested or if directory is empty/missing essential files
         $inputPath = (string) ($this->option('path') ?: base_path('storage/igdb-dumps'));
-        if (! File::exists($inputPath) || count(File::files($inputPath)) < 5) {
-            $this->info('📥 Downloading latest IGDB dumps...');
-            $endpoints = ['games', 'platforms', 'genres', 'companies', 'involved_companies', 'covers', 'screenshots', 'artworks', 'game_videos'];
-            foreach ($endpoints as $endpoint) {
-                $this->info("   Downloading {$endpoint}...");
-                $this->call('igdb:dump:download', ['endpoint' => $endpoint, '--output-dir' => 'igdb-dumps']);
+        $essentialTags = ['games', 'platforms', 'platform_families', 'genres', 'companies'];
+        $missingEssential = false;
+        if (File::isDirectory($inputPath)) {
+            foreach ($essentialTags as $tag) {
+                if (! $this->findFile($inputPath, $tag)) {
+                    $missingEssential = true;
+                    break;
+                }
             }
+        } else {
+            $missingEssential = true;
+        }
+
+        if ($missingEssential || count(File::files($inputPath)) < 5) {
+            $this->info('📥 Downloading all available IGDB dumps...');
+            $this->call('igdb:dump:download', ['endpoint' => 'all', '--output-dir' => 'igdb-dumps']);
         }
 
         // Validate batch size configuration
@@ -260,11 +315,7 @@ class ImportIgdbDumpsCommand extends Command
 
         // Load reference dumps first so games can be cross-referenced on insert.
         // Media runs last because it depends on the `video_games` rows being present.
-        $this->loadPlatformFamilyIdToNameMap($directory);
-        $this->loadPlatformLogoIdToUrlMap($directory);
-        $this->loadPlatformIdToNameMap($directory);
-        $this->loadGenreIdToNameMap($directory);
-        $this->loadCompanyAndInvolvedCompanyMaps($directory);
+        $this->loadAllReferenceData($directory);
 
         // Pre-create/warm the source provider to avoid race conditions in parallel workers
         VideoGameSource::query()->firstOrCreate(['provider' => $provider]);
@@ -283,9 +334,12 @@ class ImportIgdbDumpsCommand extends Command
             $this->runParallelImport($gamesFile, $provider, $limit, $workers, $directory, $startTime);
 
             $this->newLine();
-            $this->info('=== Post-Import Steps ===');
-            $this->info('🚀 Running Retailer Extraction...');
-            $this->call('app:extract-retailers');
+            $this->info('=== Post-Import Enrichment ===');
+            $this->info('🚀 Extracting Retailer Links...');
+            $this->call('prices:extract-retailers');
+            
+            $this->info('🎬 Extracting Videos from IGDB...');
+            $this->call('media:extract-videos');
 
             return self::SUCCESS;
         }
@@ -431,8 +485,14 @@ class ImportIgdbDumpsCommand extends Command
             $this->warn('No imported game IDs found for propagation.');
         }
 
-        $this->info('🚀 Running Retailer Extraction...');
-        $this->call('app:extract-retailers');
+        $this->newLine();
+        $this->info('=== Post-Import Enrichment ===');
+        
+        $this->info('🚀 Extracting Retailer Links...');
+        $this->call('prices:extract-retailers');
+        
+        $this->info('🎬 Extracting Videos from IGDB...');
+        $this->call('media:extract-videos');
 
         // Show performance report
         // Note: endOptimizedImport() is handled by defer()->always() at line 169
@@ -706,14 +766,12 @@ class ImportIgdbDumpsCommand extends Command
             return self::FAILURE;
         }
 
-        // CRITICAL: Load reference data (genres, companies, platforms)
+        // CRITICAL: Load reference data (genres, companies, platforms, themes, etc.)
         // Workers receive --path=directory (not the games file)
         $directory = $this->option('path') ?? dirname($gamesFile);
         try {
-            $this->loadGenreIdToNameMap($directory);
-            $this->loadPlatformIdToNameMap($directory);
-            $this->loadCompanyAndInvolvedCompanyMaps($directory);
-            fwrite(STDOUT, "Worker {$workerNum}: Loaded reference data\n");
+            $this->loadAllReferenceData($directory);
+            fwrite(STDOUT, "Worker {$workerNum}: Loaded all reference data\n");
         } catch (\Throwable $e) {
             fwrite(STDERR, "Worker {$workerNum}: Failed to load reference data: {$e->getMessage()}\n");
 
@@ -1500,6 +1558,18 @@ class ImportIgdbDumpsCommand extends Command
             $storyline = $record['storyline'] ?? null;
             $description = $summary ?? $storyline;
 
+            // NEW: Extract all available reference data
+            $gameModes = $this->extractNames($record, 'game_modes', 'gameModeIdToName');
+            $themes = $this->extractNames($record, 'themes', 'themeIdToName');
+            $playerPerspectives = $this->extractNames($record, 'player_perspectives', 'playerPerspectiveIdToName');
+            $gameEngines = $this->extractNames($record, 'game_engines', 'gameEngineIdToName');
+            $franchises = $this->extractNames($record, 'franchises', 'franchiseIdToName');
+            $collections = $this->extractNames($record, 'collections', 'collectionIdToName');
+            $keywords = $this->extractNames($record, 'keywords', 'keywordIdToName');
+            $languages = $this->extractNames($record, 'languages', 'languageIdToName');
+            $status = isset($record['status']) ? ($this->statusIdToName[(int) $record['status']] ?? (string) $record['status']) : null;
+            $categoryName = isset($record['category']) ? $this->getCategoryName((int) $record['category']) : null;
+
             if (! isset($productRowsBySlug[$slug])) {
                 $productRowsBySlug[$slug] = [
                     'name' => $gameName,
@@ -1515,6 +1585,14 @@ class ImportIgdbDumpsCommand extends Command
                         'genres' => $genres,
                         'developer' => $companyFields['developer'],
                         'publisher' => $companyFields['publisher'],
+                        'themes' => $themes,
+                        'game_modes' => $gameModes,
+                        'player_perspectives' => $playerPerspectives,
+                        'engines' => $gameEngines,
+                        'franchises' => $franchises,
+                        'collections' => $collections,
+                        'status' => $status,
+                        'category' => $categoryName,
                     ],
                 ];
             } else {
@@ -1681,6 +1759,36 @@ class ImportIgdbDumpsCommand extends Command
                 $storyline = $record['storyline'] ?? null;
                 $description = $summary ?? $storyline;
 
+                $attributesJson = $this->fastMode
+                    ? json_encode(['platform' => $platforms], JSON_THROW_ON_ERROR)
+                    : json_encode([
+                        'platform' => $platforms,
+                        'slug' => $title->slug,
+                        'name' => $gameName,
+                        'summary' => $summary,
+                        'storyline' => $storyline,
+                        'release_date' => $releaseDate,
+                        'rating' => $rating,
+                        'rating_count' => $ratingCount,
+                        'hypes' => $hypes,
+                        'follows' => $follows,
+                        'developer' => $companyFields['developer'],
+                        'publisher' => $companyFields['publisher'],
+                        'genre' => $genres,
+                        'themes' => $themes,
+                        'game_modes' => $gameModes,
+                        'player_perspectives' => $playerPerspectives,
+                        'engines' => $gameEngines,
+                        'franchises' => $franchises,
+                        'collections' => $collections,
+                        'keywords' => $keywords,
+                        'languages' => $languages,
+                        'status' => $status,
+                        'category' => $categoryName,
+                        'media' => null,
+                        'source_payload' => $this->fastMode ? null : $record,
+                    ], JSON_THROW_ON_ERROR);
+
                 $this->videoGameTitleSourceBatch[] = [
                     'video_game_title_id' => $title->id,
                     'video_game_source_id' => $source->id,
@@ -1697,6 +1805,7 @@ class ImportIgdbDumpsCommand extends Command
                     'rating_count' => $ratingCount,
                     'hypes' => $hypes,
                     'follows' => $follows,
+                    'popularity_score' => $popularityScore,
                     'developer' => $companyFields['developer'],
                     'publisher' => $companyFields['publisher'],
                     'genre' => $genreJson,
@@ -1724,25 +1833,9 @@ class ImportIgdbDumpsCommand extends Command
                     'genre' => $genreJson,
                     'created_at' => $now,
                     'updated_at' => $now,
-                    'attributes' => $this->fastMode
-                        ? json_encode(['platform' => $platforms], JSON_THROW_ON_ERROR)
-                        : json_encode([
-                            'platform' => $platforms,
-                            'slug' => $title->slug,
-                            'name' => $gameName,
-                            'summary' => $summary,
-                            'storyline' => $storyline,
-                            'release_date' => $releaseDate,
-                            'rating' => $rating,
-                            'rating_count' => $ratingCount,
-                            'hypes' => $hypes,
-                            'follows' => $follows,
-                            'developer' => $companyFields['developer'],
-                            'publisher' => $companyFields['publisher'],
-                            'genre' => $genres,
-                            'media' => null,
-                            'source_payload' => null,
-                        ], JSON_THROW_ON_ERROR),
+                    'popularity_score' => $popularityScore,
+                    'attributes' => $attributesJson,
+                    'source_payload' => $this->fastMode ? null : json_encode($record, JSON_THROW_ON_ERROR),
                 ];
 
                 // Record graph relationships
@@ -2449,13 +2542,24 @@ class ImportIgdbDumpsCommand extends Command
             $externalId = $primaryMeta['id'] ?? $existing->external_id ?? null;
             $videoId = $primaryVideoId ?? $existing->video_id ?? null;
 
+            $videoCollections = [];
+            foreach ($mergedMetadata as $meta) {
+                if (is_array($meta) && isset($meta['name'])) {
+                    $videoCollections[] = $this->categorizeVideoType((string) $meta['name']);
+                }
+            }
+            $videoCollections = array_values(array_unique($videoCollections));
+            if (empty($videoCollections)) {
+                $videoCollections = ['trailers'];
+            }
+
             $upsertData[] = [
                 'videoable_type' => \App\Models\VideoGame::class,
                 'videoable_id' => $videoGameId,
                 'video_game_id' => $videoGameId,
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                'collection_names' => json_encode(['trailers']),
-                'primary_collection' => 'trailers',
+                'collection_names' => json_encode($videoCollections),
+                'primary_collection' => $videoCollections[0],
                 'url' => $primaryUrl,
                 'external_id' => $externalId,
                 'video_id' => $videoId,
@@ -3405,7 +3509,7 @@ class ImportIgdbDumpsCommand extends Command
         }
         fclose($handle);
 
-        if ($batch !== []) {
+        if ($batch !== [] && ! $this->isChildWorker) {
             $this->bulkInsertOptimized('video_game_platform_families', $batch);
         }
 
@@ -3546,11 +3650,11 @@ class ImportIgdbDumpsCommand extends Command
         }
         fclose($handle);
 
-        if ($batch !== []) {
+        if ($batch !== [] && ! $this->isChildWorker) {
             $this->bulkInsertOptimized('video_game_platforms', $batch);
         }
 
-        if ($productBatch !== []) {
+        if ($productBatch !== [] && ! $this->isChildWorker) {
             $this->bulkInsertOptimized('products', $productBatch, null, true, ['slug']);
         }
 
@@ -3559,31 +3663,60 @@ class ImportIgdbDumpsCommand extends Command
 
     private function loadGenreIdToNameMap(string $directory): void
     {
-        $file = $this->findFile($directory, 'genres');
+        $this->loadSimpleReferenceMap($directory, 'genres', 'genreIdToName');
+    }
+
+    private function loadSimpleReferenceMap(string $directory, string $endpoint, string $property): void
+    {
+        $file = $this->findFile($directory, $endpoint);
         if (! $file) {
-            $this->warn('⚠ No genres file found');
+            $this->warn("⚠ No {$endpoint} file found");
 
             return;
         }
 
-        $this->info('Loading genres from '.basename($file).'...');
+        $this->info("Loading {$endpoint} from ".basename($file).'...');
 
         $handle = fopen($file, 'r');
         if (! $handle) {
-            $this->warn('⚠ Could not open genres file');
+            $this->warn("⚠ Could not open {$endpoint} file");
 
             return;
         }
 
         $headers = fgetcsv($handle);
+        $count = 0;
         while (($row = fgetcsv($handle)) !== false) {
             $data = $this->combineCsvRow($headers, $row);
             if ($data && isset($data['id'], $data['name'])) {
-                $this->genreIdToName[(int) $data['id']] = $data['name'];
+                $this->{$property}[(int) $data['id']] = $data['name'];
+                $count++;
             }
         }
         fclose($handle);
-        $this->info('✓ Loaded '.count($this->genreIdToName).' genres');
+        $this->info("✓ Loaded {$count} {$endpoint}");
+    }
+
+    private function loadAllReferenceData(string $directory): void
+    {
+        $this->loadPlatformFamilyIdToNameMap($directory);
+        $this->loadPlatformLogoIdToUrlMap($directory);
+        $this->loadPlatformIdToNameMap($directory);
+        $this->loadGenreIdToNameMap($directory);
+        $this->loadCompanyAndInvolvedCompanyMaps($directory);
+
+        // Load new reference data
+        $this->loadSimpleReferenceMap($directory, 'game_modes', 'gameModeIdToName');
+        $this->loadSimpleReferenceMap($directory, 'player_perspectives', 'playerPerspectiveIdToName');
+        $this->loadSimpleReferenceMap($directory, 'themes', 'themeIdToName');
+        $this->loadSimpleReferenceMap($directory, 'game_engines', 'gameEngineIdToName');
+        $this->loadSimpleReferenceMap($directory, 'franchises', 'franchiseIdToName');
+        $this->loadSimpleReferenceMap($directory, 'collections', 'collectionIdToName');
+        $this->loadSimpleReferenceMap($directory, 'keywords', 'keywordIdToName');
+        $this->loadSimpleReferenceMap($directory, 'languages', 'languageIdToName');
+        $this->loadSimpleReferenceMap($directory, 'website_types', 'websiteTypeIdToName');
+        $this->loadSimpleReferenceMap($directory, 'game_statuses', 'statusIdToName');
+        $this->loadSimpleReferenceMap($directory, 'regions', 'regionIdToName');
     }
 
     private function recordGraphRelationships(array $record, string $gameName): void
@@ -3638,6 +3771,61 @@ class ImportIgdbDumpsCommand extends Command
                 }
             }
         }
+    }
+
+    private function extractNames(array $record, string $field, string $property): array
+    {
+        if (! isset($record[$field]) || $record[$field] === '' || $record[$field] === 'null') {
+            return [];
+        }
+
+        $raw = $record[$field];
+        $ids = [];
+
+        if (is_numeric($raw)) {
+            $ids = [(int) $raw];
+        } elseif (is_string($raw)) {
+            // Check if it's a JSON array or IGDB {1,2} format
+            if (str_starts_with($raw, '[')) {
+                $ids = json_decode($raw, true) ?: [];
+            } else {
+                $ids = $this->parseIgdbIdSetString($raw);
+            }
+        } elseif (is_array($raw)) {
+            $ids = $raw;
+        }
+
+        $names = [];
+        foreach ($ids as $id) {
+            $idInt = (int) $id;
+            if (isset($this->{$property}[$idInt])) {
+                $names[] = $this->{$property}[$idInt];
+            }
+        }
+
+        return $names;
+    }
+
+    private function getCategoryName(int $category): string
+    {
+        return match ($category) {
+            0 => 'main_game',
+            1 => 'dlc_addon',
+            2 => 'expansion',
+            3 => 'bundle',
+            4 => 'standalone_expansion',
+            5 => 'mod',
+            6 => 'episode',
+            7 => 'season',
+            8 => 'remake',
+            9 => 'remaster',
+            10 => 'expanded_game',
+            11 => 'port',
+            12 => 'fork',
+            13 => 'pack',
+            14 => 'update',
+            default => 'unknown',
+        };
     }
 
     private function displayProgressTable(): void

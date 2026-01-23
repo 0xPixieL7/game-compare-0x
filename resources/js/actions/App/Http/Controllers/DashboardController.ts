@@ -1,7 +1,7 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:390
+* @see app/Http/Controllers/DashboardController.php:385
 * @route '/dashboard'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -16,7 +16,7 @@ index.definition = {
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:390
+* @see app/Http/Controllers/DashboardController.php:385
 * @route '/dashboard'
 */
 index.url = (options?: RouteQueryOptions) => {
@@ -25,7 +25,7 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:390
+* @see app/Http/Controllers/DashboardController.php:385
 * @route '/dashboard'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -35,13 +35,50 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:390
+* @see app/Http/Controllers/DashboardController.php:385
 * @route '/dashboard'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\DashboardController::index
+* @see app/Http/Controllers/DashboardController.php:385
+* @route '/dashboard'
+*/
+const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\DashboardController::index
+* @see app/Http/Controllers/DashboardController.php:385
+* @route '/dashboard'
+*/
+indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\DashboardController::index
+* @see app/Http/Controllers/DashboardController.php:385
+* @route '/dashboard'
+*/
+indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\DashboardController::show
@@ -104,6 +141,43 @@ show.head = (args: { gameId: string | number } | [gameId: string | number ] | st
     url: show.url(args, options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\DashboardController::show
+* @see app/Http/Controllers/DashboardController.php:15
+* @route '/dashboard/{gameId}'
+*/
+const showForm = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\DashboardController::show
+* @see app/Http/Controllers/DashboardController.php:15
+* @route '/dashboard/{gameId}'
+*/
+showForm.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\DashboardController::show
+* @see app/Http/Controllers/DashboardController.php:15
+* @route '/dashboard/{gameId}'
+*/
+showForm.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+show.form = showForm
 
 const DashboardController = { index, show }
 

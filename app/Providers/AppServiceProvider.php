@@ -50,6 +50,10 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Cache\RateLimiting\Limit::perSecond(4);
         });
 
+        \Illuminate\Support\Facades\RateLimiter::for('rawg', function ($job) {
+            return \Illuminate\Cache\RateLimiting\Limit::perSecond(3);
+        });
+
         \Illuminate\Support\Facades\RateLimiter::for('psstore', function ($job) {
             return \Illuminate\Cache\RateLimiting\Limit::perSecond(2);
         });
@@ -57,5 +61,25 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('xbox', function ($job) {
             return \Illuminate\Cache\RateLimiting\Limit::perSecond(5);
         });
+
+        // Auto-run core data updates after migrations
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Database\Events\MigrationsEnded::class,
+            function () {
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => 'ComprehensiveCurrencySeeder',
+                    '--force' => true,
+                ]);
+                \Illuminate\Support\Facades\Artisan::call('db:seed', [
+                    '--class' => 'ComprehensiveCountrySeeder',
+                    '--force' => true,
+                ]);
+                
+                // Trigger initial sync to ensure data availability
+                \App\Jobs\SynchronizeGlobalMarketDataJob::dispatchSync(true);
+            }
+        );
+
     }
+
 }

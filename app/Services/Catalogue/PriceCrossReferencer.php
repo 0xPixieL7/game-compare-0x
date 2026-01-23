@@ -6,11 +6,11 @@ namespace App\Services\Catalogue;
 
 use App\Models\Product;
 use App\Models\Retailer;
+use App\Models\TheGamesDbGame;
 use App\Models\VideoGame;
 use App\Models\VideoGamePrice;
 use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
-use App\Models\TheGamesDbGame;
 use App\Services\Nexarda\NexardaClient;
 use App\Support\Platforms\PlatformFamilyDetector;
 use App\Support\Strings\GameNameNormalizer;
@@ -771,7 +771,7 @@ class PriceCrossReferencer
 
     private function loadNexardaFromDatabase(): Collection
     {
-        if (!Schema::hasTable('video_game_prices') || !Schema::hasTable('video_game_titles')) {
+        if (! Schema::hasTable('video_game_prices') || ! Schema::hasTable('video_game_titles')) {
             return collect();
         }
 
@@ -781,8 +781,12 @@ class PriceCrossReferencer
             $rows = DB::table('video_game_prices as vgp')
                 ->join('video_games as vg', 'vg.id', '=', 'vgp.video_game_id')
                 ->join('video_game_titles as vgt', 'vgt.id', '=', 'vg.video_game_title_id')
-                ->where('vg.provider', 'nexarda')
                 ->where('vgp.is_active', true)
+                ->where(function ($q) {
+                    // Legacy Nexarda rows may not have condition.
+                    $q->where('vg.provider', 'nexarda')
+                        ->orWhere('vgp.condition', 'digital');
+                })
                 ->select([
                     'vgt.normalized_title',
                     'vgt.name as title_name',
@@ -791,33 +795,68 @@ class PriceCrossReferencer
                     'vgp.amount_minor',
                     'vgp.retailer',
                     'vgp.url',
+                    'vg.provider as game_provider',
                     'vg.attributes',
+                    'vg.platform',
                 ])
                 ->get();
 
             foreach ($rows as $row) {
                 $normalized = $row->normalized_title;
-                if (!$normalized) continue;
+                if (! $normalized) {
+                    continue;
+                }
 
-                $amount = $row->amount_minor / 100;
-                $code = strtoupper($row->currency);
+                $currency = $row->currency ?? null;
+                if (! is_string($currency) || $currency === '') {
+                    continue;
+                }
 
-                if (!isset($index[$normalized])) {
+                $code = strtoupper($currency);
+                $divisor = $this->currencyMinorDivisor($code);
+                $amountMinor = is_numeric($row->amount_minor ?? null) ? (int) $row->amount_minor : null;
+                if ($amountMinor === null) {
+                    continue;
+                }
+
+                $amount = $amountMinor / $divisor;
+
+                if (! isset($index[$normalized])) {
                     $attributes = json_decode($row->attributes ?? '{}', true);
+                    $platforms = json_decode($row->platform ?? '[]', true);
+
+                    $platformList = [];
+                    if (is_array($platforms) && $platforms !== []) {
+                        $platformList = $platforms;
+                    } elseif (is_array($attributes) && isset($attributes['platform']) && is_array($attributes['platform'])) {
+                        $platformList = $attributes['platform'];
+                    }
+
+                    $source = ($row->game_provider ?? null) === 'nexarda'
+                        ? 'nexarda_db'
+                        : 'store_prices_db';
+
                     $index[$normalized] = [
-                        'source' => 'nexarda_db',
+                        'source' => $source,
                         'name' => $row->title_name,
                         'slug' => $row->title_slug,
                         'url' => $row->url,
-                        'platforms' => $attributes['platform'] ?? [],
+                        'platforms' => $platformList,
                         'currencies' => [],
                     ];
+                }
+
+                // Prefer first non-empty URL.
+                if ((! is_string($index[$normalized]['url'] ?? null) || trim((string) $index[$normalized]['url']) === '')
+                    && is_string($row->url)
+                    && trim($row->url) !== '') {
+                    $index[$normalized]['url'] = $row->url;
                 }
 
                 $index[$normalized]['currencies'][] = [
                     'code' => $code,
                     'amount' => $amount,
-                    'formatted' => $this->formatCurrency($amount, $code),
+                    'formatted' => $amount === 0.0 ? 'Free' : $this->formatCurrency($amount, $code),
                     'retailer' => $row->retailer,
                 ];
             }
@@ -826,6 +865,13 @@ class PriceCrossReferencer
         }
 
         return collect($index);
+    }
+
+    private function currencyMinorDivisor(string $currency): int
+    {
+        // Minimal set: we only ingest JPY in the default store markets.
+        // Add more zero-decimal currencies only when needed.
+        return in_array(strtoupper($currency), ['JPY', 'KRW', 'VND'], true) ? 1 : 100;
     }
 
     private function indexPriceGuide(): Collection
@@ -1287,8 +1333,8 @@ class PriceCrossReferencer
         $titles = VideoGameTitle::whereDoesntHave('sources', function ($q) {
             $q->where('provider', 'nexarda');
         })
-        ->limit($limit)
-        ->get();
+            ->limit($limit)
+            ->get();
 
         $processed = 0;
         foreach ($titles as $title) {
@@ -1324,7 +1370,7 @@ class PriceCrossReferencer
         return $processed;
     }
 
-    public function ingestNexardaCatalogue(string $path = null): int
+    public function ingestNexardaCatalogue(?string $path = null): int
     {
         $path = $path ?? base_path('nexarda_product_catalogue.json');
         if (! file_exists($path)) {

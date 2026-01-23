@@ -10,9 +10,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         // 1. Upcoming Games Materialized View
         // Focuses on games with future release dates, ordered by popularity score.
-        DB::statement("
+        DB::statement('
             CREATE MATERIALIZED VIEW public.video_games_upcoming_mv AS
             SELECT 
                 id, name, slug, rating, release_date, platform, 
@@ -22,10 +26,10 @@ return new class extends Migration
             WHERE release_date > CURRENT_DATE
             ORDER BY popularity_score DESC NULLS LAST, release_date ASC NULLS LAST
             WITH DATA
-        ");
+        ');
 
-        DB::statement("CREATE INDEX idx_vg_upcoming_pop ON public.video_games_upcoming_mv (popularity_score DESC NULLS LAST)");
-        DB::statement("CREATE INDEX idx_vg_upcoming_date ON public.video_games_upcoming_mv (release_date ASC)");
+        DB::statement('CREATE INDEX idx_vg_upcoming_pop ON public.video_games_upcoming_mv (popularity_score DESC NULLS LAST)');
+        DB::statement('CREATE INDEX idx_vg_upcoming_date ON public.video_games_upcoming_mv (release_date ASC)');
 
         // 2. Genre-Based Ranking Materialized View
         // Unnests the genre array to allow for extremely fast per-genre top lists.
@@ -44,8 +48,8 @@ return new class extends Migration
             WITH DATA
         ");
 
-        DB::statement("CREATE INDEX idx_vg_genre_ranked_name ON public.video_games_genre_ranked_mv (genre_name)");
-        DB::statement("CREATE INDEX idx_vg_genre_ranked_rating ON public.video_games_genre_ranked_mv (rating DESC NULLS LAST)");
+        DB::statement('CREATE INDEX idx_vg_genre_ranked_name ON public.video_games_genre_ranked_mv (genre_name)');
+        DB::statement('CREATE INDEX idx_vg_genre_ranked_rating ON public.video_games_genre_ranked_mv (rating DESC NULLS LAST)');
     }
 
     /**
@@ -53,7 +57,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("DROP MATERIALIZED VIEW IF EXISTS public.video_games_upcoming_mv");
-        DB::statement("DROP MATERIALIZED VIEW IF EXISTS public.video_games_genre_ranked_mv");
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_games_upcoming_mv');
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_games_genre_ranked_mv');
     }
 };

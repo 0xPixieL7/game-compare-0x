@@ -7,10 +7,7 @@ use App\Jobs\Propagation\PropagateSourceMetadataJob;
 use App\Models\VideoGame;
 use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 test('job creates canonical VideoGame from source', function () {
     $title = VideoGameTitle::factory()->create();

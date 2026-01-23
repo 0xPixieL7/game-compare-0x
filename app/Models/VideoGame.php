@@ -60,6 +60,7 @@ class VideoGame extends Model implements HasMedia
         'platform',
         'description',
         'rating_count',
+        'popularity_score',
     ];
 
     protected $casts = [
@@ -72,6 +73,7 @@ class VideoGame extends Model implements HasMedia
         'rating' => 'decimal:2',
         'hypes' => 'integer',
         'follows' => 'integer',
+        'popularity_score' => 'float',
         'release_date' => 'date',
     ];
 
@@ -157,9 +159,9 @@ class VideoGame extends Model implements HasMedia
      * Get all media for a collection (Spatie-like interface).
      * Checks both native Spatie media and our aggregated Image/Video storage.
      *
-     * @return Collection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media|array<string, mixed>>
+     * @return SupportCollection<int, \Spatie\MediaLibrary\MediaCollections\Models\Media|array<string, mixed>>
      */
-    public function getAllMediaForCollection(string $collectionName): Collection
+    public function getAllMediaForCollection(string $collectionName): SupportCollection
     {
         // First, check native Spatie media
         $spatieMedia = $this->getMedia($collectionName);
@@ -175,9 +177,9 @@ class VideoGame extends Model implements HasMedia
     /**
      * Get media from aggregated Image/Video storage for a collection.
      *
-     * @return Collection<int, array<string, mixed>>
+     * @return SupportCollection<int, array<string, mixed>>
      */
-    public function getAggregatedMediaForCollection(string $collectionName): Collection
+    public function getAggregatedMediaForCollection(string $collectionName): SupportCollection
     {
         $imageCollections = ['cover_images', 'screenshots', 'artworks'];
         $videoCollections = ['trailers', 'gameplay', 'preview', 'adverts'];
@@ -246,13 +248,17 @@ class VideoGame extends Model implements HasMedia
      */
     public function getFirstMediaUrl(string $collectionName = 'default', string $conversionName = ''): string
     {
-        // Try Spatie first
-        $spatieUrl = parent::getFirstMediaUrl($collectionName, $conversionName);
-        if ($spatieUrl !== '') {
-            return $spatieUrl;
+        // Try Spatie media library first (uses the trait's implementation)
+        try {
+            $media = $this->getMedia($collectionName)->first();
+            if ($media) {
+                return $media->getUrl($conversionName);
+            }
+        } catch (\Throwable $e) {
+            // Continue to fallback
         }
 
-        // Fall back to aggregated storage
+        // Fall back to aggregated storage (our custom Image/Video models)
         $media = $this->getFirstMediaForCollection($collectionName);
 
         if (is_array($media)) {

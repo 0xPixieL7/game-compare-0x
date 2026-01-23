@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Import\Providers;
 
+use App\Models\Image;
 use App\Models\Product;
+use App\Models\Video;
 use App\Models\VideoGame;
 use App\Models\VideoGameSource;
 use App\Models\VideoGameTitle;
@@ -12,8 +14,6 @@ use App\Models\VideoGameTitleSource;
 use App\Services\Import\Concerns\HasProgressBar;
 use App\Services\Import\Concerns\InteractsWithConsole;
 use App\Services\Import\Contracts\ImportProvider;
-use App\Models\Image;
-use App\Models\Video;
 use App\Services\Normalization\IgdbRatingHelper;
 use App\Services\Normalization\PlatformNormalizer;
 use App\Services\Normalization\RatingNormalizer;
@@ -42,6 +42,7 @@ class GdbImportProvider implements ImportProvider
     }
 
     private $batch = [];
+
     private const BATCH_SIZE = 1000;
 
     public function handle(Command $command): int
@@ -81,14 +82,14 @@ class GdbImportProvider implements ImportProvider
             // Let's count if possible, or just start.
             // For now, let's keep it simple: indeterminate or just raw processing.
             // Actually, HasProgressBar allows standard bar.
-            
+
             // Let's count standard JSON items if possible?
-            // "iterateRecordsFromFile" yields. 
+            // "iterateRecordsFromFile" yields.
             // We'll just advance progress bar manually without a max if traversing generator is expensive.
-            // But user asked for valid progress bar. 
+            // But user asked for valid progress bar.
             // Detailed counting for massive JSONs is slow.
             // Let's assume we proceed with an indeterminate bar or just stepping.
-            
+
             $progressBar = $this->command->getOutput()->createProgressBar();
             $this->configureProgressBar($progressBar);
             $progressBar->start();
@@ -97,7 +98,7 @@ class GdbImportProvider implements ImportProvider
             // Iterate records and process
             foreach ($this->iterateRecordsFromFile($file->getPathname()) as $record) {
                 $this->batch[] = $record;
-                
+
                 if (count($this->batch) >= self::BATCH_SIZE) {
                     $deltas = $this->flushBatch($provider);
                     foreach ($totals as $k => $v) {
@@ -111,7 +112,7 @@ class GdbImportProvider implements ImportProvider
                 }
                 $processed++;
                 if ($processed % self::BATCH_SIZE === 0) {
-                     $progressBar->advance(self::BATCH_SIZE);
+                    $progressBar->advance(self::BATCH_SIZE);
                 }
 
                 if ($limit > 0 && $processed >= $limit) {
@@ -121,8 +122,8 @@ class GdbImportProvider implements ImportProvider
 
             // Flush remaining
             if (! empty($this->batch)) {
-                 $deltas = $this->flushBatch($provider);
-                 foreach ($totals as $k => $v) {
+                $deltas = $this->flushBatch($provider);
+                foreach ($totals as $k => $v) {
                     $totals[$k] += $deltas[$k] ?? 0;
                 }
                 $progressBar->advance(count($this->batch));
@@ -131,7 +132,7 @@ class GdbImportProvider implements ImportProvider
             $progressBar->finish();
             $this->newLine();
             $this->info("Processed {$processed} records from {$file->getFilename()}.");
-            
+
             if ($limit > 0 && $processed >= $limit) {
                 $this->warn("Limit of {$limit} records reached.");
                 break;
@@ -249,6 +250,7 @@ class GdbImportProvider implements ImportProvider
                         yield $row;
                     }
                 }
+
                 return;
             }
         }
@@ -267,7 +269,7 @@ class GdbImportProvider implements ImportProvider
             return ['products' => 0, 'sources' => 0, 'titles' => 0, 'video_games' => 0];
         }
 
-        echo "Processing: $name ($externalId)..." . PHP_EOL;
+        echo "Processing: $name ($externalId)...".PHP_EOL;
 
         $normalizedTitle = Str::of($name)->lower()->replaceMatches('/[^a-z0-9\s]+/i', '')->squish()->toString();
         $normalizedTitle = $normalizedTitle !== '' ? Str::slug($normalizedTitle) : null;
@@ -356,7 +358,7 @@ class GdbImportProvider implements ImportProvider
         $description = Arr::get($record, 'deck')
             ?? Arr::get($record, 'description')
             ?? Arr::get($record, 'summary');
-        
+
         $summary = Arr::get($record, 'deck');
 
         $releaseDate = Arr::get($record, 'original_release_date')
@@ -367,7 +369,7 @@ class GdbImportProvider implements ImportProvider
 
         $publisher = Arr::get($record, 'publishers.0.name')
             ?? Arr::get($record, 'publisher');
-            
+
         $url = Arr::get($record, 'site_detail_url');
 
         $genres = collect((array) Arr::get($record, 'genres', []))
@@ -425,22 +427,24 @@ class GdbImportProvider implements ImportProvider
     {
         $images = Arr::get($record, 'images', []);
         $mainImage = Arr::get($record, 'image', []);
-        
+
         if (empty($images) && empty($mainImage)) {
             return 0;
         }
 
         // Add main image if not present in images array
-        if (!empty($mainImage)) {
+        if (! empty($mainImage)) {
             $images[] = $mainImage;
         }
 
-        echo "  - Processing " . count($images) . " images..." . PHP_EOL;
+        echo '  - Processing '.count($images).' images...'.PHP_EOL;
 
         $count = 0;
         foreach ($images as $img) {
             $url = $img['super_url'] ?? $img['medium_url'] ?? $img['small_url'] ?? null;
-            if (!$url) continue;
+            if (! $url) {
+                continue;
+            }
 
             $image = Image::query()->firstOrCreate(
                 [
@@ -467,23 +471,23 @@ class GdbImportProvider implements ImportProvider
     private function processVideos(array $record, VideoGameSource $source, string $provider, VideoGame $videoGame): int
     {
         $videos = Arr::get($record, 'videos', []);
-        
+
         if (empty($videos)) {
             return 0;
         }
 
         $count = 0;
-        echo "  - Processing " . count($videos) . " videos..." . PHP_EOL;
+        echo '  - Processing '.count($videos).' videos...'.PHP_EOL;
         foreach ($videos as $video) {
             $name = $video['name'] ?? '';
-            
+
             // Filter out podcasts
             if (Str::contains(strtolower($name), ['podcast', 'bombcast', 'beastcast', 'powerbombcast'])) {
                 continue;
             }
 
             $url = $video['low_url'] ?? $video['high_url'] ?? $video['hd_url'] ?? $video['site_detail_url'] ?? $video['embed_player'] ?? null;
-            if (!$url) {
+            if (! $url) {
                 continue;
             }
 
@@ -505,12 +509,12 @@ class GdbImportProvider implements ImportProvider
 
                 if ($vid->wasRecentlyCreated) {
                     $count++;
-                    echo "    + Video created: $name" . PHP_EOL;
+                    echo "    + Video created: $name".PHP_EOL;
                 } else {
-                    echo "    . Video already exists: $name" . PHP_EOL;
+                    echo "    . Video already exists: $name".PHP_EOL;
                 }
             } catch (\Exception $e) {
-                echo "    ! Error creating video '$name': " . $e->getMessage() . PHP_EOL;
+                echo "    ! Error creating video '$name': ".$e->getMessage().PHP_EOL;
             }
         }
 

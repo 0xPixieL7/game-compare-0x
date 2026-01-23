@@ -60,6 +60,7 @@ export interface GameMedia {
         name?: string;
         video_id?: string;
     }>;
+    cover_url_high_res?: string | null;
 }
 
 export interface GameMediaSummary {
@@ -131,12 +132,23 @@ export interface Game {
     genres?: string[];
     media: GameMedia;
     pricing?: GamePricing | null;
+    description?: string | null;
+    synopsis?: string | null;
+    backdrop_url?: string | null;
 }
 
 export interface GameRowData {
     id: string;
     title: string;
     games: Game[];
+}
+
+export interface GameTheme {
+    primary: string;
+    accent: string;
+    background: string;
+    surface: string;
+    generated_at: string;
 }
 
 // The raw model structure used in Show.tsx
@@ -146,6 +158,10 @@ export interface GameModel {
     hypes: number | null;
     rating: number | null;
     release_date: string | null;
+    summary?: string;
+    developer?: string | string[];
+    publisher?: string | string[];
+    theme?: GameTheme | null;
     attributes?: {
         summary?: string;
         [key: string]: unknown;

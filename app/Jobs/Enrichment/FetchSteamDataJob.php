@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Fetch combined Media AND Price for the primary region (US).
- * 
+ *
  * One API call returns:
  * - Current Price (for US)
  * - Screenshots (English)
@@ -32,12 +32,14 @@ class FetchSteamDataJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public array $backoff = [30, 120, 300];
 
     public function __construct(
         public int $videoGameId,
         public int $steamAppId,
-        public bool $fetchMediaOnly = false 
+        public bool $fetchMediaOnly = false,
+        public ?string $language = null
     ) {}
 
     public function middleware(): array
@@ -49,15 +51,16 @@ class FetchSteamDataJob implements ShouldQueue
     {
         $game = VideoGame::find($this->videoGameId);
 
-        if (!$game) {
+        if (! $game) {
             Log::warning('FetchSteamDataJob: Game not found', ['id' => $this->videoGameId]);
+
             return;
         }
 
         // ONE Call: Get Full Details (Price + Media) for US
-        $data = $steam->getFullDetails((string) $this->steamAppId, 'US');
+        $data = $steam->getFullDetails((string) $this->steamAppId, 'US', $this->language);
 
-        if (!$data) {
+        if (! $data) {
             return; // API Error or Invalid App ID
         }
 
@@ -66,7 +69,7 @@ class FetchSteamDataJob implements ShouldQueue
             $this->storeMedia($game, $data['media']);
 
             // 2. Store US Price (if not media-only mode)
-            if (!$this->fetchMediaOnly && $data['price']) {
+            if (! $this->fetchMediaOnly && $data['price']) {
                 $this->storePrice($game, $data['price'], 'US');
             }
         });
@@ -171,7 +174,7 @@ class FetchSteamDataJob implements ShouldQueue
         // Prefer 2x assets for high-DPI displays
         $libraryHero = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/library_hero.jpg";
         $libraryHero2x = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/library_hero_2x.jpg";
-        
+
         $libraryLogo = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/logo.png";
         $libraryLogo2x = "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/{$this->steamAppId}/logo_2x.png";
 
@@ -210,8 +213,10 @@ class FetchSteamDataJob implements ShouldQueue
         // 5. Store Screenshots (Batch)
         // Only store the first 10 to avoid bloating DB
         foreach (array_slice($screenshots, 0, 10) as $shot) {
-            if (empty($shot['full'])) continue;
-            
+            if (empty($shot['full'])) {
+                continue;
+            }
+
             Image::firstOrCreate(
                 [
                     'video_game_id' => $game->id,
@@ -232,14 +237,16 @@ class FetchSteamDataJob implements ShouldQueue
         // 4. Store Trailers (Videos)
         foreach (array_slice($movies, 0, 3) as $movie) {
             // Prioritize standard formats, fallback to HLS
-            $url = $movie['mp4_max'] 
-                ?? $movie['mp4_480'] 
-                ?? $movie['webm_max'] 
-                ?? $movie['webm_480'] 
-                ?? $movie['hls_max'] 
+            $url = $movie['mp4_max']
+                ?? $movie['mp4_480']
+                ?? $movie['webm_max']
+                ?? $movie['webm_480']
+                ?? $movie['hls_max']
                 ?? null;
 
-            if (!$url) continue;
+            if (! $url) {
+                continue;
+            }
 
             Video::updateOrCreate(
                 [

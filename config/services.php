@@ -109,4 +109,27 @@ return [
         'regions' => env('PS_STORE_REGIONS', env('PLAYSTATION_REGIONS', 'en-us')),
     ],
 
+    'steam' => [
+        // Comma-separated region list for Steam CC queries.
+        // Accepts either country codes (US,GB,...) OR locales (en-us,en-gb,...).
+        // Default is EMPTY -> derived from `countries.code` ISO2 list at runtime.
+        'regions' => env('STEAM_REGIONS', ''),
+    ],
+
+    'xbox' => [
+        'market' => env('XBOX_MARKET', 'US'),
+        // Comma-separated market list for price fetching (fast path).
+        // Keep small; Xbox requests are per-market.
+        // Default is EMPTY -> derived from `countries.code` ISO2 list at runtime.
+        'markets' => env('XBOX_MARKETS', ''),
+        'language' => env('XBOX_LANGUAGE', 'en-US'),
+        'timeout' => (int) env('XBOX_TIMEOUT', 10),
+    ],
+
+    'rawg' => [
+        'api_key' => env('RAWG_API_KEY'),
+        'base_url' => env('RAWG_BASE_URL', 'https://api.rawg.io/api'),
+        'timeout' => (int) env('RAWG_TIMEOUT', 10),
+    ],
+
 ];

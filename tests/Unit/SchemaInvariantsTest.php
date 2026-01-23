@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(TestCase::class);
 
 it('enforces products -> video_game_titles -> video_games traversal by schema shape', function () {
     // The ONLY table that should have product_id in the game domain is video_game_titles.

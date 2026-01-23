@@ -33,17 +33,20 @@ class DumpDataLoader
 
         if (File::exists($igdbPath)) {
             self::loadFromIgdbCsv($igdbPath);
+
             return;
         }
 
         // Fallbacks
         if (File::exists($gbPath)) {
             self::loadFromGiantBombJson($gbPath);
+
             return;
         }
 
         if (File::exists($nexardaPath)) {
             self::loadFromNexardaJson($nexardaPath);
+
             return;
         }
 
@@ -55,21 +58,22 @@ class DumpDataLoader
         $handle = fopen($path, 'r');
         if ($handle === false) {
             self::$gameNames = [];
+
             return;
         }
 
         // Count lines for progress bar (rough estimate or `wc -l`)
         $totalLines = 0;
         if (app()->runningInConsole()) {
-            $totalLines = (int) exec("wc -l " . escapeshellarg($path));
+            $totalLines = (int) exec('wc -l '.escapeshellarg($path));
         }
 
         $headers = fgetcsv($handle);
         $nameIndex = array_search('name', $headers);
-        
+
         if ($nameIndex === false) {
             // Default to 1 if header missing or mismatch
-            $nameIndex = 1; 
+            $nameIndex = 1;
         }
 
         $names = [];
@@ -79,8 +83,8 @@ class DumpDataLoader
         $progressBar = null;
 
         if (app()->runningInConsole()) {
-            $output = new ConsoleOutput();
-            $output->writeln("<info>Loading games from IGDB dump...</info>");
+            $output = new ConsoleOutput;
+            $output->writeln('<info>Loading games from IGDB dump...</info>');
             $progressBar = new ProgressBar($output, $totalLines);
             $progressBar->start();
         }
@@ -89,7 +93,7 @@ class DumpDataLoader
             if (isset($data[$nameIndex])) {
                 $names[] = $data[$nameIndex];
             }
-            
+
             $count++;
             if ($progressBar && $count % 1000 === 0) {
                 $progressBar->advance(1000);
@@ -98,7 +102,7 @@ class DumpDataLoader
 
         if ($progressBar) {
             $progressBar->finish();
-            $output->writeln(""); // Newline
+            $output->writeln(''); // Newline
         }
 
         fclose($handle);
@@ -111,12 +115,12 @@ class DumpDataLoader
         $json = json_decode(File::get($path), true);
         $names = [];
         if (is_array($json)) {
-             // Structure depends on dump, assuming typical list
-             foreach ($json as $item) {
-                 if (isset($item['name'])) {
-                     $names[] = $item['name'];
-                 }
-             }
+            // Structure depends on dump, assuming typical list
+            foreach ($json as $item) {
+                if (isset($item['name'])) {
+                    $names[] = $item['name'];
+                }
+            }
         }
         self::$gameNames = $names;
     }
@@ -126,11 +130,11 @@ class DumpDataLoader
         $json = json_decode(File::get($path), true);
         $names = [];
         if (is_array($json)) {
-             foreach ($json as $item) {
-                 if (isset($item['name'])) {
-                     $names[] = $item['name'];
-                 }
-             }
+            foreach ($json as $item) {
+                if (isset($item['name'])) {
+                    $names[] = $item['name'];
+                }
+            }
         }
         self::$gameNames = $names;
     }

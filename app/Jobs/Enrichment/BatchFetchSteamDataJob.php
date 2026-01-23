@@ -50,8 +50,7 @@ class BatchFetchSteamDataJob implements ShouldQueue
     public function __construct(
         public array $gamesMappings,
         public string $region = 'US'
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, object>
@@ -355,7 +354,6 @@ class BatchFetchSteamDataJob implements ShouldQueue
 
         return ['image' => $imageData, 'video' => $videoData];
     }
-
 
     /**
      * Static helper to dispatch batch jobs from a collection of games.

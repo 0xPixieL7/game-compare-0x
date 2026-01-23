@@ -6,8 +6,8 @@ namespace App\Jobs\Enrichment;
 
 use App\Jobs\Enrichment\Traits\CategorizesVideoTypes;
 use App\Jobs\Enrichment\Traits\GuessesCurrency;
+use App\Models\Country;
 use App\Models\Image;
-use App\Models\Retailer;
 use App\Models\Video;
 use App\Models\VideoGame;
 use Illuminate\Bus\Queueable;
@@ -35,7 +35,7 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
 {
     use CategorizesVideoTypes, Dispatchable, GuessesCurrency, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const TARGET_REGIONS = ['US', 'GB', 'DE', 'JP', 'BR', 'CA', 'AU'];
+    private const FALLBACK_REGIONS = ['US', 'GB', 'DE', 'JP', 'BR', 'CA', 'AU'];
 
     private const STEAM_API_URL = 'https://store.steampowered.com/api/appdetails';
 
@@ -49,7 +49,51 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
         public int $steamAppId,
         public array $regions = []
     ) {
-        $this->regions = empty($regions) ? self::TARGET_REGIONS : $regions;
+        if (! empty($regions)) {
+            $this->regions = $regions;
+
+            return;
+        }
+
+        $cfg = (string) config('services.steam.regions', '');
+        $fromCfg = array_values(array_filter(array_map('trim', explode(',', $cfg))));
+        $fromCfg = array_values(array_unique(array_map(static function (string $value): string {
+            $value = trim($value);
+            if ($value === '') {
+                return '';
+            }
+
+            // Accept locale style (en-us) and country style (US).
+            if (str_contains($value, '-')) {
+                $parts = explode('-', $value);
+                $value = (string) end($parts);
+            }
+
+            return strtoupper($value);
+        }, $fromCfg)));
+        $fromCfg = array_values(array_filter($fromCfg));
+
+        if ($fromCfg !== []) {
+            $this->regions = $fromCfg;
+
+            return;
+        }
+
+        // Default: pull first 15 ISO2 country codes from DB.
+        try {
+            $iso2 = Country::query()
+                ->select(['code'])
+                ->whereRaw('length(code) = 2')
+                ->orderBy('code')
+                ->limit(15)
+                ->pluck('code')
+                ->map(fn (string $cc) => strtoupper($cc))
+                ->all();
+
+            $this->regions = $iso2 !== [] ? $iso2 : self::FALLBACK_REGIONS;
+        } catch (\Throwable) {
+            $this->regions = self::FALLBACK_REGIONS;
+        }
     }
 
     /**
@@ -62,17 +106,14 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
 
     public function handle(): void
     {
-        $game = VideoGame::find($this->videoGameId);
+        $game = VideoGame::with('title.product')->find($this->videoGameId);
 
         if (! $game) {
             return;
         }
 
-        $retailer = Retailer::where('slug', 'steam')->first();
-
-        if (! $retailer) {
-            return;
-        }
+        $retailerName = 'Steam';
+        $productId = $game->title?->product_id;
 
         // CONCURRENT HTTP requests for ALL regions at once
         $responses = Http::pool(fn ($pool) => collect($this->regions)->map(
@@ -112,17 +153,23 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
             if ($price) {
                 $priceRows[] = [
                     'video_game_id' => $this->videoGameId,
+                    'product_id' => $productId,
                     'currency' => $price['currency'],
                     'country_code' => $region,
+                    'region_code' => $region,
+                    'condition' => 'digital',
+                    'sku' => null,
                     'amount_minor' => $price['amount_minor'],
-                    'retailer' => $retailer->name,
+                    'retailer' => $retailerName,
                     'url' => "https://store.steampowered.com/app/{$this->steamAppId}/",
                     'recorded_at' => $now,
                     'is_active' => true,
+                    'bucket' => 'snapshot',
                     'metadata' => json_encode([
                         'steam_app_id' => $this->steamAppId,
                         'discount_percent' => $price['discount_percent'] ?? 0,
                     ]),
+                    'created_at' => $now,
                     'updated_at' => $now,
                 ];
             }
@@ -143,7 +190,7 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
                     DB::table('video_game_prices')->upsert(
                         $priceRows,
                         ['video_game_id', 'retailer', 'country_code'],
-                        ['currency', 'amount_minor', 'recorded_at', 'is_active', 'metadata', 'updated_at']
+                        ['product_id', 'region_code', 'condition', 'sku', 'currency', 'amount_minor', 'recorded_at', 'is_active', 'bucket', 'metadata', 'updated_at']
                     );
                 }
 
@@ -169,6 +216,10 @@ class ConcurrentFetchSteamDataJob implements ShouldQueue
                     );
                 }
             });
+        }
+
+        if ($game->title?->product) {
+            $game->title->product->refreshPricingSnapshot();
         }
 
         Log::info('ConcurrentFetchSteamDataJob: Complete', [

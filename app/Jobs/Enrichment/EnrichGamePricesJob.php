@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\Enrichment;
 
-use App\Jobs\FetchGamePriceJob;
-use App\Models\Retailer;
 use App\Models\VideoGame;
 use App\Models\VideoGameTitleSource;
 use App\Services\Price\Steam\SteamStoreService;
@@ -40,8 +38,7 @@ class EnrichGamePricesJob implements ShouldQueue
 
     public function __construct(
         public int $videoGameId
-    ) {
-    }
+    ) {}
 
     /**
      * Get the middleware the job should pass through.
@@ -75,13 +72,7 @@ class EnrichGamePricesJob implements ShouldQueue
             $dispatchedCount += $dispatched;
         }
 
-        // Strategy 2: If no mappings found and game has a direct retailer provider, use that
-        if ($dispatchedCount === 0 && $this->isRetailerProvider($game->provider)) {
-            $dispatched = $this->dispatchForDirectProvider($game);
-            $dispatchedCount += $dispatched;
-        }
-
-        // Strategy 3: Search fallback for games without mappings (e.g., IGDB-only games)
+        // Strategy 2: Search fallback for games without mappings (e.g., IGDB-only games)
         if ($dispatchedCount === 0) {
             $dispatched = $this->searchAndDispatch($game, $steam);
             $dispatchedCount += $dispatched;
@@ -104,8 +95,8 @@ class EnrichGamePricesJob implements ShouldQueue
 
         return match ($provider) {
             'steam', 'steam_store' => $this->dispatchSteamJobs($game, $externalId),
-            'playstation_store' => $this->dispatchPsnJobs($game, $source->provider_item_id),
-            'xbox' => $this->dispatchXboxJobs($game, $externalId),
+            'playstation_store' => $this->dispatchPsnJobs($game, $source),
+            'xbox' => $this->dispatchXboxJobs($game, $source),
             default => 0,
         };
     }
@@ -115,79 +106,33 @@ class EnrichGamePricesJob implements ShouldQueue
      */
     private function dispatchSteamJobs(VideoGame $game, int $steamAppId): int
     {
-        $retailer = Retailer::where('slug', 'steam')->first();
+        // Single job does ALL regions concurrently + writes prices + media.
+        ConcurrentFetchSteamDataJob::dispatch($game->id, $steamAppId)
+            ->onQueue('prices-steam');
 
-        if (! $retailer) {
-            return 0;
-        }
-
-        $url = "https://store.steampowered.com/app/{$steamAppId}/";
-
-        foreach (self::TARGET_REGIONS as $country) {
-            FetchGamePriceJob::dispatch($game->id, $retailer->id, $url, $country);
-        }
-
-        Log::info('EnrichGamePricesJob: Dispatched Steam jobs', [
-            'game_id' => $game->id,
-            'steam_app_id' => $steamAppId,
-            'regions' => count(self::TARGET_REGIONS),
-        ]);
-
-        return count(self::TARGET_REGIONS);
+        return 1;
     }
 
     /**
      * Dispatch PSN price fetch jobs.
      */
-    private function dispatchPsnJobs(VideoGame $game, int $psnProductId): int
+    private function dispatchPsnJobs(VideoGame $game, VideoGameTitleSource $source): int
     {
-        // PSN job will be created separately
-        // For now, log and return 0
-        Log::info('EnrichGamePricesJob: PSN mapping found (job not implemented yet)', [
-            'game_id' => $game->id,
-            'psn_product_id' => $psnProductId,
-        ]);
+        FetchPlayStationStorePricesJob::dispatch($game->id, $source->id)
+            ->onQueue('prices-psstore');
 
-        return 0;
+        return 1;
     }
 
     /**
      * Dispatch Xbox price fetch jobs.
      */
-    private function dispatchXboxJobs(VideoGame $game, int $xboxProductId): int
+    private function dispatchXboxJobs(VideoGame $game, VideoGameTitleSource $source): int
     {
-        // Xbox job will be created separately
-        // For now, log and return 0
-        Log::info('EnrichGamePricesJob: Xbox mapping found (job not implemented yet)', [
-            'game_id' => $game->id,
-            'xbox_product_id' => $xboxProductId,
-        ]);
+        FetchXboxStorePricesJob::dispatch($game->id, $source->id)
+            ->onQueue('prices-xbox');
 
-        return 0;
-    }
-
-    /**
-     * Dispatch jobs when game has a direct retailer provider.
-     */
-    private function dispatchForDirectProvider(VideoGame $game): int
-    {
-        $url = $this->constructStoreUrl($game->provider, $game->external_id);
-
-        if (! $url) {
-            return 0;
-        }
-
-        $retailer = Retailer::where('slug', $game->provider)->first();
-
-        if (! $retailer) {
-            return 0;
-        }
-
-        foreach (self::TARGET_REGIONS as $country) {
-            FetchGamePriceJob::dispatch($game->id, $retailer->id, $url, $country);
-        }
-
-        return count(self::TARGET_REGIONS);
+        return 1;
     }
 
     /**
@@ -212,22 +157,5 @@ class EnrichGamePricesJob implements ShouldQueue
         ]);
 
         return $this->dispatchSteamJobs($game, (int) $steamId);
-    }
-
-    private function isRetailerProvider(?string $provider): bool
-    {
-        return in_array($provider, ['steam', 'playstation', 'xbox', 'nintendo'], true);
-    }
-
-    private function constructStoreUrl(?string $provider, int|string|null $externalId): ?string
-    {
-        if (! $provider || ! $externalId) {
-            return null;
-        }
-
-        return match ($provider) {
-            'steam' => "https://store.steampowered.com/app/{$externalId}/",
-            default => null,
-        };
     }
 }

@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Jobs\Propagation\PropagateSourceMetadataJob;
 use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-
-uses(RefreshDatabase::class);
 
 test('VideoGameTitleSource observer dispatches propagation job on creation', function () {
     Queue::fake();

@@ -21,9 +21,10 @@ function readCsv(string $file): array
     }
 
     $handle = fopen($file, 'r');
-    $headers = fgetcsv($handle, 0, ',', '"', '\\');
+    // RFC4180: quotes escaped by doubling; no backslash-escaping
+    $headers = fgetcsv($handle, 0, ',', '"', '');
 
-    while (($data = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+    while (($data = fgetcsv($handle, 0, ',', '"', '')) !== false) {
         // Handle rows with mismatched column counts
         if (count($data) !== count($headers)) {
             // Pad with empty strings or truncate to match headers
@@ -41,7 +42,8 @@ function readCsv(string $file): array
 function writeCsv(string $file, array $rows, array $headers): void
 {
     $handle = fopen($file, 'w');
-    fputcsv($handle, $headers, ',', '"', '\\');
+    // RFC4180: quotes escaped by doubling; no backslash-escaping
+    fputcsv($handle, $headers, ',', '"', '');
 
     foreach ($rows as $row) {
         $csvRow = [];
@@ -57,7 +59,7 @@ function writeCsv(string $file, array $rows, array $headers): void
             }
             $csvRow[] = $value;
         }
-        fputcsv($handle, $csvRow, ',', '"', '\\');
+        fputcsv($handle, $csvRow, ',', '"', '');
     }
     fclose($handle);
 
@@ -68,6 +70,72 @@ function writeCsv(string $file, array $rows, array $headers): void
 function normalizeTitle(string $title): string
 {
     return strtolower(preg_replace('/[^a-z0-9]+/i', '-', $title));
+}
+
+function normalizeProviderKey(string $provider): string
+{
+    $provider = strtolower(trim($provider));
+
+    return match ($provider) {
+        'thegamesdb' => 'tgdb',
+        default => $provider,
+    };
+}
+
+/**
+ * @param array<string, mixed> $map
+ * @return array<string, mixed>
+ */
+function normalizeProviderMap(array $map): array
+{
+    $normalized = [];
+
+    foreach ($map as $key => $value) {
+        if (! is_string($key)) {
+            continue;
+        }
+
+        $normalized[normalizeProviderKey($key)] = $value;
+    }
+
+    return $normalized;
+}
+
+function isIntLike(mixed $value): bool
+{
+    if (is_int($value)) {
+        return true;
+    }
+
+    if (! is_string($value)) {
+        return false;
+    }
+
+    $value = trim($value);
+
+    return $value !== '' && ctype_digit($value);
+}
+
+/**
+ * @param array<string, mixed> $externalIds
+ * @return array{provider: string, external_id: int}
+ */
+function pickCanonicalProvider(array $externalIds, int $fallbackId): array
+{
+    foreach (['igdb', 'tgdb', 'steam', 'steam_store', 'playstation_store', 'microsoft_store', 'xbox'] as $preferred) {
+        $value = $externalIds[$preferred] ?? null;
+        if (isIntLike($value)) {
+            return ['provider' => $preferred, 'external_id' => (int) $value];
+        }
+    }
+
+    foreach ($externalIds as $provider => $value) {
+        if (isIntLike($value)) {
+            return ['provider' => (string) $provider, 'external_id' => (int) $value];
+        }
+    }
+
+    return ['provider' => 'legacy', 'external_id' => $fallbackId];
 }
 
 // Helper to generate slug
@@ -93,32 +161,94 @@ $videoGameTitles = [];
 $videoGames = [];
 $videoGameTitleSources = [];
 
-$sourceId = 1; // For video_game_sources - we'll assume IGDB source exists with id=1
+$sourceRows = readCsv("$baseDir/video_game_sources.csv");
+$sourceIdByProvider = [];
+foreach ($sourceRows as $row) {
+    $providerKey = $row['provider_key'] ?? '';
+    $providerKey = $providerKey !== '' ? $providerKey : ($row['provider'] ?? '');
+
+    $providerKey = normalizeProviderKey((string) $providerKey);
+
+    if ($providerKey === '') {
+        continue;
+    }
+
+    $sourceIdByProvider[$providerKey] = (int) ($row['id'] ?? 0);
+}
+
+$igdbSourceId = $sourceIdByProvider['igdb'] ?? 1;
+$tgdbSourceId = $sourceIdByProvider['tgdb'] ?? null;
 
 foreach ($oldProducts as $product) {
     $productId = (int)$product['id'];
-    $metadata = json_decode($product['metadata'], true);
-    $igdbData = $metadata['sources']['igdb'] ?? null;
-    $externalIds = json_decode($product['external_ids'], true);
-    $igdbId = $externalIds['igdb'] ?? null;
+    $metadata = json_decode($product['metadata'] ?? '[]', true);
+    $metadata = is_array($metadata) ? $metadata : [];
 
-    // Get synopsis from IGDB data if available, otherwise use product synopsis
+    $externalIds = json_decode($product['external_ids'] ?? '[]', true);
+    $externalIds = is_array($externalIds) ? $externalIds : [];
+
+    // Provider normalization (legacy -> canonical)
+    $metadata['sources'] = normalizeProviderMap($metadata['sources'] ?? []);
+    $externalIds = normalizeProviderMap($externalIds);
+
+    // Preserve legacy-only columns under metadata.legacy
+    $metadata['legacy'] = array_filter([
+        'uid' => $product['uid'] ?? null,
+        'primary_platform_family' => $product['primary_platform_family'] ?? null,
+        'freshness_score' => $product['freshness_score'] ?? null,
+    ], fn ($v) => $v !== null && $v !== '');
+
+    $igdbData = $metadata['sources']['igdb'] ?? null;
+    $igdbId = $externalIds['igdb'] ?? (is_array($igdbData) ? ($igdbData['id'] ?? null) : null);
+
+    $providers = array_merge(
+        array_keys($metadata['sources'] ?? []),
+        array_keys($externalIds)
+    );
+    $providers = array_values(array_unique(array_filter(array_map('strval', $providers))));
+    sort($providers);
+
+    $canonical = pickCanonicalProvider($externalIds, $productId);
+    $canonicalProvider = $canonical['provider'];
+    $canonicalExternalId = $canonical['external_id'];
+    $canonicalPayload = $metadata['sources'][$canonicalProvider] ?? null;
+    $canonicalPayload = is_array($canonicalPayload) ? $canonicalPayload : [];
+
+    // Get synopsis from best available provider data if available, otherwise use product synopsis
     $synopsis = '';
-    if ($igdbData && !empty($igdbData['summary'])) {
-        $synopsis = $igdbData['summary'];
+    if (! empty($canonicalPayload['summary'])) {
+        $synopsis = (string) $canonicalPayload['summary'];
+    } elseif (! empty($canonicalPayload['overview'])) {
+        $synopsis = (string) $canonicalPayload['overview'];
     } elseif (!empty($product['synopsis'])) {
         $synopsis = $product['synopsis'];
+    }
+
+    $type = ($product['category'] ?? null) === 'Hardware' ? 'console' : 'video_game';
+
+    $releaseDate = null;
+    if (! empty($canonicalPayload['first_release_date'])) {
+        $releaseDate = date('Y-m-d', strtotime((string) $canonicalPayload['first_release_date']));
+    } elseif (! empty($product['release_date'])) {
+        $releaseDate = date('Y-m-d', strtotime($product['release_date']));
     }
 
     // Transform product
     $newProducts[] = [
         'id' => $productId,
-        'type' => 'video_game',
+        'type' => $type,
         'name' => $product['name'],
         'slug' => $product['slug'],
         'title' => $product['name'], // Use name as title
         'normalized_title' => normalizeTitle($product['name']),
         'synopsis' => $synopsis,
+        'platform' => $product['platform'] ?? null,
+        'category' => $product['category'] ?? null,
+        'release_date' => $releaseDate,
+        'popularity_score' => $product['popularity_score'] ?? null,
+        'rating' => $product['rating'] ?? null,
+        'external_ids' => json_encode($externalIds, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        'metadata' => json_encode($metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
         'created_at' => $product['created_at'],
         'updated_at' => $product['updated_at'],
     ];
@@ -130,86 +260,104 @@ foreach ($oldProducts as $product) {
         'name' => $product['name'],
         'normalized_title' => normalizeTitle($product['name']),
         'slug' => $product['slug'],
-        'providers' => json_encode(['igdb']), // JSON array of provider names
+        'providers' => json_encode($providers, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), // JSON array of provider keys
         'created_at' => $product['created_at'],
         'updated_at' => $product['updated_at'],
     ];
 
     // Create video_game (canonical amalgamated record)
-    if ($igdbData) {
-        $platforms = [];
-        if (!empty($igdbData['platform_names'])) {
-            foreach ($igdbData['platform_names'] as $platformName) {
-                $platforms[] = $platformName;
-            }
+    $platforms = [];
+    if ($canonicalProvider === 'igdb' && ! empty($canonicalPayload['platform_names']) && is_array($canonicalPayload['platform_names'])) {
+        $platforms = $canonicalPayload['platform_names'];
+    } elseif (! empty($product['platform'])) {
+        $platforms = [$product['platform']];
+    }
+
+    $genres = [];
+    if ($canonicalProvider === 'igdb' && ! empty($canonicalPayload['genres']) && is_array($canonicalPayload['genres'])) {
+        foreach ($canonicalPayload['genres'] as $genre) {
+            $genres[] = is_array($genre) ? ($genre['name'] ?? '') : (string) $genre;
+        }
+        $genres = array_values(array_filter($genres, fn ($v) => $v !== ''));
+    }
+
+    $media = [
+        'videos' => $canonicalProvider === 'igdb' ? ($canonicalPayload['videos'] ?? []) : [],
+        'screenshots' => $canonicalProvider === 'igdb' ? ($canonicalPayload['screenshots'] ?? []) : [],
+        'cover' => $canonicalProvider === 'igdb' ? ($canonicalPayload['cover'] ?? null) : null,
+    ];
+
+    $videoGames[] = [
+        'id' => $productId,
+        'video_game_title_id' => $productId,
+        'slug' => $product['slug'],
+        'provider' => $canonicalProvider,
+        'external_id' => $canonicalExternalId,
+        'name' => $canonicalPayload['name'] ?? $product['name'],
+        'description' => null,
+        'summary' => $canonicalPayload['summary'] ?? $canonicalPayload['overview'] ?? $synopsis,
+        'storyline' => $canonicalPayload['storyline'] ?? null,
+        'url' => null,
+        'release_date' => $releaseDate,
+        'platform' => ! empty($platforms) ? json_encode($platforms, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
+        'rating' => $product['rating'] !== '' ? $product['rating'] : null,
+        'rating_count' => null,
+        'developer' => null,
+        'publisher' => null,
+        'genre' => ! empty($genres) ? json_encode($genres, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
+        'media' => json_encode($media, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        'source_payload' => ! empty($canonicalPayload) ? json_encode($canonicalPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
+        'created_at' => $product['created_at'],
+        'updated_at' => $product['updated_at'],
+    ];
+
+    // Create per-provider title sources (igdb + tgdb when possible)
+    $candidateProviders = [
+        'igdb' => $igdbSourceId,
+        'tgdb' => $tgdbSourceId,
+    ];
+
+    foreach ($candidateProviders as $providerKey => $sourceId) {
+        if (! $sourceId) {
+            continue;
         }
 
-        $genres = [];
-        if (!empty($igdbData['genres'])) {
-            foreach ($igdbData['genres'] as $genre) {
-                $genres[] = $genre['name'] ?? $genre;
-            }
+        $providerPayload = $metadata['sources'][$providerKey] ?? null;
+        $providerPayload = is_array($providerPayload) ? $providerPayload : [];
+
+        $providerItemId = $externalIds[$providerKey] ?? ($providerPayload['id'] ?? null);
+        if (! isIntLike($providerItemId)) {
+            continue;
         }
 
-        // Build media JSON
-        $media = [
-            'videos' => $igdbData['videos'] ?? [],
-            'screenshots' => $igdbData['screenshots'] ?? [],
-            'cover' => null,
-        ];
-
-        // Add cover if available
-        if (!empty($igdbData['cover'])) {
-            $media['cover'] = $igdbData['cover'];
+        $description = null;
+        if ($providerKey === 'igdb') {
+            $description = $providerPayload['summary'] ?? null;
+        } elseif ($providerKey === 'tgdb') {
+            $description = $providerPayload['overview'] ?? ($providerPayload['summary'] ?? null);
         }
 
-        $videoGames[] = [
-            'id' => $productId,
-            'video_game_title_id' => $productId,
-            'slug' => $product['slug'],
-            'provider' => 'igdb',
-            'external_id' => $igdbId,
-            'name' => $igdbData['name'] ?? $product['name'],
-            'description' => '',
-            'summary' => $igdbData['summary'] ?? $product['synopsis'],
-            'storyline' => $igdbData['storyline'] ?? '',
-            'url' => '',
-            'release_date' => isset($igdbData['first_release_date'])
-                ? date('Y-m-d', strtotime($igdbData['first_release_date']))
-                : '',
-            'platform' => json_encode($platforms),
-            'rating' => null,
-            'rating_count' => null,
-            'developer' => '',
-            'publisher' => '',
-            'genre' => json_encode($genres),
-            'media' => json_encode($media),
-            'source_payload' => json_encode($igdbData),
-            'created_at' => $product['created_at'],
-            'updated_at' => $product['updated_at'],
-        ];
-
-        // Create video_game_title_source
         $videoGameTitleSources[] = [
-            'id' => $productId,
             'video_game_title_id' => $productId,
-            'video_game_source_id' => $sourceId, // Assume IGDB source id = 1
-            'provider' => 'igdb',
-            'external_id' => $igdbId,
-            'slug' => $igdbData['slug'] ?? $product['slug'],
-            'name' => $igdbData['name'] ?? $product['name'],
-            'description' => $igdbData['summary'] ?? '',
-            'release_date' => isset($igdbData['first_release_date'])
-                ? date('Y-m-d', strtotime($igdbData['first_release_date']))
-                : '',
-            'provider_item_id' => $igdbId,
-            'platform' => json_encode($platforms),
+            'video_game_source_id' => $sourceId,
+            'provider' => $providerKey,
+            'external_id' => (int) $providerItemId,
+            'slug' => $providerPayload['slug'] ?? $product['slug'],
+            'name' => $providerPayload['name'] ?? $product['name'],
+            'description' => $description ?? $synopsis,
+            'release_date' => $releaseDate,
+            'provider_item_id' => (int) $providerItemId,
+            'platform' => $providerKey === 'igdb' ? json_encode($platforms, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) : null,
             'rating' => null,
             'rating_count' => null,
-            'developer' => '',
-            'publisher' => '',
-            'genre' => json_encode($genres),
-            'raw_payload' => json_encode($igdbData),
+            'developer' => null,
+            'publisher' => null,
+            'genre' => $providerKey === 'igdb' && ! empty($genres)
+                ? json_encode($genres, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                : null,
+            'raw_payload' => ! empty($providerPayload)
+                ? json_encode($providerPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                : null,
             'created_at' => $product['created_at'],
             'updated_at' => $product['updated_at'],
         ];
@@ -217,7 +365,24 @@ foreach ($oldProducts as $product) {
 }
 
 // Write transformed products
-$productsHeaders = ['id', 'type', 'name', 'slug', 'title', 'normalized_title', 'synopsis', 'created_at', 'updated_at'];
+$productsHeaders = [
+    'id',
+    'type',
+    'name',
+    'slug',
+    'platform',
+    'category',
+    'title',
+    'normalized_title',
+    'synopsis',
+    'release_date',
+    'popularity_score',
+    'rating',
+    'external_ids',
+    'metadata',
+    'created_at',
+    'updated_at',
+];
 writeCsv("$baseDir/products_TRANSFORMED.csv", $newProducts, $productsHeaders);
 
 $titlesHeaders = ['id', 'product_id', 'name', 'normalized_title', 'slug', 'providers', 'created_at', 'updated_at'];
@@ -228,7 +393,7 @@ $videoGamesHeaders = ['id', 'video_game_title_id', 'slug', 'provider', 'external
     'source_payload', 'created_at', 'updated_at'];
 writeCsv("$baseDir/video_games_TRANSFORMED.csv", $videoGames, $videoGamesHeaders);
 
-$sourcesHeaders = ['id', 'video_game_title_id', 'video_game_source_id', 'provider', 'external_id', 'slug', 'name',
+$sourcesHeaders = ['video_game_title_id', 'video_game_source_id', 'provider', 'external_id', 'slug', 'name',
     'description', 'release_date', 'provider_item_id', 'platform', 'rating', 'rating_count', 'developer', 'publisher',
     'genre', 'raw_payload', 'created_at', 'updated_at'];
 writeCsv("$baseDir/video_game_title_sources_TRANSFORMED.csv", $videoGameTitleSources, $sourcesHeaders);

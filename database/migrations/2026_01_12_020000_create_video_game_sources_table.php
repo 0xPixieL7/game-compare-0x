@@ -11,8 +11,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // `migrate:fresh` drops tables but does not necessarily drop views/materialized views.
-        // On some environments a previously-created view can cause "relation already exists".
+        // Some environments may leave views/materialized views behind that collide with these names.
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::statement('DROP MATERIALIZED VIEW IF EXISTS video_game_sources CASCADE');
             DB::statement('DROP VIEW IF EXISTS video_game_sources CASCADE');

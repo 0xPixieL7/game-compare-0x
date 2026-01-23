@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Log;
  * - Transactional writes (DB::transaction)
  * - Implements ShouldBeUnique for deduplication
  */
-class PropagateSourceMetadataJob implements ShouldQueue, ShouldBeUnique
+class PropagateSourceMetadataJob implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -11,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         // Drop MV and Indexes
         DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_game_title_sources_mv CASCADE');
 
@@ -131,13 +136,17 @@ SQL
      */
     public function down(): void
     {
-         // Same logic: Drop MV, Alter Table Back, Recreate MV
-         DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_game_title_sources_mv CASCADE');
-         
-         Schema::table('video_games', function (Blueprint $table) {
-             DB::statement('ALTER TABLE video_games ALTER COLUMN video_game_title_id SET NOT NULL');
-         });
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
 
-         // Logic to recreate MV (omitted for brevity in this context but ideally should include it)
+        // Same logic: Drop MV, Alter Table Back, Recreate MV
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_game_title_sources_mv CASCADE');
+
+        Schema::table('video_games', function (Blueprint $table) {
+            DB::statement('ALTER TABLE video_games ALTER COLUMN video_game_title_id SET NOT NULL');
+        });
+
+        // Logic to recreate MV (omitted for brevity in this context but ideally should include it)
     }
 };

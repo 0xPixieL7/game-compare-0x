@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Jobs\Enrichment\Traits\CategorizesVideoTypes;
 use App\Models\Image;
 use App\Models\Product;
 use App\Models\Video;
@@ -22,6 +23,8 @@ use Symfony\Component\Console\Helper\ProgressBar;
 
 class FetchUpcomingIgdbGamesCommand extends Command
 {
+    use CategorizesVideoTypes;
+
     protected $signature = 'igdb:fetch-upcoming
                            {--from-date= : Start date (Y-m-d), defaults to today}
                            {--to-date= : End date (Y-m-d), defaults to 10 years from now}
@@ -268,8 +271,9 @@ class FetchUpcomingIgdbGamesCommand extends Command
             'platforms', 'genres', 'themes', 'keywords',
             'category', 'status', 'url', 'checksum',
             // Nested media (ALL in one request!)
-            'cover.*',
-            'screenshots.*',
+            'cover.image_id',
+            'screenshots.image_id',
+            'artworks.image_id',
             'videos.*',
             'artworks.*',
             'websites.*',
@@ -549,7 +553,11 @@ class FetchUpcomingIgdbGamesCommand extends Command
             $imageId = $gameData['cover']['image_id'];
             $url = "https://images.igdb.com/igdb/image/upload/t_cover_big/{$imageId}.jpg";
 
-            $this->imageBatch[$externalId][] = $url;
+            $this->imageBatch[$externalId][] = [
+                'url' => $url,
+                'collection' => 'cover',
+                'image_id' => $imageId,
+            ];
             $this->imageUrlCount++;
         }
 
@@ -560,7 +568,27 @@ class FetchUpcomingIgdbGamesCommand extends Command
                     $imageId = $screenshot['image_id'];
                     $url = "https://images.igdb.com/igdb/image/upload/t_screenshot_huge/{$imageId}.jpg";
 
-                    $this->imageBatch[$externalId][] = $url;
+                    $this->imageBatch[$externalId][] = [
+                        'url' => $url,
+                        'collection' => 'screenshot',
+                        'image_id' => $imageId,
+                    ];
+                    $this->imageUrlCount++;
+                }
+            }
+        }
+        // Queue artworks
+        if (isset($gameData['artworks']) && is_array($gameData['artworks'])) {
+            foreach ($gameData['artworks'] as $artwork) {
+                if (isset($artwork['image_id'])) {
+                    $imageId = $artwork['image_id'];
+                    $url = "https://images.igdb.com/igdb/image/upload/t_720p/{$imageId}.jpg";
+
+                    $this->imageBatch[$externalId][] = [
+                        'url' => $url,
+                        'collection' => 'artwork',
+                        'image_id' => $imageId,
+                    ];
                     $this->imageUrlCount++;
                 }
             }
@@ -573,21 +601,12 @@ class FetchUpcomingIgdbGamesCommand extends Command
                     $videoId = $video['video_id'];
                     $url = "https://www.youtube.com/watch?v={$videoId}";
 
-                    $this->videoBatch[$externalId][] = $url;
+                    $this->videoBatch[$externalId][] = [
+                        'url' => $url,
+                        'video_id' => $videoId,
+                        'name' => $video['name'] ?? null,
+                    ];
                     $this->videoUrlCount++;
-                }
-            }
-        }
-
-        // Queue artworks
-        if (isset($gameData['artworks']) && is_array($gameData['artworks'])) {
-            foreach ($gameData['artworks'] as $artwork) {
-                if (isset($artwork['image_id'])) {
-                    $imageId = $artwork['image_id'];
-                    $url = "https://images.igdb.com/igdb/image/upload/t_1080p/{$imageId}.jpg";
-
-                    $this->imageBatch[$externalId][] = $url;
-                    $this->imageUrlCount++;
                 }
             }
         }
@@ -659,11 +678,21 @@ class FetchUpcomingIgdbGamesCommand extends Command
                 continue;
             }
 
-            foreach (($this->imageBatch[$externalId] ?? []) as $url) {
+            foreach (($this->imageBatch[$externalId] ?? []) as $imageData) {
+                $url = is_array($imageData) ? $imageData['url'] : $imageData;
+                $collection = is_array($imageData) ? ($imageData['collection'] ?? 'cover') : 'cover';
+                $imageId = is_array($imageData) ? ($imageData['image_id'] ?? null) : null;
+
                 $imageUpserts[] = [
                     'imageable_type' => VideoGame::class,
                     'imageable_id' => $videoGameId,
+                    'video_game_id' => $videoGameId,
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
                     'url' => $url,
+                    'primary_collection' => $collection,
+                    'collection_names' => json_encode([$collection]),
+                    'external_id' => $imageId,
+                    'provider' => 'igdb',
                     'created_at' => $this->batchTimestamp,
                     'updated_at' => $this->batchTimestamp,
                 ];
@@ -680,11 +709,29 @@ class FetchUpcomingIgdbGamesCommand extends Command
                 continue;
             }
 
-            foreach (($this->videoBatch[$externalId] ?? []) as $url) {
+            foreach (($this->videoBatch[$externalId] ?? []) as $videoData) {
+                if (is_string($videoData)) {
+                    $url = $videoData;
+                    $name = null;
+                    $videoId = null;
+                } else {
+                    $url = $videoData['url'];
+                    $name = $videoData['name'] ?? null;
+                    $videoId = $videoData['video_id'] ?? null;
+                }
+
+                $type = $this->categorizeVideoType((string) $name);
+
                 $videoUpserts[] = [
                     'videoable_type' => VideoGame::class,
                     'videoable_id' => $videoGameId,
+                    'video_game_id' => $videoGameId,
+                    'uuid' => (string) \Illuminate\Support\Str::uuid(),
+                    'primary_collection' => $type,
+                    'collection_names' => json_encode([$type]),
                     'url' => $url,
+                    'video_id' => $videoId,
+                    'title' => $name,
                     'provider' => 'youtube',
                     'created_at' => $this->batchTimestamp,
                     'updated_at' => $this->batchTimestamp,
@@ -700,7 +747,7 @@ class FetchUpcomingIgdbGamesCommand extends Command
                 Image::upsert(
                     $imageUpserts,
                     ['imageable_type', 'imageable_id', 'url'],
-                    ['updated_at']
+                    ['primary_collection', 'collection_names', 'external_id', 'video_game_id', 'updated_at']
                 );
             }
 
@@ -708,7 +755,7 @@ class FetchUpcomingIgdbGamesCommand extends Command
                 Video::upsert(
                     $videoUpserts,
                     ['videoable_type', 'videoable_id', 'url'],
-                    ['provider', 'updated_at']
+                    ['primary_collection', 'collection_names', 'video_id', 'title', 'provider', 'updated_at']
                 );
             }
         });

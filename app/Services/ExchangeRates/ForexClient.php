@@ -100,18 +100,12 @@ class ForexClient
 
         foreach ($byBase as $base => $quotes) {
             try {
-                $response = $this->client->get("/latest/{$base}");
-
-                if (! $response->successful()) {
-                    continue;
-                }
-
-                $data = $response->json();
+                $rawRates = $this->getAllRatesForBase($base);
 
                 foreach ($quotes as $quote) {
-                    if (isset($data['rates'][$quote])) {
+                    if (isset($rawRates[$quote])) {
                         $key = "{$base}_{$quote}";
-                        $rates[$key] = (float) $data['rates'][$quote];
+                        $rates[$key] = (float) $rawRates[$quote];
                     }
                 }
 
@@ -123,6 +117,28 @@ class ForexClient
         }
 
         return $rates;
+    }
+
+    /**
+     * Get all rates for a base currency.
+     */
+    public function getAllRatesForBase(string $base): array
+    {
+        return Cache::remember("forex:all:{$base}", self::CACHE_TTL, function () use ($base) {
+            try {
+                $response = $this->client->get("/latest/{$base}");
+
+                if (! $response->successful()) {
+                    throw new \RuntimeException("Forex API error: {$response->status()}");
+                }
+
+                $data = $response->json();
+                return $data['rates'] ?? [];
+            } catch (\Exception $e) {
+                Log::error("Failed to fetch all rates for {$base}", ['error' => $e->getMessage()]);
+                return [];
+            }
+        });
     }
 
     /**

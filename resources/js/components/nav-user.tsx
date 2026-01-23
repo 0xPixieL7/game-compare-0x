@@ -61,9 +61,7 @@ export function NavUser() {
 
     return (
         <SidebarMenu>
-            <SidebarMenuItem>
-                {navUserComponent}
-            </SidebarMenuItem>
+            <SidebarMenuItem>{navUserComponent}</SidebarMenuItem>
         </SidebarMenu>
     );
 }

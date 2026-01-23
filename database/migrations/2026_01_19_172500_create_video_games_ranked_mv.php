@@ -10,9 +10,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
         // This materialized view organizes games by rating and release date (descending).
         // It is optimized for the landing page 'Top Rated' and 'New Releases' sections.
-        DB::statement("
+        DB::statement('
             CREATE MATERIALIZED VIEW public.video_games_ranked_mv AS
             WITH primary_images AS (
                 SELECT DISTINCT ON (img.video_game_id)
@@ -48,22 +52,26 @@ return new class extends Migration
                 s.media,
                 pi.image_url,
                 pi.image_urls,
-                (COALESCE(vg.rating, 0) + (COALESCE(s.rating_count, 0) * 0.1)) as review_score
+                (
+                    (COALESCE(vg.rating, 0) * 0.6) + 
+                    (LEAST(COALESCE(vg.rating_count, 0), 1000) * 0.02) + 
+                    (log(COALESCE(vg.popularity_score, 0) + 1) * 5)
+                ) as review_score
             FROM public.video_games vg
             JOIN public.video_game_titles vgt ON vgt.id = vg.video_game_title_id
             LEFT JOIN primary_sources s ON s.video_game_title_id = vgt.id
             LEFT JOIN primary_images pi ON pi.video_game_id = vg.id
-            ORDER BY vg.rating DESC NULLS LAST, vg.release_date DESC NULLS LAST
+            ORDER BY review_score DESC NULLS LAST, vg.release_date DESC NULLS LAST
             WITH DATA
-        ");
+        ');
 
         // Indexes for fast sorting and lookups
-        DB::statement("CREATE INDEX idx_vgr_mv_rating_date ON public.video_games_ranked_mv (rating DESC NULLS LAST, release_date DESC NULLS LAST)");
-        DB::statement("CREATE INDEX idx_vgr_mv_date_rating ON public.video_games_ranked_mv (release_date DESC NULLS LAST, rating DESC NULLS LAST)");
-        DB::statement("CREATE INDEX idx_vgr_mv_id ON public.video_games_ranked_mv (id)");
-        
+        DB::statement('CREATE INDEX idx_vgr_mv_rating_date ON public.video_games_ranked_mv (rating DESC NULLS LAST, release_date DESC NULLS LAST)');
+        DB::statement('CREATE INDEX idx_vgr_mv_date_rating ON public.video_games_ranked_mv (release_date DESC NULLS LAST, rating DESC NULLS LAST)');
+        DB::statement('CREATE INDEX idx_vgr_mv_id ON public.video_games_ranked_mv (id)');
+
         // Index on title for searchability
-        DB::statement("CREATE INDEX idx_vgr_mv_name ON public.video_games_ranked_mv USING gin (name extensions.gin_trgm_ops)");
+        DB::statement('CREATE INDEX idx_vgr_mv_name ON public.video_games_ranked_mv USING gin (name extensions.gin_trgm_ops)');
     }
 
     /**
@@ -71,6 +79,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("DROP MATERIALIZED VIEW IF EXISTS public.video_games_ranked_mv");
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
+
+        DB::statement('DROP MATERIALIZED VIEW IF EXISTS public.video_games_ranked_mv');
     }
 };

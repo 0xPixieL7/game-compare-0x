@@ -5,10 +5,7 @@ declare(strict_types=1);
 use App\Jobs\FetchExchangeRatesJob;
 use App\Models\Currency;
 use App\Models\ExchangeRate;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-
-uses(RefreshDatabase::class);
 
 beforeEach(function () {
     // Seed currencies

@@ -6,11 +6,11 @@ namespace App\Http\Controllers;
 
 use App\Models\VideoGameTitleSource;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CompareController extends Controller
 {
@@ -21,12 +21,15 @@ class CompareController extends Controller
         // ... (existing index code)
         // Check if request expects JSON (for simple polling/updates) - optional but good practice
         // For now, we return Inertia response as requested.
-        
+
         $searchQuery = $request->get('search', '');
         $limit = min((int) $request->get('limit', 20), 100);
 
         // Get spotlight products (featured games)
         $spotlight = $this->getSpotlightProducts();
+
+        // Get hero product (top rated)
+        $hero = $spotlight[0] ?? null;
 
         // Get cross reference stats
         $crossReferenceStats = $this->getCrossReferenceStats();
@@ -38,14 +41,15 @@ class CompareController extends Controller
         $platforms = $this->getAvailablePlatforms();
         $currencies = ['USD', 'EUR', 'GBP', 'JPY'];
 
-        // Get hero product (top rated)
-        $hero = $this->getHeroProduct();
+        // Get top lists from RAWG and IGDB
+        $topLists = $this->getTopLists();
 
         return Inertia::render('Compare/Index', [
             'hero' => $hero,
             'spotlight' => $spotlight,
             'crossReferenceStats' => $crossReferenceStats,
             'prioritizedMatches' => $prioritizedMatches,
+            'topLists' => $topLists,
             'crossReferencePlatforms' => $platforms,
             'crossReferenceCurrencies' => $currencies,
             'regionOptions' => ['US', 'EU', 'GB', 'JP'],
@@ -67,87 +71,143 @@ class CompareController extends Controller
     {
         $searchQuery = $request->get('search', '');
         $limit = min((int) $request->get('limit', 20), 100);
-        
+
         return response()->json($this->getGameComparisons($searchQuery, $limit));
     }
 
     public function spotlight(): \Illuminate\Http\JsonResponse
     {
-         return response()->json($this->getSpotlightProducts());
+        return response()->json($this->getSpotlightProducts());
     }
 
-    private function getSpotlightProducts(): array
+    private function getSpotlightProducts(int $limit = 20): array
     {
-        // Mock spotlight data for the "Apple TV" style carousel
-        return [
-            [
-                'id' => 1,
-                'name' => 'The Legend of Zelda: Breath of the Wild',
-                'slug' => 'the-legend-of-zelda-breath-of-the-wild',
-                'image' => 'https://images.igdb.com/igdb/image/upload/t_1080p/co1wyy.webp',
-                'platform_labels' => ['Switch', 'Wii U'],
-                'region_codes' => ['US', 'EU', 'JP'],
-                'currencies' => ['USD', 'EUR', 'JPY'],
-                'retailer_names' => ['Nintendo eShop', 'Amazon', 'GameStop'],
-                'spotlight_score' => [
-                    'total' => 9.7,
-                    'grade' => 'S+',
-                    'verdict' => 'Masterpiece',
-                    'breakdown' => [
-                        ['label' => 'Critical Reception', 'score' => 98, 'summary' => 'Universal acclaim from critics worldwide.', 'weight_percentage' => 40],
-                        ['label' => 'Price Stability', 'score' => 85, 'summary' => 'Holds value exceptionally well.', 'weight_percentage' => 30],
-                        ['label' => 'Availability', 'score' => 100, 'summary' => 'Widely available physically and digitally.', 'weight_percentage' => 30],
-                    ],
-                ],
-                'spotlight_gallery' => [
-                   ['id' => '1', 'type' => 'image', 'url' => 'https://images.igdb.com/igdb/image/upload/t_1080p/co1wyy.webp', 'source' => 'IGDB'],
-                   ['id' => '2', 'type' => 'image', 'url' => 'https://images.igdb.com/igdb/image/upload/t_1080p/sc2.webp', 'source' => 'IGDB'],
-                ],
-            ],
-            [
-                'id' => 2,
-                'name' => 'Elden Ring',
-                'slug' => 'elden-ring',
-                'image' => 'https://images.igdb.com/igdb/image/upload/t_1080p/co4jni.webp',
-                'platform_labels' => ['PS5', 'XSX', 'PC'],
-                'region_codes' => ['US', 'EU', 'GB'],
-                'currencies' => ['USD', 'EUR', 'GBP'],
-                'retailer_names' => ['Steam', 'PS Store', 'Xbox Store'],
-                'spotlight_score' => [
-                    'total' => 9.6,
-                    'grade' => 'S+',
-                    'verdict' => 'Essential',
-                    'breakdown' => [
-                        ['label' => 'Critical Reception', 'score' => 96, 'summary' => 'Critically acclaimed open world RPG.', 'weight_percentage' => 40],
-                        ['label' => 'Price Stability', 'score' => 90, 'summary' => 'Frequent sales but high base value.', 'weight_percentage' => 30],
-                        ['label' => 'Performance', 'score' => 95, 'summary' => 'Excellent performance on current gen consoles.', 'weight_percentage' => 30],
-                    ],
-                ],
-                'spotlight_gallery' => [
-                   ['id' => '3', 'type' => 'image', 'url' => 'https://images.igdb.com/igdb/image/upload/t_1080p/co4jni.webp', 'source' => 'IGDB'],
-                ],
-            ]
-        ];
-    }
+        // 1. Get RAWG Trending games (Latest popularity)
+        $trending = DB::table('public.video_games_toplists_mv')
+            ->where('list_key', 'trending')
+            ->limit(10)
+            ->get();
 
-    private function getHeroProduct(): ?array
-    {
-        // For now, let's use the first spotlight product as the hero
-        // In the future, this could be dynamic, latest release, or editor's pick
-        $spotlights = $this->getSpotlightProducts();
-        
-        return $spotlights[0] ?? null;
+        // 2. Get Upcoming games (High anticipation)
+        $upcoming = DB::table('public.video_games_toplists_mv')
+            ->where('list_key', 'upcoming')
+            ->limit(10)
+            ->get();
+
+        // 3. Get Top Rated from the last 12 months
+        $topRecent = DB::table('public.video_games_ranked_mv')
+            ->where('release_date', '>', now()->subMonths(12))
+            ->orderBy('review_score', 'desc')
+            ->limit(10)
+            ->get();
+
+        // 4. Latest Shooters (with video and cover)
+        $shooters = DB::table('public.video_games_ranked_mv')
+            ->where('genre', 'ilike', '%Shooter%')
+            ->whereNotNull('primary_video_id')
+            ->whereNotNull('cover_url')
+            ->where('release_date', '>', now()->subMonths(18))
+            ->orderBy('review_score', 'desc')
+            ->limit(5)
+            ->get();
+
+        // 5. Latest Sports (with video and cover)
+        $sports = DB::table('public.video_games_ranked_mv')
+            ->where(function ($q) {
+                $q->where('genre', 'ilike', '%Sport%')
+                    ->orWhere('genre', 'ilike', '%Sports%');
+            })
+            ->whereNotNull('primary_video_id')
+            ->whereNotNull('cover_url')
+            ->where('release_date', '>', now()->subMonths(18))
+            ->orderBy('review_score', 'desc')
+            ->limit(5)
+            ->get();
+
+        // 6. Specifically look for GTA VI if not present
+        $gta = DB::table('public.video_games_ranked_mv')
+            ->where('name', 'ilike', '%Grand Theft Auto VI%')
+            ->orWhere('name', 'ilike', '%GTA VI%')
+            ->first();
+
+        // Merge and deduplicate
+        $merged = collect($trending)
+            ->concat($upcoming)
+            ->concat($topRecent)
+            ->concat($shooters)
+            ->concat($sports)
+            ->when($gta, fn ($c) => $c->prepend($gta))
+            ->unique('id')
+            ->sortByDesc('review_score')
+            ->take($limit);
+
+        return $merged->map(function ($game) {
+            $platforms = $game->platform ? (is_string($game->platform) ? json_decode($game->platform, true) : $game->platform) : [];
+
+            // Build gallery
+            $gallery = [];
+            if ($game->primary_video_id) {
+                $gallery[] = ['id' => Str::random(8), 'type' => 'video', 'url' => $game->primary_video_id, 'source' => 'YouTube'];
+            }
+            if ($game->cover_url) {
+                $gallery[] = ['id' => Str::random(8), 'type' => 'image', 'url' => $this->upscaleImage($game->cover_url, 't_720p'), 'source' => 'IGDB'];
+            }
+            if ($game->background_url) {
+                $gallery[] = ['id' => Str::random(8), 'type' => 'image', 'url' => $this->upscaleImage($game->background_url, 't_1080p'), 'source' => 'IGDB'];
+            }
+            if ($game->artwork_url) {
+                $gallery[] = ['id' => Str::random(8), 'type' => 'image', 'url' => $this->upscaleImage($game->artwork_url, 't_1080p'), 'source' => 'IGDB'];
+            }
+
+            // Spotlight score breakdown
+            $rating = (float) ($game->rating ?? 0);
+            $reviewScore = (float) ($game->review_score ?? 70);
+
+            $verdict = match (true) {
+                $reviewScore >= 90 => 'Masterpiece',
+                $reviewScore >= 80 => 'Essential',
+                $reviewScore >= 70 => 'Great',
+                default => 'Mixed',
+            };
+
+            return [
+                'id' => $game->id,
+                'name' => $game->name,
+                'slug' => $game->slug,
+                'image' => $this->upscaleImage($game->cover_url ?: $game->image_url, 't_1080p'),
+                'background' => $this->upscaleImage($game->background_url, 't_1080p'),
+                'platform_labels' => is_array($platforms) ? $platforms : [$platforms],
+                'region_codes' => ['US', 'EU', 'JP', 'GB'],
+                'currencies' => ['USD', 'EUR', 'JPY', 'GBP'],
+                'retailer_names' => ['Steam', 'PlayStation', 'Xbox'],
+                'trailer_url' => $game->primary_video_id ? "https://www.youtube.com/watch?v={$game->primary_video_id}" : null,
+                'spotlight_score' => [
+                    'total' => round($reviewScore / 10, 1),
+                    'grade' => $reviewScore >= 90 ? 'S+' : ($reviewScore >= 80 ? 'A' : 'B'),
+                    'verdict' => $verdict,
+                    'breakdown' => [
+                        ['label' => 'Critical Reception', 'score' => (int) $rating, 'summary' => 'Aggregated rating from critics.', 'weight_percentage' => 40],
+                        ['label' => 'Popularity', 'score' => (int) min($game->popularity_score ?? 0, 100), 'summary' => 'Community follows and hype.', 'weight_percentage' => 30],
+                        ['label' => 'Ranking', 'score' => (int) min($reviewScore, 100), 'summary' => 'System weighted placement.', 'weight_percentage' => 30],
+                    ],
+                ],
+                'spotlight_gallery' => ! empty($gallery) ? $gallery : [
+                    ['id' => '1', 'type' => 'image', 'url' => $this->upscaleImage($game->cover_url ?: $game->image_url, 't_1080p'), 'source' => 'IGDB'],
+                ],
+            ];
+        })->toArray();
     }
 
     private function getCrossReferenceStats(): array
     {
         $total = VideoGameTitleSource::count();
+
         // Mock distribution based on total count
         return [
             'total' => $total,
-            'digital' => (int)($total * 0.6),
-            'physical' => (int)($total * 0.4),
-            'both' => (int)($total * 0.3), // Overlap
+            'digital' => (int) ($total * 0.6),
+            'physical' => (int) ($total * 0.4),
+            'both' => (int) ($total * 0.3), // Overlap
             'generated_at' => now()->toIso8601String(),
             'displayed' => 0,
             'display_limit' => 100,
@@ -161,75 +221,37 @@ class CompareController extends Controller
 
     private function getGameComparisons(string $search = '', int $limit = 20): array
     {
-        $query = VideoGameTitleSource::query()
-            ->select([
-                'video_game_title_sources.id',
-                'video_game_title_sources.name as game_name',
-                'video_game_title_sources.platform',
-                'video_game_title_sources.provider',
-                'video_game_title_sources.external_id',
-                'video_game_title_sources.rating',
-                'video_game_title_sources.release_date',
-                'video_game_title_sources.raw_payload',
-                'video_game_sources.display_name as source_name',
-                'video_game_titles.name as canonical_name',
-            ])
-            ->join('video_game_sources', 'video_game_title_sources.video_game_source_id', '=', 'video_game_sources.id')
-            ->join('video_game_titles', 'video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
-            ->whereNotNull('video_game_title_sources.name');
+        $query = DB::table('public.video_games_ranked_mv');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->whereRaw('LOWER(video_game_title_sources.name) LIKE LOWER(?)', ["%{$search}%"])
-                    ->orWhereRaw('LOWER(video_game_titles.canonical_name) LIKE LOWER(?)', ["%{$search}%"]);
+                $q->where('name', 'ilike', "%{$search}%")
+                    ->orWhere('canonical_name', 'ilike', "%{$search}%");
             });
         }
 
-        $results = $query->orderBy('video_game_title_sources.rating', 'desc')
+        $results = $query->orderBy('release_date', 'desc')
+            ->orderBy('review_score', 'desc')
             ->limit($limit)
             ->get();
 
-        // Group by game title for comparison
-        $grouped = $results->groupBy('canonical_name');
+        return $results->map(function ($game) {
+            // Get price data - we pass an empty collection for sources as we don't need them here
+            $priceData = $this->getPriceDataForGame($game->name, collect());
 
-        return $grouped->map(function ($sources, $gameName) {
-            // Get price data
-            $priceData = $this->getPriceDataForGame($gameName, $sources);
-            
-            $hasDigital = false; // We would determine this from sources in a real scenario
+            $hasDigital = false; // Mock for now
             $hasPhysical = count($priceData['entries']) > 0;
-            
-            // Determine platforms from sources
-            $platforms = $sources->pluck('platform')
-                ->flatten()
-                ->unique()
-                ->filter()
-                ->values()
-                ->toArray();
-                
-            if (empty($platforms)) {
-                $platforms = ['Unknown'];
-            }
 
-            // Try to extract image from raw_payload
-            $image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1wyy.webp'; // Default
-            
-            $igdbSource = $sources->firstWhere('provider', 'igdb');
-            if ($igdbSource && $igdbSource->raw_payload) {
-                $payload = json_decode($igdbSource->raw_payload, true);
-                if (!empty($payload['cover'])) {
-                    $imageId = is_string($payload['cover']) ? $payload['cover'] : ($payload['cover']['image_id'] ?? null);
-                    if ($imageId) {
-                        $image = 'https://images.igdb.com/igdb/image/upload/t_cover_big/co' . base_convert((string)$imageId, 10, 36) . '.webp';
-                    }
-                }
+            $platforms = $game->platform ? json_decode($game->platform, true) : ['Unknown'];
+            if (! is_array($platforms)) {
+                $platforms = [$platforms];
             }
 
             return [
-                'product_id' => $sources->first()->id,
-                'product_slug' => Str::slug($gameName),
-                'name' => $gameName,
-                'image' => $image,
+                'product_id' => $game->id,
+                'product_slug' => $game->slug,
+                'name' => $game->name,
+                'image' => $this->upscaleImage($game->cover_url ?: $game->image_url),
                 'platforms' => $platforms,
                 'has_digital' => $hasDigital,
                 'has_physical' => $hasPhysical,
@@ -239,19 +261,20 @@ class CompareController extends Controller
                     'offers' => [],
                     'currencies' => [],
                 ],
-                'physical' => array_map(function($entry) {
+                'physical' => array_map(function ($entry) {
                     return [
                         'console' => $entry['console'],
-                        'formatted_price' => '$' . number_format($entry['base_price'], 2),
+                        'formatted_price' => '$'.number_format($entry['base_price'], 2),
                     ];
                 }, $priceData['entries']),
                 'best_digital' => null,
                 'best_physical' => $priceData['best_price'],
-                'rating' => $sources->max('rating'),
-                'normalized_key' => Str::slug($gameName),
+                'rating' => $game->rating,
+                'review_score' => $game->review_score,
+                'normalized_key' => $game->slug,
                 'updated_at' => now()->toIso8601String(),
             ];
-        })->values()->toArray();
+        })->toArray();
     }
 
     private function getPriceDataForGame(string $gameName, $sources): array
@@ -301,7 +324,7 @@ class CompareController extends Controller
 
     private function loadPriceChartingData(string $gameName): array
     {
-        $csvData = Cache::remember('compare:price-guide-sample', 3600, function() {
+        $csvData = Cache::remember('compare:price-guide-sample', 3600, function () {
             $csvPath = base_path('price-guide.csv');
             if (! file_exists($csvPath)) {
                 return [];
@@ -314,14 +337,15 @@ class CompareController extends Controller
                 $rowCount = 0;
                 while (($row = fgetcsv($handle)) && $rowCount < 5000) {
                     if (count($row) >= 4 && is_array($headers)) {
-                         if (count($row) === count($headers)) {
+                        if (count($row) === count($headers)) {
                             $rows[] = array_combine($headers, $row);
-                         }
+                        }
                     }
                     $rowCount++;
                 }
                 fclose($handle);
             }
+
             return $rows;
         });
 
@@ -333,12 +357,12 @@ class CompareController extends Controller
         $searchTerm = strtolower($gameName);
 
         foreach ($csvData as $row) {
-             if (!empty($row['product-name'])) {
+            if (! empty($row['product-name'])) {
                 $productName = strtolower($row['product-name']);
                 if (str_contains($productName, $searchTerm) || str_contains($searchTerm, $productName)) {
                     $matches[] = $row;
                 }
-             }
+            }
 
             if (count($matches) >= 10) {
                 break;
@@ -351,6 +375,80 @@ class CompareController extends Controller
     private function parsePriceString(string $priceStr): float
     {
         $cleaned = preg_replace('/[^0-9.,]/', '', $priceStr);
+
         return (float) str_replace(',', '', $cleaned);
+    }
+
+    private function getTopLists(): array
+    {
+        $rows = DB::table('public.video_games_toplists_mv')
+            ->orderByRaw("
+                CASE 
+                    WHEN list_key = 'trending' THEN 0 
+                    WHEN list_key = 'upcoming' THEN 1 
+                    WHEN list_key = 'popular' THEN 2
+                    WHEN list_key = 'top_rated' THEN 3
+                    ELSE 4 
+                END
+            ")
+            ->orderBy('rank')
+            ->get();
+
+        $grouped = $rows->groupBy('list_key');
+
+        return $grouped->map(function ($items, $key) {
+            return [
+                'key' => $key,
+                'title' => $items->first()->list_name,
+                'provider' => $items->first()->provider_key,
+                'games' => $items->map(function ($item) {
+                    $prices = $item->prices ? json_decode($item->prices, true) : [];
+
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                        'rank' => $item->rank,
+                        'rating' => $item->rating,
+                        'release_date' => $item->release_date,
+                        'year' => $item->release_date ? date('Y', strtotime($item->release_date)) : null,
+                        'platform' => $item->platform ? json_decode($item->platform, true) : [],
+                        'image' => $this->upscaleImage($item->image_url),
+                        'cover' => $this->upscaleImage($item->cover_url),
+                        'background' => $this->upscaleImage($item->background_url, 't_720p'),
+                        'artwork' => $this->upscaleImage($item->artwork_url, 't_720p'),
+                        'video_id' => $item->primary_video_id,
+                        'video_name' => $item->primary_video_name,
+                        'review_score' => round((float) $item->review_score, 1),
+                        'popularity_score' => $item->popularity_score,
+                        'provider' => $item->provider_key,
+                        'prices' => [
+                            'usd' => isset($prices['USD']) ? $prices['USD'] / 100 : null,
+                            'eur' => isset($prices['EUR']) ? $prices['EUR'] / 100 : null,
+                            'gbp' => isset($prices['GBP']) ? $prices['GBP'] / 100 : null,
+                        ],
+                    ];
+                })->toArray(),
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Upscale IGDB image URLs to higher quality versions.
+     */
+    private function upscaleImage(?string $url, string $target = 't_cover_big'): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_contains($url, 'igdb.com')) {
+            $url = str_replace(['t_thumb', 't_cover_small', 't_logo_med'], $target, $url);
+            if (str_starts_with($url, '//')) {
+                $url = 'https:'.$url;
+            }
+        }
+
+        return $url;
     }
 }

@@ -1,17 +1,16 @@
+import { SpotlightCarousel } from '@/components/compare/spotlight-carousel';
 import EndlessCarousel from '@/components/EndlessCarousel';
 import IgdbAttribution from '@/components/igdb-attribution';
-import HeroStage from '@/components/landing/HeroStage';
 import IntroSplash from '@/components/landing/IntroSplash';
-import NeonCta from '@/components/landing/NeonCta';
 import { dashboard, login, register } from '@/routes';
-import { type Game, type GameRowData, type SharedData } from '@/types';
+import { type GameRowData, type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface WelcomeProps {
     canRegister?: boolean;
-    hero: Game | null;
-    spotlightGames?: Game[];
+    hero: any;
+    spotlightGames?: any[];
     rows: GameRowData[];
     cta: { pricing: string };
 }
@@ -33,6 +32,22 @@ export default function Welcome({
                     href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap"
                     rel="stylesheet"
                 />
+                {hero?.background && (
+                    <link
+                        rel="preload"
+                        as="image"
+                        href={hero.background}
+                        type="image/webp"
+                    />
+                )}
+                {hero?.image && (
+                    <link
+                        rel="preload"
+                        as="image"
+                        href={hero.image}
+                        type="image/webp"
+                    />
+                )}
             </Head>
 
             {!introComplete && (
@@ -57,7 +72,7 @@ export default function Welcome({
                             <div className="flex items-center gap-4">
                                 {auth.user ? (
                                     <Link
-                                        href={dashboard()}
+                                        href={dashboard().url}
                                         className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-all hover:bg-blue-400"
                                     >
                                         Dashboard
@@ -65,14 +80,14 @@ export default function Welcome({
                                 ) : (
                                     <>
                                         <Link
-                                            href={login()}
+                                            href={login().url}
                                             className="rounded-full px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-colors hover:text-gray-300"
                                         >
                                             Log in
                                         </Link>
                                         {canRegister && (
                                             <Link
-                                                href={register()}
+                                                href={register().url}
                                                 className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-all hover:bg-blue-400"
                                             >
                                                 Sign up
@@ -84,23 +99,21 @@ export default function Welcome({
                         </nav>
                     </header>
 
-                    <HeroStage 
-                        hero={hero} 
-                        spotlightGames={spotlightGames} 
-                    />
+                    <SpotlightCarousel spotlight={spotlightGames} hero={hero} />
 
                     <section
                         id="rows"
-                        className="relative z-20 mt-6 flex flex-col gap-8 pb-24"
+                        className="relative z-20 mt-0 flex flex-col gap-8 border-t border-white/5 bg-[#050505] pt-12 pb-24 shadow-[0_-50px_100px_rgba(0,0,0,0.5)]"
                     >
-                        {Array.isArray(rows) && rows.map((row) => (
-                            <EndlessCarousel
-                                key={row.id}
-                                title={row.title}
-                                games={row.games}
-                                className="pl-0"
-                            />
-                        ))}
+                        {Array.isArray(rows) &&
+                            rows.map((row) => (
+                                <EndlessCarousel
+                                    key={row.id}
+                                    title={row.title}
+                                    games={row.games}
+                                    className="pl-6 lg:pl-12"
+                                />
+                            ))}
                     </section>
 
                     {/* Footer */}

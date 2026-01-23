@@ -17,6 +17,7 @@ class ImportTransformedCsvs extends Command
                             {--batch=2000 : Batch size for inserts}
                             {--skip-on-error : Skip rows that cause errors instead of failing}
                             {--table= : Import only specific table}
+                            {--path= : Base directory containing CSV exports (default: storage/sqlite_exports)}
                             {--enrich : Dispatch enrichment jobs after import}';
 
     protected $description = 'Import transformed CSV files with batching (respects FK order), speed optimizations, and logging';
@@ -26,6 +27,8 @@ class ImportTransformedCsvs extends Command
     private int $errorSkippedRows = 0;
 
     private string $logChannel = 'daily';
+
+    private string $driverName = '';
 
     /**
      * Map of Table Name => CSV Filename
@@ -75,7 +78,9 @@ class ImportTransformedCsvs extends Command
     {
         ini_set('memory_limit', '512M');
         $this->batchSize = (int) $this->option('batch');
-        $basePath = storage_path('sqlite_exports');
+        $basePath = $this->option('path')
+            ? (string) $this->option('path')
+            : storage_path('sqlite_exports');
 
         // Setup dedicated log channel on the fly
         config(['logging.channels.import_debug' => [
@@ -89,6 +94,10 @@ class ImportTransformedCsvs extends Command
         DB::disableQueryLog();
         DB::connection()->unsetEventDispatcher();
 
+        $this->driverName = DB::getDriverName();
+
+        $this->loadVideoGameSourceProviderMap();
+
         $this->info('╔═══════════════════════════════════════════════════════════════╗');
         $this->info('║   CSV Import - Optimized Batch Processing                    ║');
         $this->info('╚═══════════════════════════════════════════════════════════════╝');
@@ -96,19 +105,32 @@ class ImportTransformedCsvs extends Command
 
         Log::channel($this->logChannel)->info('Starting CSV Import: '.date('Y-m-d H:i:s'));
 
+        $specificTable = $this->option('table');
+
         // Validate files exist
-        $this->validateFiles($basePath);
+        $this->validateFiles($basePath, is_string($specificTable) ? $specificTable : null);
 
         $this->newLine();
 
         $this->newLine();
 
         // Import in FK-safe order
-        $specificTable = $this->option('table');
-
         foreach ($this->importSequence as $table => $csvFile) {
             if ($specificTable && $table !== $specificTable) {
                 continue;
+            }
+
+            // video_game_sources IDs are environment-specific on pgsql.
+            // Never import stale IDs from CSV into an existing pgsql DB.
+            if ($table === 'video_game_sources' && DB::getDriverName() === 'pgsql' && ! empty($this->videoGameSourceIdByProvider)) {
+                $this->info('⏭️  Skipping video_game_sources import (pgsql sources already present)');
+
+                continue;
+            }
+
+            if ($table === 'video_game_title_sources') {
+                // Ensure provider->id map reflects whatever is in DB right now.
+                $this->loadVideoGameSourceProviderMap();
             }
 
             if ($table === 'video_game_prices') {
@@ -190,9 +212,11 @@ class ImportTransformedCsvs extends Command
         $regionsMap = [];
         $skuRegionsPath = $basePath.'/sku_regions.csv';
 
+        $countryCodeById = DB::table('countries')->pluck('code', 'id')->all();
+
         if (($handle = fopen($skuRegionsPath, 'r')) !== false) {
-            $headers = fgetcsv($handle); // Skip header
-            while (($row = fgetcsv($handle)) !== false) {
+            $headers = fgetcsv($handle, 0, ',', '"', ''); // Skip header
+            while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
                 // defined as: id,product_id,region_code,retailer,currency,sku,is_active,metadata,created_at,updated_at,country_id,currency_id
                 // index matches header usually:
                 // 0: id, 1: product_id, 2: region_code, 3: retailer, 4: currency, 5: sku, 6: is_active, 10: country_id
@@ -208,6 +232,7 @@ class ImportTransformedCsvs extends Command
                     'sku' => $row[5],
                     'is_active' => $row[6],
                     'country_id' => $row[10] ?? null,
+                    'country_code' => isset($countryCodeById[$row[10] ?? -1]) ? $countryCodeById[$row[10]] : null,
                 ];
             }
             fclose($handle);
@@ -232,7 +257,7 @@ class ImportTransformedCsvs extends Command
         }
 
         $handle = fopen($pricesPath, 'r');
-        fgetcsv($handle); // Skip header: id,sku_region_id,recorded_at,fiat_amount...
+        fgetcsv($handle, 0, ',', '"', ''); // Skip header: id,sku_region_id,recorded_at,fiat_amount...
 
         $bar = $this->output->createProgressBar($lineCount);
         $bar->start();
@@ -246,7 +271,7 @@ class ImportTransformedCsvs extends Command
         try {
             // region_prices columns:
             // 0:id, 1:sku_region_id, 2:recorded_at, 3:fiat_amount, 11:currency_id, 12:country_id, 13:local_amount
-            while (($row = fgetcsv($handle)) !== false) {
+            while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
                 $skuRegionId = $row[1] ?? null;
                 $region = $regionsMap[$skuRegionId] ?? null;
 
@@ -276,10 +301,11 @@ class ImportTransformedCsvs extends Command
                     'currency' => $region['currency'],
                     'amount_minor' => $amountMinor,
                     'recorded_at' => $row[2], // Keep as string, DB handles cast? or parse
+                    'bucket' => 'snapshot',
                     'retailer' => $region['retailer'],
                     'tax_inclusive' => false, // Default
                     'region_code' => $region['region_code'],
-                    'country_code' => null, // Could map country_id -> country_code if needed
+                    'country_code' => $region['country_code'],
                     'sku' => $region['sku'],
                     'is_active' => filter_var($region['is_active'], FILTER_VALIDATE_BOOLEAN),
                     'created_at' => now(), // New import
@@ -287,7 +313,7 @@ class ImportTransformedCsvs extends Command
                 ];
 
                 if (count($batch) >= $this->batchSize) {
-                    DB::table('video_game_prices')->insert($batch); // insertOrIgnore not needed if new unique IDs? use insert for speed
+                    DB::table('video_game_prices')->insertOrIgnore($batch);
                     $totalRows += count($batch);
                     $bar->advance(count($batch));
                     $batch = [];
@@ -300,7 +326,7 @@ class ImportTransformedCsvs extends Command
             }
 
             if (! empty($batch)) {
-                DB::table('video_game_prices')->insert($batch);
+                DB::table('video_game_prices')->insertOrIgnore($batch);
                 $totalRows += count($batch);
                 $bar->advance(count($batch));
             }
@@ -308,7 +334,11 @@ class ImportTransformedCsvs extends Command
             DB::commit();
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            try {
+                DB::rollBack();
+            } catch (\Throwable) {
+                // ignore rollback errors (network disconnect)
+            }
             $this->error('Error: '.$e->getMessage());
             Log::error($e);
         }
@@ -321,12 +351,16 @@ class ImportTransformedCsvs extends Command
         $this->info("   ✅ Imported {$totalRows} prices in {$duration}s");
     }
 
-    private function validateFiles(string $basePath): void
+    private function validateFiles(string $basePath, ?string $specificTable): void
     {
         $this->info('📂 Validating CSV files...');
 
         $missing = [];
         foreach ($this->importSequence as $table => $csvFile) {
+            if ($specificTable !== null && $table !== $specificTable) {
+                continue;
+            }
+
             // Special check for merge files
             if ($table === 'video_game_prices') {
                 if (! File::exists($basePath.'/sku_regions.csv')) {
@@ -367,6 +401,9 @@ class ImportTransformedCsvs extends Command
 
     private array $validGameIds = [];
 
+    /** @var array<string, int> provider_key/provider => id */
+    private array $videoGameSourceIdByProvider = [];
+
     private function importTable(string $table, string $csvPath): void
     {
         $this->info("📥 Importing {$table}...");
@@ -402,7 +439,8 @@ class ImportTransformedCsvs extends Command
         }
 
         // Read headers
-        $headers = fgetcsv($handle, 0, ',', '"', '\\');
+        // RFC4180: quotes escaped by doubling; no backslash-escaping
+        $headers = fgetcsv($handle, 0, ',', '"', '');
         if ($headers === false) {
             $this->error("   ❌ Failed to read headers from {$csvPath}");
             Log::channel($this->logChannel)->error("Failed to read headers: {$csvPath}");
@@ -420,7 +458,7 @@ class ImportTransformedCsvs extends Command
         DB::beginTransaction();
 
         try {
-            while (($row = fgetcsv($handle, 0, ',', '"', '\\')) !== false) {
+            while (($row = fgetcsv($handle, 0, ',', '"', '')) !== false) {
                 // Handle mismatched column counts
                 if (count($row) !== count($headers)) {
                     $row = array_pad(array_slice($row, 0, count($headers)), count($headers), '');
@@ -457,8 +495,9 @@ class ImportTransformedCsvs extends Command
                     $bar->advance(count($batch));
                     $batch = [];
 
-                    // Commit larger chunks
-                    if ($totalRows % ($this->batchSize * 10) === 0) {
+                    // Commit more frequently on remote pgsql to reduce loss on disconnects.
+                    $commitEvery = $this->driverName === 'pgsql' ? $this->batchSize : ($this->batchSize * 10);
+                    if ($commitEvery > 0 && $totalRows % $commitEvery === 0) {
                         DB::commit();
                         DB::beginTransaction();
                     }
@@ -475,7 +514,11 @@ class ImportTransformedCsvs extends Command
             DB::commit();
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            try {
+                DB::rollBack();
+            } catch (\Throwable) {
+                // ignore rollback errors (network disconnect)
+            }
             $bar->finish();
             $this->newLine();
             $this->error("❌ Error importing {$table}: ".$e->getMessage());
@@ -567,6 +610,17 @@ class ImportTransformedCsvs extends Command
             ]);
         }
 
+        if ($table === 'video_game_sources') {
+            // Need updates (provider normalization) instead of ignore.
+            DB::table($table)->upsert(
+                $batch,
+                ['id'],
+                ['provider', 'provider_key', 'display_name', 'category', 'slug', 'base_url', 'metadata', 'items_count', 'updated_at']
+            );
+
+            return;
+        }
+
         if ($this->option('skip-on-error')) {
             // Insert row by row to isolate errors
             foreach ($batch as $row) {
@@ -588,12 +642,16 @@ class ImportTransformedCsvs extends Command
 
     private function normalizeRow(array $row, string $table): ?array
     {
+        $row = $this->normalizeProviderKeys($row, $table);
+
         // Filter out excluded columns for this table
         if (isset($this->excludedColumns[$table])) {
             foreach ($this->excludedColumns[$table] as $column) {
                 unset($row[$column]);
             }
         }
+
+        $row = $this->normalizeJsonColumns($row, $table);
 
         // Special validation and mapping for specific tables
         if ($table === 'video_game_sources') {
@@ -603,6 +661,18 @@ class ImportTransformedCsvs extends Command
             }
 
             // Allow all columns to pass through (provider_key, slug, category, display_name, metadata)
+        } elseif ($table === 'video_game_title_sources') {
+            // On pgsql, video_game_sources IDs are environment-specific.
+            // Force the FK pair (video_game_source_id, provider) to match what's in DB.
+            $provider = (string) ($row['provider'] ?? '');
+
+            if ($provider !== '' && isset($this->videoGameSourceIdByProvider[$provider])) {
+                $row['video_game_source_id'] = $this->videoGameSourceIdByProvider[$provider];
+            } elseif ($provider === 'tgdb' && isset($this->videoGameSourceIdByProvider['thegamesdb'])) {
+                // If DB still uses legacy provider key, keep FK consistent.
+                $row['provider'] = 'thegamesdb';
+                $row['video_game_source_id'] = $this->videoGameSourceIdByProvider['thegamesdb'];
+            }
         } elseif ($table === 'video_games') {
             // Map description to summary (as requested by user)
             if (empty($row['summary']) && ! empty($row['description'])) {
@@ -657,7 +727,7 @@ class ImportTransformedCsvs extends Command
             }
 
             // Handle JSON fields - skip type conversion for these
-            if (in_array($key, ['metadata', 'providers', 'platform', 'genre', 'media', 'source_payload', 'raw_payload', 'urls', 'manipulations', 'custom_properties', 'generated_conversions', 'responsive_images'])) {
+            if (in_array($key, ['metadata', 'external_ids', 'providers', 'platform', 'genre', 'media', 'source_payload', 'raw_payload', 'urls', 'manipulations', 'custom_properties', 'generated_conversions', 'responsive_images'])) {
                 continue;
             }
 
@@ -704,6 +774,123 @@ class ImportTransformedCsvs extends Command
 
                 continue;
             }
+        }
+
+        return $row;
+    }
+
+    private function normalizeProviderKey(string $provider): string
+    {
+        $provider = strtolower(trim($provider));
+
+        return match ($provider) {
+            'thegamesdb' => 'tgdb',
+            default => $provider,
+        };
+    }
+
+    private function loadVideoGameSourceProviderMap(): void
+    {
+        $this->videoGameSourceIdByProvider = [];
+
+        try {
+            $rows = DB::table('video_game_sources')->get(['id', 'provider', 'provider_key']);
+
+            foreach ($rows as $row) {
+                if (! empty($row->provider)) {
+                    $this->videoGameSourceIdByProvider[(string) $row->provider] = (int) $row->id;
+                }
+
+                if (! empty($row->provider_key)) {
+                    $this->videoGameSourceIdByProvider[(string) $row->provider_key] = (int) $row->id;
+                }
+            }
+        } catch (\Throwable) {
+            // ignore
+        }
+    }
+
+    private function normalizeProviderKeys(array $row, string $table): array
+    {
+        if ($table === 'video_game_sources') {
+            $providerKey = (string) ($row['provider_key'] ?? ($row['provider'] ?? ''));
+            if ($providerKey !== '') {
+                $normalized = $this->normalizeProviderKey($providerKey);
+                $row['provider'] = $normalized;
+                if (array_key_exists('provider_key', $row)) {
+                    $row['provider_key'] = $normalized;
+                }
+                if (array_key_exists('slug', $row) && $row['slug'] === 'thegamesdb') {
+                    $row['slug'] = 'tgdb';
+                }
+            }
+        }
+
+        if ($table === 'video_game_title_sources' || $table === 'video_games') {
+            if (! empty($row['provider']) && is_string($row['provider'])) {
+                $row['provider'] = $this->normalizeProviderKey($row['provider']);
+            }
+        }
+
+        return $row;
+    }
+
+    private function normalizeJsonColumns(array $row, string $table): array
+    {
+        $defaults = match ($table) {
+            'products' => [
+                'metadata' => '{}',
+                'external_ids' => '{}',
+            ],
+            'video_game_titles' => [
+                'providers' => '[]',
+            ],
+            'video_games' => [
+                'platform' => '[]',
+                'genre' => '[]',
+                'media' => '{}',
+                'source_payload' => '{}',
+            ],
+            'video_game_title_sources' => [
+                'platform' => '[]',
+                'genre' => '[]',
+                'raw_payload' => '{}',
+            ],
+            'videos' => [
+                'urls' => '{}',
+                'metadata' => '{}',
+            ],
+            'images' => [
+                'urls' => '{}',
+                'metadata' => '{}',
+            ],
+            default => [],
+        };
+
+        foreach ($defaults as $column => $defaultJson) {
+            if (! array_key_exists($column, $row)) {
+                continue;
+            }
+
+            $value = $row[$column];
+            if ($value === null || $value === '') {
+                $row[$column] = $defaultJson;
+
+                continue;
+            }
+
+            if (! is_string($value)) {
+                continue;
+            }
+
+            $decoded = json_decode($value, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $row[$column] = $defaultJson;
+
+                continue;
+            }
+
+            $row[$column] = json_encode($decoded, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         return $row;

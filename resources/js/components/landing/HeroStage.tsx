@@ -32,12 +32,12 @@ export default function HeroStage({
     const { auth } = usePage<SharedData>().props;
 
     // Use the spotlight games provided by the controller
-    const games = useMemo(() => {
+    const games = useMemo<Game[]>(() => {
         const list = Array.isArray(spotlightGames)
             ? spotlightGames
             : Object.values(spotlightGames || {});
 
-        if (list.length > 0) return list;
+        if (list.length > 0) return list as Game[];
         return hero ? [hero] : [];
     }, [hero, spotlightGames]);
 
@@ -51,7 +51,6 @@ export default function HeroStage({
         activeGame?.media?.cover_url ?? activeGame?.media?.cover_url_thumb;
 
     // Force the backdrop to always be the high-res artwork/screenshot (preferred) or cover art
-    // @ts-expect-error - backdrop_url is added dynamically in controller
     const heroBackdrop =
         activeGame?.backdrop_url ??
         activeGame?.media?.cover_url_high_res ??
@@ -68,6 +67,21 @@ export default function HeroStage({
 
     const [isVideoOpen, setIsVideoOpen] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+
+    // Communicate mute state to YouTube iframe
+    useEffect(() => {
+        if (iframeRef.current?.contentWindow) {
+            iframeRef.current.contentWindow.postMessage(
+                JSON.stringify({
+                    event: 'command',
+                    func: isMuted ? 'mute' : 'unMute',
+                    args: [],
+                }),
+                '*',
+            );
+        }
+    }, [isMuted]);
 
     // Reset video index when game changes
     useEffect(() => {
@@ -185,7 +199,7 @@ export default function HeroStage({
                 <div className="absolute top-1/3 right-0 h-96 w-96 rounded-full bg-violet-500/20 blur-3xl" />
             </div>
 
-            <div className="relative z-10 grid items-center gap-16 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="relative z-10 grid items-center gap-12 lg:grid-cols-[0.6fr_1.4fr]">
                 <motion.div
                     key={activeGame?.id ?? 'empty'}
                     className="space-y-8"
@@ -351,17 +365,31 @@ export default function HeroStage({
                                     }}
                                 >
                                     <AppleTvCard
-                                        className="aspect-video w-full overflow-hidden border border-white/10 bg-black md:aspect-[4/3] lg:aspect-video"
+                                        className="aspect-video !min-h-0 !h-auto w-full overflow-hidden border border-white/10 bg-black shadow-2xl transition-all duration-300 group-hover/card:border-white/20"
                                         shineClassName="mix-blend-screen"
                                     >
-                                        {/* Full-bleed Video Background (Unmuted Autoplay) */}
+                                        {/* Background Image (Always visible as base) */}
+                                        {heroImage && (
+                                            <img
+                                                src={heroImage}
+                                                alt=""
+                                                className="absolute inset-0 z-0 h-full w-full object-cover transition-transform duration-700 group-hover/card:scale-105"
+                                                loading="eager"
+                                            />
+                                        )}
+
+                                        {/* Full-bleed Video Background (Overlay) */}
                                         {videoId ? (
-                                            <div className="absolute inset-0 z-0 overflow-hidden">
+                                            <div className="absolute inset-0 z-10 overflow-hidden bg-black/20">
                                                 <iframe
-                                                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=0&controls=0&loop=1&playlist=${videoId}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&vq=hd1080&origin=${window.location.origin}`}
-                                                    className="pointer-events-none absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 border-0 object-cover"
+                                                    ref={iframeRef}
+                                                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&loop=1&playlist=${videoId}&modestbranding=1&showinfo=0&rel=0&iv_load_policy=3&fs=0&disablekb=1&enablejsapi=1&vq=hd1080&origin=${window.location.origin}`}
+                                                    className="pointer-events-none absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 border-0 object-cover opacity-0 transition-opacity duration-1000"
                                                     allow="autoplay; encrypted-media"
                                                     title="Spotlight Trailer"
+                                                    onLoad={(e) => {
+                                                        e.currentTarget.style.opacity = '1';
+                                                    }}
                                                 />
                                                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-transparent to-black/30" />
 
@@ -386,16 +414,7 @@ export default function HeroStage({
                                                     )}
                                                 </button>
                                             </div>
-                                        ) : (
-                                            heroImage && (
-                                                <img
-                                                    src={heroImage}
-                                                    alt=""
-                                                    className="absolute inset-0 -z-10 h-full w-full object-cover"
-                                                    loading="lazy"
-                                                />
-                                            )
-                                        )}
+                                        ) : null}
 
                                         <div className="pointer-events-none relative z-20 flex h-full flex-col justify-between p-8">
                                             <div className="pointer-events-auto flex items-center justify-between">
@@ -430,7 +449,10 @@ export default function HeroStage({
                                                 {trailers.length > 1 && (
                                                     <div className="flex flex-wrap gap-2">
                                                         {trailers.map(
-                                                            (t, idx) => (
+                                                            (
+                                                                t,
+                                                                idx: number,
+                                                            ) => (
                                                                 <button
                                                                     key={
                                                                         t.video_id ||

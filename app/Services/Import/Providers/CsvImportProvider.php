@@ -287,7 +287,7 @@ class CsvImportProvider implements ImportProvider
             // Fast line counting for Mac/Linux
             $output = [];
             $exitCode = 0;
-            exec("wc -l < " . escapeshellarg($filePath), $output, $exitCode);
+            exec('wc -l < '.escapeshellarg($filePath), $output, $exitCode);
             if ($exitCode === 0 && isset($output[0])) {
                 $totalLines = (int) trim($output[0]);
             }
@@ -301,7 +301,7 @@ class CsvImportProvider implements ImportProvider
         $header = fgetcsv($handle);
         // Header line counts as one, so subtract one from content lines if counting accurate
         if ($totalLines > 0) {
-            $totalLines--; 
+            $totalLines--;
         }
 
         $progressBar = $this->command->getOutput()->createProgressBar($totalLines > 0 ? $totalLines : 0);
@@ -327,7 +327,7 @@ class CsvImportProvider implements ImportProvider
                 $chunk = [];
                 $count = 0;
             }
-            
+
             if ($limit > 0 && $progressBar->getProgress() >= $limit) {
                 break;
             }

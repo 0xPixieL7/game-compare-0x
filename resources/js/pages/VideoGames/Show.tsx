@@ -1,7 +1,9 @@
+import MediaPlayer from '@/components/MediaPlayer';
 import PriceHistoryChart from '@/components/PriceHistoryChart';
 import AppLayout from '@/layouts/app-layout';
 import { GameModel, GameShowMedia, GameShowPrice } from '@/types';
 import { Head } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 
 export default function Show({
     game,
@@ -20,8 +22,48 @@ export default function Show({
         }).format(amount);
     };
 
-    // Get best available background (Hero > Background > Cover)
-    const heroImage = media.hero || media.background || media.cover;
+    // Collect all available background candidates (High-res preferred)
+    // Priority: High-Res Cover (Database) -> Hero -> Background -> Screenshots
+    const backgrounds = [
+        media.cover, // New high-res cover from backend
+        media.hero,
+        media.background,
+        ...(media.screenshots || []),
+    ].filter((url): url is string => !!url && typeof url === 'string');
+
+    // Deduplicate URLs
+    const uniqueBackgrounds = Array.from(new Set(backgrounds));
+
+    const [currentBgIndex, setCurrentBgIndex] = useState(0);
+
+    // Cycle backgrounds every 8 seconds if we have more than one
+    useEffect(() => {
+        if (uniqueBackgrounds.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setCurrentBgIndex((prev) => (prev + 1) % uniqueBackgrounds.length);
+        }, 8000);
+
+        return () => clearInterval(interval);
+    }, [uniqueBackgrounds.length]);
+
+    // View Transition Name (must match GameCard)
+    const vtName = `game-cover-${game.id}`;
+
+    // Theme artifacts
+    const theme = game.theme || {
+        primary: '#3b82f6', // blue-500 fallback
+        accent: '#60a5fa',
+        background: '#030712', // gray-950
+        surface: '#111827',
+    };
+
+    const themeStyles = {
+        '--game-primary': theme.primary,
+        '--game-accent': theme.accent,
+        '--game-background': theme.background,
+        '--game-surface': theme.surface,
+    } as React.CSSProperties;
 
     return (
         <AppLayout
@@ -32,19 +74,39 @@ export default function Show({
         >
             <Head title={game.name} />
 
-            <div className="relative min-h-screen bg-gray-950 text-white selection:bg-blue-500 selection:text-white">
-                {/* 1. Cinematic Hero Background */}
-                {heroImage && (
-                    <div className="fixed inset-0 z-0 h-[80vh] w-full">
-                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/80 to-gray-950" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-950/90 via-gray-950/40 to-transparent" />
-                        <img
-                            src={heroImage}
-                            alt=""
-                            className="h-full w-full object-cover opacity-60"
-                        />
-                    </div>
-                )}
+            <div
+                className="relative min-h-screen text-white selection:bg-[var(--game-primary)] selection:text-white"
+                style={{
+                    ...themeStyles,
+                    backgroundColor: 'var(--game-background)',
+                }}
+            >
+                {/* 1. Cinematic Hero Background Carousel */}
+                <div className="fixed inset-0 z-0 h-[80vh] w-full overflow-hidden">
+                    <div className="absolute inset-0 z-10 bg-gradient-to-b from-transparent via-[var(--game-background)]/20 to-[var(--game-background)]" />
+                    <div className="absolute inset-0 z-10 bg-gradient-to-r from-[var(--game-background)] via-[var(--game-background)]/10 to-transparent" />
+
+                    {uniqueBackgrounds.map((bg, index) => (
+                        <div
+                            key={bg}
+                            className={`absolute inset-0 h-full w-full transition-opacity duration-[2000ms] ease-in-out ${
+                                index === currentBgIndex
+                                    ? 'opacity-60'
+                                    : 'opacity-0'
+                            }`}
+                        >
+                            <img
+                                src={bg}
+                                alt=""
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+                    ))}
+
+                    {uniqueBackgrounds.length === 0 && (
+                        <div className="absolute inset-0 bg-gray-900 opacity-60" />
+                    )}
+                </div>
 
                 <div className="relative z-10 px-4 py-12 sm:px-6 lg:px-8">
                     <div className="mx-auto max-w-7xl">
@@ -63,6 +125,9 @@ export default function Show({
                                                 }
                                                 alt={game.name}
                                                 className="h-full w-full object-cover shadow-inner"
+                                                style={{
+                                                    viewTransitionName: vtName,
+                                                }}
                                             />
                                         ) : (
                                             <div className="flex h-full w-full items-center justify-center text-gray-500">
@@ -72,10 +137,11 @@ export default function Show({
                                     </div>
 
                                     {/* Quick Stats */}
-                                    <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-                                        <h3 className="mb-4 text-xs font-bold tracking-widest text-gray-400 uppercase">
+                                    <div className="rounded-xl border border-white/10 bg-[var(--game-surface)]/40 p-6 ring-1 ring-[var(--game-primary)]/10 backdrop-blur-md">
+                                        <h3 className="mb-4 text-xs font-bold tracking-widest text-[var(--game-accent)]/80 uppercase">
                                             Game Info
                                         </h3>
+
                                         <dl className="space-y-4 text-sm">
                                             <div>
                                                 <dt className="text-gray-500">
@@ -90,8 +156,16 @@ export default function Show({
                                                     Developer
                                                 </dt>
                                                 <dd className="font-medium text-white">
-                                                    {game.developer ||
-                                                        'Unknown'}
+                                                    {typeof game.developer ===
+                                                    'string'
+                                                        ? game.developer
+                                                        : Array.isArray(
+                                                                game.developer,
+                                                            )
+                                                          ? game.developer.join(
+                                                                ', ',
+                                                            )
+                                                          : 'Unknown'}
                                                 </dd>
                                             </div>
                                             <div>
@@ -129,8 +203,9 @@ export default function Show({
                                     )}
 
                                     <p className="max-w-3xl text-lg leading-relaxed text-gray-300">
-                                        {game.summary ||
-                                            'No summary available.'}
+                                        {typeof game.summary === 'string'
+                                            ? game.summary
+                                            : 'No summary available.'}
                                     </p>
                                 </div>
 
@@ -140,12 +215,12 @@ export default function Show({
                                         <h2 className="text-2xl font-bold text-white">
                                             Global Prices
                                         </h2>
-                                        <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
+                                        <span className="rounded-full border border-[var(--game-primary)]/20 bg-[var(--game-primary)]/10 px-3 py-1 text-xs font-medium text-[var(--game-accent)]">
                                             {prices.length} Regions Tracked
                                         </span>
                                     </div>
 
-                                    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm">
+                                    <div className="overflow-hidden rounded-xl border border-white/5 bg-[var(--game-surface)]/60 shadow-xl backdrop-blur-sm">
                                         <div className="grid grid-cols-1 divide-y divide-white/5 sm:grid-cols-2 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
                                             {prices.slice(0, 6).map((price) => (
                                                 <a
@@ -191,7 +266,7 @@ export default function Show({
                                         </div>
                                         {prices.length > 6 && (
                                             <div className="border-t border-white/5 bg-white/5 p-3 text-center">
-                                                <button className="text-sm font-medium text-blue-400 hover:text-blue-300">
+                                                <button className="text-sm font-medium text-[var(--game-accent)] transition-colors hover:text-[var(--game-primary)]">
                                                     View all {prices.length}{' '}
                                                     prices
                                                 </button>
@@ -206,34 +281,20 @@ export default function Show({
                                         Gallery & Media
                                     </h2>
 
-                                    {/* Video Player (Basic Native Fallback) */}
+                                    {/* Unified Media Player */}
                                     {media.trailers &&
                                         media.trailers.length > 0 && (
-                                            <div className="mb-6 overflow-hidden rounded-xl border border-white/10 bg-black shadow-2xl">
-                                                <video
-                                                    controls
-                                                    className="aspect-video w-full"
-                                                    poster={
+                                            <div className="mb-6">
+                                                <MediaPlayer
+                                                    url={media.trailers[0]}
+                                                    thumbnail={
                                                         media.background ||
+                                                        media.cover ||
                                                         undefined
                                                     }
-                                                >
-                                                    <source
-                                                        src={media.trailers[0]}
-                                                        type="application/x-mpegURL"
-                                                    />
-                                                    <source
-                                                        src={media.trailers[0]}
-                                                        type="video/mp4"
-                                                    />
-                                                    Your browser does not
-                                                    support the video tag.
-                                                </video>
-                                                <div className="bg-gray-900 p-3 text-center text-xs text-gray-500">
-                                                    Note: Trailer playback may
-                                                    require HLS support in your
-                                                    browser.
-                                                </div>
+                                                    title={`${game.name} Trailer`}
+                                                    className="aspect-video w-full"
+                                                />
                                             </div>
                                         )}
 
@@ -262,8 +323,13 @@ export default function Show({
                                     <h3 className="mb-4 text-xl font-bold text-white">
                                         Price History
                                     </h3>
-                                    <div className="rounded-xl border border-white/10 bg-black/40 p-6">
-                                        <PriceHistoryChart />
+                                    <div className="rounded-xl border border-white/10 bg-[var(--game-background)]/60 p-6 shadow-2xl backdrop-blur-md">
+                                        <PriceHistoryChart
+                                            gameId={game.id}
+                                            initialCurrency={
+                                                prices[0]?.currency || 'USD'
+                                            }
+                                        />
                                     </div>
                                 </div>
                             </div>

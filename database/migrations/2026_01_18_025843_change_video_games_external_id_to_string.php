@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('video_games', function (Blueprint $table) {
-            // Reverting to BigInteger might fail if non-numeric data exists, 
+            // Reverting to BigInteger might fail if non-numeric data exists,
             // but for down() we attempt to restore the previous state.
             // Using DB::statement to cast if possible, or just standard change.
             DB::statement('ALTER TABLE video_games ALTER COLUMN external_id TYPE bigint USING (trim(external_id)::bigint)');

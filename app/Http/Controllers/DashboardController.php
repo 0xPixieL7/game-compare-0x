@@ -63,6 +63,7 @@ class DashboardController extends Controller
                     'video_games.name',
                     'video_games.rating',
                     'video_games.release_date',
+                    'video_games.video_game_title_id',
                     'video_game_titles.name as canonical_name',
                     'video_game_titles.normalized_title',
                 ])
@@ -81,16 +82,14 @@ class DashboardController extends Controller
                     'name',
                     'rating',
                     'external_id',
-                    'url'
                 ])
                 ->where('video_game_title_id', $game->video_game_title_id)
                 ->get()
-                ->map(fn($s) => [
+                ->map(fn ($s) => [
                     'provider' => $s->provider,
                     'name' => $s->name,
                     'rating' => $s->rating,
                     'external_id' => $s->external_id,
-                    'url' => $s->url,
                 ]);
 
             // Get all platform variants for this title
@@ -181,7 +180,7 @@ class DashboardController extends Controller
 
         // Extract videos/trailers
         $trailers = [];
-        if (! empty($payload['videos'])) {
+        if (! empty($payload['videos']) && is_array($payload['videos'])) {
             foreach (array_slice($payload['videos'], 0, 5) as $video) {
                 if (! empty($video['video_id'])) {
                     $trailers[] = [
@@ -195,12 +194,12 @@ class DashboardController extends Controller
 
         // Determine the best Hero URL (Artwork > Screenshot > Cover)
         $heroUrl = null;
-        if (!empty($artworks)) {
-            $heroUrl = $baseUrl . 't_original/ar' . base_convert($artworks[0]['external_id'], 10, 36) . '.webp';
-        } elseif (!empty($screenshots)) {
-            $heroUrl = $baseUrl . 't_original/sc' . base_convert($screenshots[0]['external_id'], 10, 36) . '.webp';
+        if (! empty($artworks)) {
+            $heroUrl = $baseUrl.'t_original/ar'.base_convert($artworks[0]['external_id'], 10, 36).'.webp';
+        } elseif (! empty($screenshots)) {
+            $heroUrl = $baseUrl.'t_original/sc'.base_convert($screenshots[0]['external_id'], 10, 36).'.webp';
         } elseif ($cover) {
-            $heroUrl = $baseUrl . 't_original/co' . base_convert($cover['external_id'], 10, 36) . '.webp';
+            $heroUrl = $baseUrl.'t_original/co'.base_convert($cover['external_id'], 10, 36).'.webp';
         }
 
         return [
@@ -507,6 +506,8 @@ class DashboardController extends Controller
                     ->where('video_game_title_sources.provider', '=', 'igdb');
             })
             ->whereNotNull('video_game_title_sources.rating')
+            ->where('video_game_title_sources.rating', '>=', 60)
+            ->where('video_game_title_sources.rating_count', '>=', 5)
             ->whereNotNull('video_game_title_sources.genre')
             ->whereRaw('LOWER(video_game_title_sources.genre) LIKE LOWER(?)', ["%{$genre}%"])
             ->orderBy('video_game_title_sources.rating', 'desc')
@@ -551,6 +552,8 @@ class DashboardController extends Controller
                     ->where('video_game_title_sources.provider', '=', 'igdb');
             })
             ->whereNotNull('video_game_title_sources.rating')
+            ->where('video_game_title_sources.rating', '>=', 60)
+            ->where('video_game_title_sources.rating_count', '>=', 5)
             ->orderBy('video_game_title_sources.rating', 'desc')
             ->limit($limit)
             ->get()
@@ -594,6 +597,8 @@ class DashboardController extends Controller
             })
             ->whereNotNull('video_games.release_date')
             ->whereNotNull('video_game_title_sources.rating')
+            ->where('video_game_title_sources.rating', '>=', 60)
+            ->where('video_game_title_sources.rating_count', '>=', 5)
             ->orderBy('video_games.release_date', 'desc')
             ->limit($limit)
             ->get()
@@ -640,6 +645,8 @@ class DashboardController extends Controller
                     ->orWhereRaw('LOWER(video_game_titles.name) LIKE LOWER(?)', ["%{$searchQuery}%"]);
             })
             ->whereNotNull('video_game_title_sources.rating')
+            ->where('video_game_title_sources.rating', '>=', 60)
+            ->where('video_game_title_sources.rating_count', '>=', 5)
             ->orderBy('video_game_title_sources.rating', 'desc')
             ->limit(50)
             ->get()

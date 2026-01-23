@@ -6,7 +6,10 @@ namespace App\Observers;
 
 use App\Jobs\Propagation\PropagateSourceMetadataJob;
 // use App\Jobs\Propagation\UpdateSourceItemCountJob;
+use App\Models\VideoGameSource;
 use App\Models\VideoGameTitleSource;
+use App\Services\Provider\ProviderRegistry;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -34,6 +37,8 @@ class VideoGameTitleSourceObserver
      */
     public function created(VideoGameTitleSource $videoGameTitleSource): void
     {
+        $this->enforceProviderInvariants($videoGameTitleSource);
+
         Log::info('VideoGameTitleSource created, dispatching propagation jobs', [
             'source_id' => $videoGameTitleSource->id,
             'provider' => $videoGameTitleSource->provider,
@@ -59,6 +64,8 @@ class VideoGameTitleSourceObserver
      */
     public function updated(VideoGameTitleSource $videoGameTitleSource): void
     {
+        $this->enforceProviderInvariants($videoGameTitleSource);
+
         // Only re-propagate if meaningful fields changed
         $watchedFields = [
             'name', 'description', 'rating', 'release_date',
@@ -103,6 +110,8 @@ class VideoGameTitleSourceObserver
      */
     public function restored(VideoGameTitleSource $videoGameTitleSource): void
     {
+        $this->enforceProviderInvariants($videoGameTitleSource);
+
         PropagateSourceMetadataJob::dispatch($videoGameTitleSource->id);
 
         if ($videoGameTitleSource->video_game_source_id) {
@@ -119,5 +128,57 @@ class VideoGameTitleSourceObserver
     public function forceDeleted(VideoGameTitleSource $videoGameTitleSource): void
     {
         // Same as deleted - cascade handles cleanup
+    }
+
+    private function enforceProviderInvariants(VideoGameTitleSource $source): void
+    {
+        $provider = (string) $source->provider;
+        if ($provider === '') {
+            return;
+        }
+
+        // Ensure provider source FK exists (idempotent).
+        if (! $source->video_game_source_id) {
+            $meta = ProviderRegistry::meta($provider);
+
+            $videoGameSource = VideoGameSource::query()->firstOrCreate(
+                ['provider' => $provider],
+                [
+                    'provider_key' => $meta['provider_key'],
+                    'display_name' => $meta['display_name'],
+                    'category' => $meta['category'],
+                    'slug' => $meta['slug'],
+                    'metadata' => array_merge($meta['metadata'], [
+                        'base_url' => $meta['base_url'],
+                    ]),
+                    'items_count' => 0,
+                ]
+            );
+
+            $source->forceFill(['video_game_source_id' => $videoGameSource->id])->save();
+        }
+
+        // Ensure video_game_titles.providers contains provider.
+        $title = $source->title;
+        if ($title) {
+            $providers = is_array($title->providers) ? $title->providers : [];
+            if (! in_array($provider, $providers, true)) {
+                $title->providers = array_values(array_unique(array_merge($providers, [$provider])));
+                $title->save();
+            }
+
+            // Ensure products.metadata.providers contains provider.
+            $product = $title->product;
+            if ($product) {
+                $metadata = is_array($product->metadata) ? $product->metadata : [];
+                $pProviders = Arr::wrap($metadata['providers'] ?? []);
+                if (! in_array($provider, $pProviders, true)) {
+                    $pProviders[] = $provider;
+                    $metadata['providers'] = array_values(array_unique(array_filter($pProviders)));
+                    $product->metadata = $metadata;
+                    $product->save();
+                }
+            }
+        }
     }
 }

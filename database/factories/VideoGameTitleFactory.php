@@ -21,12 +21,12 @@ class VideoGameTitleFactory extends Factory
     public function definition(): array
     {
         $name = fake()->words(3, true);
-        
+
         return [
             'product_id' => Product::factory(),
             'name' => $name,
             'normalized_title' => Str::slug($name),
-            'slug' => Str::slug($name) . '-' . fake()->randomNumber(4),
+            'slug' => Str::slug($name).'-'.fake()->randomNumber(4),
             'providers' => ['factory-provider'],
         ];
     }

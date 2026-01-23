@@ -607,19 +607,24 @@ export default function DashboardShow({
                                                     Available Platforms
                                                 </h3>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {game.variants.map((variant) => (
-                                                        <Link
-                                                            key={variant.id}
-                                                            href={`/dashboard/${variant.id}`}
-                                                            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                                                                variant.id === game.id
-                                                                    ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)]'
-                                                                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-                                                            }`}
-                                                        >
-                                                            {variant.platform}
-                                                        </Link>
-                                                    ))}
+                                                    {game.variants.map(
+                                                        (variant) => (
+                                                            <Link
+                                                                key={variant.id}
+                                                                href={`/dashboard/${variant.id}`}
+                                                                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                                                    variant.id ===
+                                                                    game.id
+                                                                        ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)]'
+                                                                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                                                }`}
+                                                            >
+                                                                {
+                                                                    variant.platform
+                                                                }
+                                                            </Link>
+                                                        ),
+                                                    )}
                                                 </div>
                                             </div>
                                         )}
@@ -682,27 +687,38 @@ export default function DashboardShow({
                                                     Verified Metadata Sources
                                                 </h3>
                                                 <div className="space-y-2">
-                                                    {game.sources.map((source, idx) => (
-                                                        <a
-                                                            key={idx}
-                                                            href={source.url || '#'}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center justify-between rounded-lg bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.08]"
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.8)]" />
-                                                                <span className="text-sm font-medium text-gray-300 capitalize">
-                                                                    {source.provider.replace('_', ' ')}
-                                                                </span>
-                                                            </div>
-                                                            {source.rating && (
-                                                                <span className="text-xs font-bold text-blue-400">
-                                                                    {source.rating.toFixed(0)}%
-                                                                </span>
-                                                            )}
-                                                        </a>
-                                                    ))}
+                                                    {game.sources.map(
+                                                        (source, idx) => (
+                                                            <a
+                                                                key={idx}
+                                                                href={
+                                                                    source.url ||
+                                                                    '#'
+                                                                }
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="flex items-center justify-between rounded-lg bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.08]"
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.8)]" />
+                                                                    <span className="text-sm font-medium text-gray-300 capitalize">
+                                                                        {source.provider.replace(
+                                                                            '_',
+                                                                            ' ',
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                                {source.rating && (
+                                                                    <span className="text-xs font-bold text-blue-400">
+                                                                        {source.rating.toFixed(
+                                                                            0,
+                                                                        )}
+                                                                        %
+                                                                    </span>
+                                                                )}
+                                                            </a>
+                                                        ),
+                                                    )}
                                                 </div>
                                             </div>
                                         )}

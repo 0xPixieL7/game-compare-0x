@@ -16,10 +16,11 @@ use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Middleware;
+use GuzzleHttp\Promise\Utils;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use GuzzleHttp\Promise\Utils;
 use PlaystationStoreApi\Client;
 use PlaystationStoreApi\Enum\CategoryEnum;
 use PlaystationStoreApi\Enum\RegionEnum;
@@ -55,10 +56,13 @@ class PlayStationStoreProvider
     ) {
         // Deduplicate regions by their enum value to avoid redundant requests
         $seenEnums = [];
-        $this->regions = array_filter($this->regions, function($r) use (&$seenEnums) {
+        $this->regions = array_filter($this->regions, function ($r) use (&$seenEnums) {
             $enum = $this->resolveRegionEnum($r)->value;
-            if (in_array($enum, $seenEnums)) return false;
+            if (in_array($enum, $seenEnums)) {
+                return false;
+            }
             $seenEnums[] = $enum;
+
             return true;
         });
 
@@ -217,6 +221,7 @@ class PlayStationStoreProvider
                         $year = (int) substr($concept['releaseDate'], 0, 4);
                         if ($year < $stopYear) {
                             Log::info("PlayStation Discovery: Reached stop year {$stopYear} at page {$page}. Stopping.");
+
                             // Reached games older than retention period
                             return $conceptIds;
                         }
@@ -231,7 +236,7 @@ class PlayStationStoreProvider
                 if ($page % 50 === 0 && isset($concepts[0]['releaseDate'])) {
                     $latestDate = $concepts[0]['releaseDate'];
                     $oldestDateOnPage = end($concepts)['releaseDate'] ?? $latestDate;
-                    
+
                     Log::info("PlayStation Discovery: Scanned {$page} pages. Current Date Range: {$latestDate} -> {$oldestDateOnPage}");
                 }
 
@@ -243,7 +248,7 @@ class PlayStationStoreProvider
                 $request = $request->createNextPageRequest();
             }
 
-            Log::info("PlayStation Discovery: Finished with " . count($conceptIds) . " concepts.");
+            Log::info('PlayStation Discovery: Finished with '.count($conceptIds).' concepts.');
 
         } catch (\Throwable $e) {
             Log::error('PlayStation Store catalog fetch failed', [
@@ -277,27 +282,32 @@ class PlayStationStoreProvider
         }
 
         $title = $gameData['title'];
+        $invariantTitle = $gameData['invariant_title'] ?? null;
         $normalizedTitle = $this->normalizeTitle($title);
 
-        // 1. Find or create Product (retry for race conditions)
-        $product = retry(3, function () use ($title, $normalizedTitle) {
-            try {
-                return Product::query()->firstOrCreate(
-                    ['name' => $title],
-                    [
-                        'type' => 'video_game',
-                        'slug' => Str::slug($title),
-                        'title' => $title,
-                        'normalized_title' => $normalizedTitle,
-                    ]
-                );
-            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                // If slug collision or race condition, try to find by slug or name
-                return Product::query()->where('name', $title)
-                    ->orWhere('slug', Str::slug($title))
-                    ->firstOrFail();
-            }
-        }, 100);
+        // 1. Find or create Product (robust resolution)
+        $product = $this->resolveProduct($title, $invariantTitle);
+
+        if (! $product) {
+            // Fallback: Create new product if still not found
+            $product = retry(3, function () use ($title, $normalizedTitle) {
+                try {
+                    return Product::query()->firstOrCreate(
+                        ['name' => $title],
+                        [
+                            'type' => 'video_game',
+                            'slug' => Str::slug($title),
+                            'title' => $title,
+                            'normalized_title' => $normalizedTitle,
+                        ]
+                    );
+                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                    return Product::query()->where('name', $title)
+                        ->orWhere('slug', Str::slug($title))
+                        ->first();
+                }
+            }, 100);
+        }
 
         $wasProductCreated = $product->wasRecentlyCreated;
 
@@ -323,13 +333,17 @@ class PlayStationStoreProvider
                 'video_game_title_id' => $videoGameTitle->id,
                 'video_game_source_id' => $this->providerSource->id,
                 'provider' => self::PROVIDER_KEY,
-                'provider_item_id' => (string) $conceptId,
+                // Schema requires bigint; store numeric id as provider_item_id
+                'provider_item_id' => $conceptNumericId,
             ],
             [
                 'external_id' => $conceptNumericId,
                 'slug' => Str::slug($title),
                 'name' => $title,
-                'raw_payload' => $gameData['metadata']['raw_payload'] ?? [],
+                'raw_payload' => array_merge($gameData['metadata']['raw_payload'] ?? [], [
+                    'concept_id' => $conceptId,
+                    'metadata_region' => $metadataRegion,
+                ]),
             ]
         );
 
@@ -396,12 +410,12 @@ class PlayStationStoreProvider
         }
 
         $priceRecordsCreated = 0;
-        
+
         // Debug logging
         if (empty($allPrices)) {
             Log::info("PS Debug: No prices returned for {$conceptId}");
         } else {
-             Log::info("PS Debug: Processing " . count($allPrices) . " prices for {$conceptId}");
+            Log::info('PS Debug: Processing '.count($allPrices)." prices for {$conceptId}");
         }
 
         foreach ($allPrices as $region => $priceData) {
@@ -416,18 +430,25 @@ class PlayStationStoreProvider
             $regionCode = Str::before($region, '-');
             $priceRegionUrl = "https://store.playstation.com/{$region}/concept/{$conceptId}";
 
-            VideoGamePrice::create([
-                'video_game_id' => $videoGame->id,
-                'currency' => $currency,
-                'amount_minor' => $amountMinor,
-                'recorded_at' => now(),
-                'retailer' => self::PROVIDER_NAME.' '.strtoupper($region),
-                'tax_inclusive' => $priceData['is_discounted'] ?? false,
-                'country_code' => $countryCode,
-                'region_code' => $regionCode,
-                'url' => $priceRegionUrl,
-                'is_active' => true,
-            ]);
+            VideoGamePrice::query()->updateOrCreate(
+                [
+                    'video_game_id' => $videoGame->id,
+                    'retailer' => self::PROVIDER_NAME.' '.strtoupper($region),
+                    'country_code' => $countryCode,
+                ],
+                [
+                    'product_id' => $videoGame->title?->product_id,
+                    'currency' => $currency,
+                    'amount_minor' => $amountMinor,
+                    'recorded_at' => now(),
+                    'tax_inclusive' => $priceData['is_discounted'] ?? false,
+                    'region_code' => $regionCode,
+                    'url' => $priceRegionUrl,
+                    'is_active' => true,
+                    'bucket' => 'snapshot',
+                    'condition' => 'digital',
+                ]
+            );
 
             $priceRecordsCreated++;
         }
@@ -468,14 +489,14 @@ class PlayStationStoreProvider
                     'extensions' => $extensions,
                 ]);
 
-                $promises[$region] = $this->guzzle->requestAsync('GET', 'op?' . $query, [
+                $promises[$region] = $this->guzzle->requestAsync('GET', 'op?'.$query, [
                     'headers' => [
                         'x-psn-store-locale-override' => $this->resolveRegionEnum($region)->value,
                         'content-type' => 'application/json',
                     ],
                 ]);
             } catch (\Throwable $e) {
-                Log::warning("Failed to create promise for region {$region}: " . $e->getMessage());
+                Log::warning("Failed to create promise for region {$region}: ".$e->getMessage());
             }
         }
 
@@ -489,7 +510,7 @@ class PlayStationStoreProvider
                     $response = $result['value'];
                     $body = (string) $response->getBody();
                     $data = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
-                    
+
                     $conceptData = $data['data']['conceptRetrieve'] ?? null;
                     $defaultProduct = $conceptData['defaultProduct'] ?? null;
                     $priceData = $defaultProduct ? $this->extractPriceFromProduct($defaultProduct) : null;
@@ -498,7 +519,7 @@ class PlayStationStoreProvider
                         $prices[$region] = $priceData;
                     }
                 } catch (\Throwable $e) {
-                    Log::warning("Failed to parse PS pricing for region {$region}: " . $e->getMessage());
+                    Log::warning("Failed to parse PS pricing for region {$region}: ".$e->getMessage());
                 }
             } else {
                 // Log::info("PS Async Request failed for region {$region}: " . ($result['reason']->getMessage() ?? 'Unknown Error'));
@@ -522,22 +543,34 @@ class PlayStationStoreProvider
                 return null;
             }
 
-            $defaultProduct = $conceptData['defaultProduct'] ?? null;
+            $defaultProduct = $conceptData['defaultProduct'] ?? $conceptData['selectableProducts']['purchasableProducts'][0] ?? null;
             if (! $defaultProduct) {
                 return null;
             }
 
             $productId = $defaultProduct['id'] ?? null;
-            $name = $conceptData['name'] ?? $defaultProduct['invariantName'] ?? null;
+            // Try resolving name from multiple places
+            $name = $conceptData['name'] ?? $defaultProduct['name'] ?? null;
+            $invariantName = $defaultProduct['invariantName'] ?? $conceptData['name'] ?? null;
 
-            if (! $productId || ! $name) {
+            // Ensure we have at least one name
+            if (! $name && ! $invariantName) {
                 return null;
             }
 
-            $platforms = $this->resolvePlatforms($conceptData, $productId);
+            if (! $name) {
+                $name = $invariantName;
+            }
 
-            // Extract and normalize media data
-            $media = $this->extractMediaData($conceptData['media'] ?? [], $region);
+            if (! $productId) {
+                return null;
+            }
+
+            $platforms = $this->resolvePlatforms($conceptData, $defaultProduct);
+
+            // Extract and normalize media data (combine concept and product media)
+            $mediaRaw = array_merge($conceptData['media'] ?? [], $defaultProduct['media'] ?? []);
+            $media = $this->extractMediaData($mediaRaw, $region);
 
             $rawPayload = $conceptData;
             $releaseDate = $defaultProduct['releaseDate'] ?? null;
@@ -564,6 +597,7 @@ class PlayStationStoreProvider
 
             return [
                 'title' => $name,
+                'invariant_title' => $invariantName,
                 'platform' => $platforms,
                 'media' => $media,
                 'price' => $price, // Included for optimization
@@ -594,6 +628,45 @@ class PlayStationStoreProvider
 
             return null;
         }
+    }
+
+    /**
+     * Resolve product by title, invariant title, or alternative names.
+     */
+    private function resolveProduct(string $title, ?string $invariantTitle = null): ?Product
+    {
+        $searchTitles = collect([$title, $invariantTitle])
+            ->filter()
+            ->unique()
+            ->all();
+
+        foreach ($searchTitles as $searchTitle) {
+            // 1. Direct name match on Product
+            if ($product = Product::where('name', $searchTitle)->first()) {
+                return $product;
+            }
+
+            // 2. Direct name match on VideoGameTitle
+            if ($vgTitle = VideoGameTitle::where('name', $searchTitle)->first()) {
+                if ($product = $vgTitle->product) {
+                    return $product;
+                }
+            }
+
+            // 3. Alternative name match (IGDB source)
+            $altNameRecord = DB::table('video_game_alternative_names')
+                ->where('name', $searchTitle)
+                ->first();
+
+            if ($altNameRecord) {
+                $vg = VideoGame::find($altNameRecord->video_game_id);
+                if ($vg && $vg->videoGameTitle && $vg->videoGameTitle->product) {
+                    return $vg->videoGameTitle->product;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -670,8 +743,6 @@ class PlayStationStoreProvider
         ];
     }
 
-
-
     /**
      * Create a new PlayStation Store API client for a specific region.
      */
@@ -689,16 +760,16 @@ class PlayStationStoreProvider
     /**
      * Extract platform from PlayStation product ID.
      */
-    private function resolvePlatforms(array $conceptData, string $productId): array
+    private function resolvePlatforms(array $conceptData, array $productData): array
     {
-        $platforms = collect($conceptData['platforms'] ?? [])
-            ->map(fn ($platform) => Arr::get($platform, 'name'))
+        $platforms = collect($conceptData['platforms'] ?? $productData['platforms'] ?? [])
+            ->map(fn ($platform) => is_array($platform) ? Arr::get($platform, 'name') : $platform)
             ->filter()
             ->values()
             ->all();
 
         if ($platforms === []) {
-            $platforms = [$this->guessPlatformFromProductId($productId)];
+            $platforms = [$this->guessPlatformFromProductId($productData['id'] ?? '')];
         }
 
         return $platforms;

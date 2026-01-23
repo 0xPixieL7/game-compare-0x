@@ -66,18 +66,8 @@ class FetchRawgDataJob implements ShouldQueue
             return;
         }
 
-        // Check if we already have RAWG media (don't overwrite)
-        $existingRawgMedia = Image::where('video_game_id', $game->id)
-            ->where('provider', 'rawg')
-            ->exists();
-
-        if ($existingRawgMedia) {
-            Log::debug('FetchRawgDataJob: RAWG media already exists', [
-                'game_id' => $this->videoGameId,
-            ]);
-
-            return;
-        }
+        // NOTE: Do not early-exit if media exists. We want to merge new screenshots/movies
+        // and fill missing columns deterministically.
 
         // Fetch game details including screenshots
         $gameData = $this->fetchGameDetails($apiKey);
@@ -167,25 +157,25 @@ class FetchRawgDataJob implements ShouldQueue
         $collections = [];
         $details = [];
 
-        // Background image as cover/header
+        // Background image as hero/background
         $backgroundImage = $gameData['background_image'] ?? null;
         $backgroundImageAdditional = $gameData['background_image_additional'] ?? null;
 
         if ($backgroundImage) {
-            $collections[] = 'cover_images';
+            $collections[] = 'background_images';
             $urls[] = $backgroundImage;
             $details[] = [
-                'collection' => 'cover_images',
+                'collection' => 'background_images',
                 'url' => $backgroundImage,
                 'type' => 'background_image',
             ];
         }
 
         if ($backgroundImageAdditional) {
-            $collections[] = 'artworks';
+            $collections[] = 'hero_images';
             $urls[] = $backgroundImageAdditional;
             $details[] = [
-                'collection' => 'artworks',
+                'collection' => 'hero_images',
                 'url' => $backgroundImageAdditional,
                 'type' => 'background_image_additional',
             ];
@@ -212,8 +202,47 @@ class FetchRawgDataJob implements ShouldQueue
 
         $collections = array_values(array_unique($collections));
 
-        // Store images
-        if (! empty($urls)) {
+        // Store images (aggregated, but preserve per-item details for backgrounds/hero selection)
+        if ($urls !== []) {
+            $existing = Image::where('video_game_id', $game->id)
+                ->where('provider', 'rawg')
+                ->first();
+
+            $existingDetails = $existing?->getAllDetails() ?? [];
+            $mergedDetails = array_values(array_reduce(
+                array_merge($existingDetails, $details),
+                function (array $carry, array $item): array {
+                    $url = $item['url'] ?? null;
+                    if (! is_string($url) || $url === '') {
+                        return $carry;
+                    }
+                    $carry[$url] = $item;
+
+                    return $carry;
+                },
+                []
+            ));
+
+            $mergedUrls = array_values(array_unique(array_merge(
+                $existing?->urls ?? [],
+                $urls
+            )));
+
+            $mergedCollections = array_values(array_unique(array_merge(
+                $existing?->collection_names ?? [],
+                $collections
+            )));
+
+            $primaryCollection = in_array('background_images', $mergedCollections, true)
+                ? 'background_images'
+                : (in_array('hero_images', $mergedCollections, true)
+                    ? 'hero_images'
+                    : ($mergedCollections[0] ?? 'misc'));
+
+            $primaryDetail = collect($mergedDetails)
+                ->firstWhere('collection', $primaryCollection)
+                ?? ($mergedDetails[0] ?? []);
+
             Image::updateOrCreate(
                 [
                     'video_game_id' => $game->id,
@@ -222,23 +251,27 @@ class FetchRawgDataJob implements ShouldQueue
                     'provider' => 'rawg',
                 ],
                 [
-                    'primary_collection' => in_array('cover_images', $collections, true)
-                        ? 'cover_images'
-                        : ($collections[0] ?? 'misc'),
-                    'collection_names' => $collections,
-                    'url' => $urls[0] ?? null,
-                    'urls' => $urls,
+                    'primary_collection' => $primaryCollection,
+                    'collection_names' => $mergedCollections,
+                    'url' => $mergedUrls[0] ?? null,
+                    'urls' => $mergedUrls,
+                    'external_id' => "rawg:{$this->rawgId}",
+                    'source_url' => self::BASE_URL."/games/{$this->rawgId}",
+                    'width' => is_numeric($primaryDetail['width'] ?? null) ? (int) $primaryDetail['width'] : null,
+                    'height' => is_numeric($primaryDetail['height'] ?? null) ? (int) $primaryDetail['height'] : null,
+                    'order_column' => 0,
+                    'is_thumbnail' => false,
                     'metadata' => [
                         'source' => 'rawg_enrichment',
                         'rawg_id' => $this->rawgId,
-                        'total_images' => count($urls),
-                        'details' => $details,
+                        'total_images' => count($mergedUrls),
+                        'all_details' => $mergedDetails,
                     ],
                 ]
             );
         }
 
-        // Store videos
+        // Store videos (RAWG mp4 clips; also supports youtube if RAWG ever returns youtube urls)
         if (! empty($movies)) {
             $videoUrls = [];
             $videoDetails = [];
@@ -283,9 +316,12 @@ class FetchRawgDataJob implements ShouldQueue
                         'collection_names' => $videoCollections,
                         'url' => $videoUrls[0] ?? null,
                         'urls' => $videoUrls,
-                        'video_id' => (string) ($movies[0]['id'] ?? ''),
+                        'external_id' => (string) ($movies[0]['id'] ?? ''),
+                        'video_id' => null,
+                        'source_url' => self::BASE_URL."/games/{$this->rawgId}/movies",
                         'thumbnail_url' => $movies[0]['preview'] ?? null,
                         'title' => $movies[0]['name'] ?? null,
+                        'order_column' => 0,
                         'metadata' => [
                             'source' => 'rawg_enrichment',
                             'rawg_id' => $this->rawgId,

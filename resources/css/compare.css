@@ -1,589 +1,629 @@
 /* Compare Page Styles extracted from previous project */
 
 #compareBackdrop::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 44px;
-  pointer-events: none;
-  background: radial-gradient(circle at 12% 18%, rgba(88, 134, 255, 0.25), transparent 58%),
-    radial-gradient(circle at 82% 22%, rgba(234, 84, 255, 0.24), transparent 65%),
-    linear-gradient(180deg, rgba(13, 19, 32, 0.92) 0%, rgba(11, 14, 22, 0.96) 60%, rgba(11, 14, 22, 1) 100%);
-  filter: blur(0.4px);
-  transform: scale(0.994);
-  z-index: 0;
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 44px;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            circle at 12% 18%,
+            rgba(88, 134, 255, 0.25),
+            transparent 58%
+        ),
+        radial-gradient(
+            circle at 82% 22%,
+            rgba(234, 84, 255, 0.24),
+            transparent 65%
+        ),
+        linear-gradient(
+            180deg,
+            rgba(13, 19, 32, 0.92) 0%,
+            rgba(11, 14, 22, 0.96) 60%,
+            rgba(11, 14, 22, 1) 100%
+        );
+    filter: blur(0.4px);
+    transform: scale(0.994);
+    z-index: 0;
 }
 
 .glass-panel {
-  border-radius: 24px;
-  border: 1px solid rgba(148, 180, 255, 0.08);
-  background: linear-gradient(135deg, rgba(18, 25, 40, 0.95), rgba(14, 18, 28, 0.94));
-  box-shadow: 0 28px 68px -42px rgba(8, 12, 20, 0.8);
-  backdrop-filter: blur(22px);
+    border-radius: 24px;
+    border: 1px solid rgba(148, 180, 255, 0.08);
+    background: linear-gradient(
+        135deg,
+        rgba(18, 25, 40, 0.95),
+        rgba(14, 18, 28, 0.94)
+    );
+    box-shadow: 0 28px 68px -42px rgba(8, 12, 20, 0.8);
+    backdrop-filter: blur(22px);
 }
 
 .compare-spotlight-shell {
-  position: relative;
-  padding: clamp(1.75rem, 3vw, 2.5rem);
-  overflow: hidden;
+    position: relative;
+    padding: clamp(1.75rem, 3vw, 2.5rem);
+    overflow: hidden;
 }
 
 .compare-spotlight-shell::before {
-  content: '';
-  position: absolute;
-  inset: -30% -10% auto auto;
-  width: clamp(260px, 42vw, 420px);
-  aspect-ratio: 1/1;
-  border-radius: 9999px;
-  background: radial-gradient(circle at center, rgba(120, 170, 255, 0.16) 0%, transparent 65%);
-  pointer-events: none;
-  filter: blur(120px);
+    content: '';
+    position: absolute;
+    inset: -30% -10% auto auto;
+    width: clamp(260px, 42vw, 420px);
+    aspect-ratio: 1/1;
+    border-radius: 9999px;
+    background: radial-gradient(
+        circle at center,
+        rgba(120, 170, 255, 0.16) 0%,
+        transparent 65%
+    );
+    pointer-events: none;
+    filter: blur(120px);
 }
 
 /* Alpine TV Card Layout */
 .spotlight-grid {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  gap: clamp(1.5rem, 3vw, 2.5rem);
-  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-  align-items: stretch;
-  min-height: 700px;
-  height: auto;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 700px;
+    height: auto;
 }
 
 @media (max-width: 1023px) {
-  .spotlight-grid {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
+    .spotlight-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
 }
 
 /* Prime Margin Styles */
 .spotlight-prime {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
 .prime-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(148, 180, 255, 0.2);
-  background: rgba(148, 180, 255, 0.12);
-  letter-spacing: 0.38em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  color: rgba(236, 244, 255, 0.75);
-  width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(148, 180, 255, 0.2);
+    background: rgba(148, 180, 255, 0.12);
+    letter-spacing: 0.38em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+    color: rgba(236, 244, 255, 0.75);
+    width: fit-content;
 }
 
 .prime-cover {
-  position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 20px 48px -28px rgba(4, 10, 20, 0.78);
-  background: rgba(12, 16, 26, 0.5);
-  aspect-ratio: 3/4;
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 20px 48px -28px rgba(4, 10, 20, 0.78);
+    background: rgba(12, 16, 26, 0.5);
+    aspect-ratio: 3/4;
 }
 
 .prime-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .prime-cover-caption {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 0.75rem 1rem;
-  background: linear-gradient(180deg, rgba(5, 8, 16, 0) 0%, rgba(5, 8, 16, 0.85) 100%);
-  font-size: 0.7rem;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: rgba(240, 245, 255, 0.78);
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(
+        180deg,
+        rgba(5, 8, 16, 0) 0%,
+        rgba(5, 8, 16, 0.85) 100%
+    );
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(240, 245, 255, 0.78);
 }
 
 .prime-score {
-  display: grid;
-  gap: 0.35rem;
-  align-items: baseline;
+    display: grid;
+    gap: 0.35rem;
+    align-items: baseline;
 }
 
 .prime-score-value {
-  font-size: clamp(2.75rem, 4vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1;
-  color: white;
+    font-size: clamp(2.75rem, 4vw, 3.5rem);
+    font-weight: 700;
+    line-height: 1;
+    color: white;
 }
 
 .prime-score-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.28em;
-  color: rgba(226, 232, 240, 0.6);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: rgba(226, 232, 240, 0.6);
 }
 
 .prime-score-grade {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.25rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 9999px;
-  border: 1px solid rgba(148, 180, 255, 0.25);
-  background: rgba(148, 180, 255, 0.1);
-  font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(148, 180, 255, 0.25);
+    background: rgba(148, 180, 255, 0.1);
+    font-weight: 600;
 }
 
 .prime-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.45rem, 0.9vw, 0.65rem);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.45rem, 0.9vw, 0.65rem);
 }
 
 .prime-metric {
-  padding: 0.55rem 0.85rem;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 180, 255, 0.12);
-  background: rgba(14, 18, 28, 0.65);
-  box-shadow: inset 0 0 0 1px rgba(12, 18, 30, 0.35);
+    padding: 0.55rem 0.85rem;
+    border-radius: 18px;
+    border: 1px solid rgba(148, 180, 255, 0.12);
+    background: rgba(14, 18, 28, 0.65);
+    box-shadow: inset 0 0 0 1px rgba(12, 18, 30, 0.35);
 }
 
 .prime-metric-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.78rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.62);
-  margin-bottom: 0.35rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.62);
+    margin-bottom: 0.35rem;
 }
 
 .prime-metric-weight {
-  font-size: 0.7rem;
-  color: rgba(226, 232, 240, 0.45);
+    font-size: 0.7rem;
+    color: rgba(226, 232, 240, 0.45);
 }
 
 .prime-metric-bar {
-  position: relative;
-  height: 6px;
-  border-radius: 9999px;
-  background: rgba(148, 180, 255, 0.15);
-  overflow: hidden;
+    position: relative;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(148, 180, 255, 0.15);
+    overflow: hidden;
 }
 
 .prime-metric-fill {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(120, 180, 255, 0.85), rgba(120, 90, 255, 0.9));
-  transition: width 180ms ease;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(120, 180, 255, 0.85),
+        rgba(120, 90, 255, 0.9)
+    );
+    transition: width 180ms ease;
 }
 
 .prime-metric-summary {
-  margin-top: 0.35rem;
-  font-size: clamp(0.7rem, 1vw, 0.78rem);
-  color: rgba(235, 241, 255, 0.78);
-  line-height: 1.4;
+    margin-top: 0.35rem;
+    font-size: clamp(0.7rem, 1vw, 0.78rem);
+    color: rgba(235, 241, 255, 0.78);
+    line-height: 1.4;
 }
 
 .prime-context {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.78rem;
-  color: rgba(226, 232, 240, 0.65);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: rgba(226, 232, 240, 0.65);
 }
 
 .prime-context li::before {
-  content: '•';
-  margin-right: 0.5rem;
-  color: rgba(148, 180, 255, 0.65);
+    content: '•';
+    margin-right: 0.5rem;
+    color: rgba(148, 180, 255, 0.65);
 }
 
 /* Apple TV Card Carousel */
 .apple-tv-carousel {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    height: 100%;
 }
 
 .carousel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.6);
 }
 
 .carousel-controls {
-  display: flex;
-  gap: 0.75rem;
+    display: flex;
+    gap: 0.75rem;
 }
 
 .carousel-btn {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  border: 1px solid rgba(148, 180, 255, 0.2);
-  background: rgba(148, 180, 255, 0.08);
-  color: rgba(226, 232, 240, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 120ms ease;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    border: 1px solid rgba(148, 180, 255, 0.2);
+    background: rgba(148, 180, 255, 0.08);
+    color: rgba(226, 232, 240, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 120ms ease;
 }
 
 .carousel-btn:hover {
-  transform: translateY(-2px);
-  border-color: rgba(148, 180, 255, 0.45);
-  background: rgba(148, 180, 255, 0.15);
+    transform: translateY(-2px);
+    border-color: rgba(148, 180, 255, 0.45);
+    background: rgba(148, 180, 255, 0.15);
 }
 
 /* Full-Width Apple TV Card */
 .apple-tv-card {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 600px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: linear-gradient(135deg, rgba(18, 22, 34, 0.92), rgba(12, 16, 26, 0.9));
-  border: 1px solid rgba(148, 180, 255, 0.08);
-  cursor: pointer;
-  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  transform-style: preserve-3d;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    border-radius: 24px;
+    overflow: hidden;
+    background: linear-gradient(
+        135deg,
+        rgba(18, 22, 34, 0.92),
+        rgba(12, 16, 26, 0.9)
+    );
+    border: 1px solid rgba(148, 180, 255, 0.08);
+    cursor: pointer;
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
 }
 
 .apple-tv-card:hover {
-  transform: scale(1.02) rotateX(2deg) rotateY(1deg);
-  box-shadow: 0 40px 95px -42px rgba(59, 130, 246, 0.6);
-  border-color: rgba(148, 180, 255, 0.25);
+    transform: scale(1.02) rotateX(2deg) rotateY(1deg);
+    box-shadow: 0 40px 95px -42px rgba(59, 130, 246, 0.6);
+    border-color: rgba(148, 180, 255, 0.25);
 }
 
 .apple-tv-media {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
 }
 
 .apple-tv-media img,
 .apple-tv-media video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 300ms ease;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 300ms ease;
 }
 
 .apple-tv-card:hover .apple-tv-media img,
 .apple-tv-card:hover .apple-tv-media video {
-  transform: scale(1.05);
+    transform: scale(1.05);
 }
 
 .apple-tv-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.1) 40%,
-    rgba(0, 0, 0, 0.8) 100%
-  );
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 2rem;
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(0, 0, 0, 0.1) 40%,
+        rgba(0, 0, 0, 0.8) 100%
+    );
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 2rem;
 }
 
 .apple-tv-content {
-  transform: translateY(20px);
-  transition: transform 300ms ease;
+    transform: translateY(20px);
+    transition: transform 300ms ease;
 }
 
 .apple-tv-card:hover .apple-tv-content {
-  transform: translateY(0);
+    transform: translateY(0);
 }
 
 .apple-tv-badges {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .apple-tv-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  background: rgba(148, 180, 255, 0.15);
-  border: 1px solid rgba(148, 180, 255, 0.3);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.8);
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    background: rgba(148, 180, 255, 0.15);
+    border: 1px solid rgba(148, 180, 255, 0.3);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(226, 232, 240, 0.8);
 }
 
 .apple-tv-title {
-  font-size: clamp(1.5rem, 3vw, 2.5rem);
-  font-weight: 700;
-  color: white;
-  margin-bottom: 0.5rem;
-  line-height: 1.2;
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
 }
 
 .apple-tv-subtitle {
-  font-size: 0.9rem;
-  color: rgba(226, 232, 240, 0.7);
-  margin-bottom: 1.5rem;
-  letter-spacing: 0.1em;
+    font-size: 0.9rem;
+    color: rgba(226, 232, 240, 0.7);
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.1em;
 }
 
 .apple-tv-cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  background: rgba(241, 245, 249, 0.1);
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  color: white;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 200ms ease;
-  backdrop-filter: blur(10px);
-  width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    background: rgba(241, 245, 249, 0.1);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 200ms ease;
+    backdrop-filter: blur(10px);
+    width: fit-content;
 }
 
 .apple-tv-cta:hover {
-  background: rgba(241, 245, 249, 0.2);
-  border-color: rgba(148, 163, 184, 0.4);
-  transform: translateY(-2px);
+    background: rgba(241, 245, 249, 0.2);
+    border-color: rgba(148, 163, 184, 0.4);
+    transform: translateY(-2px);
 }
 
 .apple-tv-source {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(10px);
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /* Carousel Navigation */
 .carousel-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
 }
 
 .carousel-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(148, 180, 255, 0.25);
-  cursor: pointer;
-  transition: all 200ms ease;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(148, 180, 255, 0.25);
+    cursor: pointer;
+    transition: all 200ms ease;
 }
 
 .carousel-dot.active {
-  background: rgba(148, 180, 255, 0.8);
-  transform: scale(1.2);
+    background: rgba(148, 180, 255, 0.8);
+    transform: scale(1.2);
 }
 
 /* Video Controls */
 .video-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 200ms ease;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 200ms ease;
 }
 
 .apple-tv-card:hover .video-overlay {
-  opacity: 1;
+    opacity: 1;
 }
 
 .play-pause-btn {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.7);
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  cursor: pointer;
-  transition: all 200ms ease;
-  backdrop-filter: blur(10px);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 200ms ease;
+    backdrop-filter: blur(10px);
 }
 
 .play-pause-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
 }
 
 /* Auto-animate transitions */
 [x-auto-animate] {
-  transition: all 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 /* Responsive adjustments */
 @media (max-width: 1023px) {
-  .apple-tv-card {
-    height: 300px;
-  }
+    .apple-tv-card {
+        height: 300px;
+    }
 
-  .apple-tv-overlay {
-    padding: 1.5rem;
-  }
+    .apple-tv-overlay {
+        padding: 1.5rem;
+    }
 
-  .apple-tv-title {
-    font-size: 1.5rem;
-  }
+    .apple-tv-title {
+        font-size: 1.5rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .apple-tv-card,
-  .apple-tv-media img,
-  .apple-tv-media video,
-  .apple-tv-content,
-  .carousel-btn,
-  .play-pause-btn {
-    transition: none !important;
-  }
+    .apple-tv-card,
+    .apple-tv-media img,
+    .apple-tv-media video,
+    .apple-tv-content,
+    .carousel-btn,
+    .play-pause-btn {
+        transition: none !important;
+    }
 }
 
 .stat-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .stat-card {
-  border-radius: 20px;
-  border: 1px solid rgba(148, 180, 255, 0.08);
-  background: linear-gradient(135deg, rgba(20, 26, 38, 0.88), rgba(18, 22, 32, 0.88));
-  box-shadow: 0 20px 48px -28px rgba(8, 12, 20, 0.7);
-  padding: 1.75rem;
-  transition: transform 180ms ease, box-shadow 180ms ease;
+    border-radius: 20px;
+    border: 1px solid rgba(148, 180, 255, 0.08);
+    background: linear-gradient(
+        135deg,
+        rgba(20, 26, 38, 0.88),
+        rgba(18, 22, 32, 0.88)
+    );
+    box-shadow: 0 20px 48px -28px rgba(8, 12, 20, 0.7);
+    padding: 1.75rem;
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 26px 64px -28px rgba(11, 16, 26, 0.75);
+    transform: translateY(-4px);
+    box-shadow: 0 26px 64px -28px rgba(11, 16, 26, 0.75);
 }
 
 .tools-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(12, 16, 22, 0.55);
-  backdrop-filter: blur(4px);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 200ms ease;
-  z-index: 30;
+    position: fixed;
+    inset: 0;
+    background: rgba(12, 16, 22, 0.55);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 200ms ease;
+    z-index: 30;
 }
 
 .tools-overlay.open {
-  opacity: 1;
-  visibility: visible;
+    opacity: 1;
+    visibility: visible;
 }
 
 .tools-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  height: 100vh;
-  width: min(92vw, 360px);
-  transform: translateX(100%);
-  transition: transform 250ms ease;
-  z-index: 40;
-  padding: 2rem 2rem 3rem;
-  background-color: rgba(12, 15, 20, 0.92);
-  backdrop-filter: blur(16px);
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: min(92vw, 360px);
+    transform: translateX(100%);
+    transition: transform 250ms ease;
+    z-index: 40;
+    padding: 2rem 2rem 3rem;
+    background-color: rgba(12, 15, 20, 0.92);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
 }
 
 .tools-drawer.open {
-  transform: translateX(0);
+    transform: translateX(0);
 }
 
 body.tools-drawer-open {
-  overflow: hidden;
+    overflow: hidden;
 }
 
 @media (min-width: 1024px) {
-  .tools-overlay {
-    display: none !important;
-  }
+    .tools-overlay {
+        display: none !important;
+    }
 
-  .tools-drawer {
-    position: static;
-    transform: none !important;
-    height: auto;
-    width: auto;
-    padding: 0;
-    background-color: transparent;
-    backdrop-filter: none;
-    gap: 0;
-  }
+    .tools-drawer {
+        position: static;
+        transform: none !important;
+        height: auto;
+        width: auto;
+        padding: 0;
+        background-color: transparent;
+        backdrop-filter: none;
+        gap: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spotlight-card,
-  .spotlight-metric-fill,
-  .spotlight-carousel-controls button,
-  .stat-card {
-    transition: none !important;
-  }
+    .spotlight-card,
+    .spotlight-metric-fill,
+    .spotlight-carousel-controls button,
+    .stat-card {
+        transition: none !important;
+    }
 }
 
 .spotlight-card-wrapper {
-  align-self: stretch;
+    align-self: stretch;
 }
 
 .spotlight-card-wrapper .game-card {
-  height: 100%;
+    height: 100%;
 }
 
 .spotlight-card-wrapper .game-card__overlay,
 .spotlight-card .game-card__overlay {
-  align-items: stretch;
-  justify-content: center;
+    align-items: stretch;
+    justify-content: center;
 }
 
 .spotlight-card-wrapper .game-card__media,
 .spotlight-card .game-card__media {
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  transform: none;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    transform: none;
 }

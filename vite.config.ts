@@ -7,6 +7,9 @@ import { defineConfig } from 'vite';
 const isProduction = process.env.NODE_ENV === 'production';
 
 export default defineConfig({
+    server: {
+        host: '127.0.0.1',
+    },
     build: {
         chunkSizeWarningLimit: 650,
         manifest: 'manifest.json',

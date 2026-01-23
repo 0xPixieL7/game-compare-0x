@@ -9,7 +9,20 @@
 /resources/js/wayfinder
 /storage/*.key
 /storage/pail
+/storage/task-orchestrator
+/storage/igdb-dumps
+/storage/gdb-dumps
+/storage/gdb-dumps-test
+/storage/price-charting
+/storage/sqlite_exports
 /vendor
+/video-creator/database
+/rust/exports
+*.csv
+price-guide.csv
+giant_bomb_games_detailed.json
+ps_full_*.json
+steam_apps_*.json
 .DS_Store
 .env
 .env.backup
@@ -33,6 +46,7 @@ yarn-error.log
 *.sqlite3
 *.csv
 *.sh
+*.db
 # Task Orchestrator local context (developer-specific, never commit)
 CLAUDE.local.md
 *.local.md
@@ -41,16 +55,23 @@ CLAUDE.local.md
 .agent/*
 .CLAUDE.md
 .github/*
+CLAUDE.local.md
 .vscode/*
 *mcp
 *.neon
+CLAUDE.md
 serve
+BEFORE_AFTER_COMPARISON.md
 *.xml
+Modelfile.qwen16k
 *.json
+AGENTS.md
 *.claude/
+debug_*.php
 *.cache
 .gemini/
 target/
+giant_bomb_games_detailed.json
 node_modules/
 *.phar
 *.config*
@@ -60,6 +81,7 @@ config/*.php
 config/*.json
 config/*.yml
 config/*.yaml
+price-guide.csv
 .github/
 .github/workflows/
 storage/logs/
@@ -67,6 +89,7 @@ storage/logs/
 AGENTS.md
 AI_CODING_ASSISTANT_GUIDE.md
 CLAUDE.md
+IGDB_WEBHOOKS.md
 CLAUDE.local.md
 GEMINI.md
 mcp.json
@@ -80,10 +103,27 @@ docker-compose.override.yml
 docker-compose.*.yml
 .env.docker
 .docker/
+rust/
 
+AGENTS.md
 # Ignore large files over GitHub's 50MB limit
 rust/docs/seed_snapshot_*.sql
 rust/output.ndjson
 rust/games_detailed_partial.ndjson
 rust/games_detailed_partial_from_code.ndjson
 storage/app/ps_concepts_*.json
+ps_full_10015677.json
+10
+*.db
+*.txt
+*.log
+*.sql
+*_debug.php
+*-flush.php
+.php-preview-router.php
+IGDB_WEBHOOKS.md
+BEFORE_AFTER_COMPARISON.md
+GEMINI.md
+RAILWAY_ENV_VARS.md
+video-creator/
+'products sql'/

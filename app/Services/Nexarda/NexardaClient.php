@@ -11,7 +11,9 @@ use RuntimeException;
 class NexardaClient
 {
     private string $baseUrl;
+
     private ?string $apiKey;
+
     private int $timeout;
 
     public function __construct()
@@ -60,27 +62,28 @@ class NexardaClient
             ])
             ->get($url, $params);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::error('Nexarda API Error', [
                 'endpoint' => $endpoint,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-            
+
             if ($response->status() === 404) {
                 return [];
             }
 
-            throw new RuntimeException('Nexarda API request failed: ' . $response->body());
+            throw new RuntimeException('Nexarda API request failed: '.$response->body());
         }
 
         $data = $response->json();
-        
-        if (!($data['success'] ?? false)) {
+
+        if (! ($data['success'] ?? false)) {
             Log::warning('Nexarda API returned unsuccessful response', [
                 'endpoint' => $endpoint,
                 'data' => $data,
             ]);
+
             return [];
         }
 

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Jobs\Enrichment\FetchSteamDataJob;
-use App\Jobs\Enrichment\FetchSteamPriceForRegionJob;
 use App\Models\VideoGame;
 use App\Services\Import\Concerns\CanOptimizeImport;
 use App\Services\Import\Concerns\HasProgressBar;
@@ -31,7 +30,7 @@ class ImportSteamAppsCommand extends Command
         {--enrich : Fetch full price and media data inline (async/parallel)}
         {--workers=1 : Number of parallel workers}
         {--chunk= : Internal: process specific chunk (format: N/TOTAL)}
-        {--regions-set=top30 : Region set to use: top30 (default), all, or custom list}';
+        {--regions-set=major : Region set to use: major (40+ regions), all (DB list), or comma-separated list (e.g. en-US,ja-JP)}';
 
     protected $description = 'Import Steam app IDs from steam_apps_pretty.json and link to existing video games';
 
@@ -39,13 +38,15 @@ class ImportSteamAppsCommand extends Command
 
     private const STEAM_EXTERNAL_LINK_CATEGORY = 1;
 
-    // Top 30 regions maximizing price disparity and market coverage
-    private const TOP_30_REGIONS = [
-        'US', 'GB', 'DE', 'FR', 'CA', 'AU', 'JP', 'KR', 'CN', // Major Markets
-        'AR', 'BR', 'CL', 'CO', 'PE', 'MX',                   // LATAM (Cheap)
-        'IN', 'ID', 'PH', 'TH', 'VN',                         // SE Asia (Cheap)
-        'UA', 'KZ', 'TR', 'PL',                               // CIS/East EU (Cheap)
-        'CH', 'NO', 'SE', 'DK', 'IS',                         // Nordic/High (Expensive)
+    // Comprehensive regions maximizing price disparity and market coverage (40+ countries)
+    private const MAJOR_REGIONS = [
+        'US', 'GB', 'JP', 'KR', 'CN', 'HK', 'TW',             // Tier 1 Markets
+        'DE', 'FR', 'ES', 'IT', 'NL', 'BE', 'AT', 'PT', 'IE', // Europe (Euro)
+        'CA', 'AU', 'NZ',                                     // Commonwealth
+        'BR', 'MX', 'CL', 'CO', 'PE',                         // LATAM
+        'IN', 'ID', 'PH', 'TH', 'VN', 'MY', 'SG',             // SE Asia
+        'RU', 'UA', 'KZ', 'TR', 'PL',                         // CIS/Eastern Europe
+        'NO', 'SE', 'DK', 'CH', 'IS', 'FI',                   // Nordics/High-Income
         'ZA',                                                 // Africa
     ];
 
@@ -82,7 +83,7 @@ class ImportSteamAppsCommand extends Command
         // Determine target regions
         $regions = match ($regionsSet) {
             'all' => $this->getAllSteamRegions(),
-            'top30' => self::TOP_30_REGIONS,
+            'top30', 'major' => self::MAJOR_REGIONS,
             default => array_filter(array_map('trim', explode(',', $regionsSet))),
         };
 
@@ -97,9 +98,26 @@ class ImportSteamAppsCommand extends Command
             return self::FAILURE;
         }
 
+        // Normalize regions (handle en-US -> ['country' => 'US', 'language' => 'en'])
+        $normalizedRegions = array_map(function ($r) {
+            if (str_contains($r, '-')) {
+                $parts = explode('-', $r);
+
+                return [
+                    'country' => strtoupper(end($parts)),
+                    'language' => strtolower($parts[0]),
+                ];
+            }
+
+            return [
+                'country' => strtoupper($r),
+                'language' => null,
+            ];
+        }, $regions);
+
         // Child process mode
         if ($chunk) {
-            return $this->runAsChildWorker($filePath, $chunk, $limit, $enrich, $regions);
+            return $this->runAsChildWorker($filePath, $chunk, $limit, $enrich, $normalizedRegions);
         }
 
         $this->info("Reading Steam apps from: {$filePath}");
@@ -270,7 +288,7 @@ class ImportSteamAppsCommand extends Command
         // Stream results to avoid memory issues
         $query->chunk(5000, function ($games) {
             foreach ($games as $game) {
-                $normalizedName = $this->normalizeName($game->name);
+                $normalizedName = $this->normalizeName((string) $game->name);
                 $this->nameCache[$normalizedName] = $game->id;
             }
         });
@@ -403,7 +421,7 @@ class ImportSteamAppsCommand extends Command
             $this->processed++;
 
             $appId = (string) $app['appid'];
-            $appName = $app['name'] ?? '';
+            $appName = (string) ($app['name'] ?? '');
 
             if (empty($appName)) {
                 $this->skipped++;
@@ -465,36 +483,46 @@ class ImportSteamAppsCommand extends Command
     private function enrichGameInline(int $videoGameId, int $steamAppId, array $regions): void
     {
         try {
-            // 1. Fetch Full Details (US) - Price + Media
-            // Executing the Job Synchronously to reuse logic
-            (new \App\Jobs\Enrichment\FetchSteamDataJob($videoGameId, $steamAppId))->handle($this->steamService);
+            // Find the primary region (prefer US if present, else first in list)
+            $primaryIndex = 0;
+            foreach ($regions as $i => $r) {
+                if ($r['country'] === 'US') {
+                    $primaryIndex = $i;
+                    break;
+                }
+            }
+            $primary = $regions[$primaryIndex];
+
+            // 1. Fetch Full Details for Primary Region - Price + Media
+            (new \App\Jobs\Enrichment\FetchSteamDataJob(
+                $videoGameId,
+                $steamAppId,
+                false,
+                $primary['language']
+            ))->handle($this->steamService);
 
             // 2. Fetch Other Regions (Price Only)
-            // FetchSteamDataJob only covers US (or default).
-            foreach ($regions as $region) {
-                if ($region === 'US') {
-                    continue; // Covered by FetchSteamDataJob
+            foreach ($regions as $i => $r) {
+                if ($i === $primaryIndex) {
+                    continue; // Already fetched
                 }
 
                 // Small delay between region calls for same game to be polite
                 usleep(50000); // 50ms
 
                 try {
-                    // We can reuse FetchSteamPriceForRegionJob logic implicitly or explicitly
-                    // Or just use the service directly which is effectively what the job does.
-                    // The job: $service->fetchAndStorePrice(...)
-                    // But fetchAndStorePrice isn't public? It's logic inside handle.
-                    // Let's check FetchSteamPriceForRegionJob if needed.
-                    // For now, I'll instantiate it too to keep it DRY.
-                    (new \App\Jobs\Enrichment\FetchSteamPriceForRegionJob($videoGameId, $steamAppId, $region))->handle($this->steamService);
-
+                    (new \App\Jobs\Enrichment\FetchSteamPriceForRegionJob(
+                        $videoGameId,
+                        $steamAppId,
+                        $r['country'],
+                        $r['language']
+                    ))->handle($this->steamService);
                 } catch (\Exception $e) {
                     // Ignore individual region failures
                 }
             }
 
             // Global Rate Limit per game (US + Regions)
-            // If we did 30 regions, that's heavy.
             usleep(100000); // 100ms global cooldown per game
 
         } catch (\Throwable $e) {
@@ -511,8 +539,15 @@ class ImportSteamAppsCommand extends Command
         // Convert to lowercase
         $name = mb_strtolower($name);
 
-        // Remove trademark symbols and special characters
-        $name = str_replace(['™', '®', '©', ':', '-', '_', '.'], ' ', $name);
+        // Handle smart quotes and special dashes
+        $name = str_replace(['‘', '’', '“', '”', '–', '—'], ["'", "'", '"', '"', '-', '-'], $name);
+
+        // Remove trademark symbols and common special characters used as delimiters
+        // Including comma which often precedes subtitles
+        $name = str_replace(['™', '®', '©', ':', '-', '_', '.', ','], ' ', $name);
+
+        // Remove years and tags in parentheses like "(2003)" or "(Classic, 2005)"
+        $name = preg_replace('/\((?:[^)]*?(?:19\d{2}|20\d{2}|legacy|classic|remastered|digital|anniversary)[^)]*?)\)/i', ' ', $name);
 
         // Remove common edition suffixes
         $suffixes = [
@@ -526,6 +561,13 @@ class ImportSteamAppsCommand extends Command
             ' enhanced edition',
             ' directors cut',
             ' standard edition',
+            ' anniversary edition',
+            ' gold edition',
+            ' digital deluxe edition',
+            ' gold',
+            ' double pack',
+            ' collector\'s edition',
+            ' collectors edition',
         ];
 
         foreach ($suffixes as $suffix) {
@@ -533,6 +575,9 @@ class ImportSteamAppsCommand extends Command
                 $name = substr($name, 0, -strlen($suffix));
             }
         }
+
+        // Handle & vs and
+        $name = str_replace(' & ', ' and ', $name);
 
         // Remove extra whitespace
         $name = preg_replace('/\s+/', ' ', $name);

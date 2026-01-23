@@ -39,9 +39,13 @@ class VideoGameController extends Controller
             $query->orderByDesc('release_date');
         }
 
+        // Opportunistically sync market data in the background if needed
+        \App\Jobs\SynchronizeGlobalMarketDataJob::dispatchAfterResponse();
+
         return Inertia::render('VideoGames/Index', [
             'featuredGame' => $featuredData,
             'games' => Inertia::defer(function () use ($query) {
+
                 $games = $query->paginate(24)->withQueryString();
 
                 // Transform collection to include media URLs
@@ -52,6 +56,7 @@ class VideoGameController extends Controller
                         'rating' => $game->rating,
                         'release_date' => $game->release_date?->format('Y-m-d'),
                         'cover_url' => $game->getCoverUrl(),
+                        'cover_url_high_res' => $game->getCoverUrl('t_1080p'),
                         'latest_price' => $game->latestPrice?->price,
                         'currency' => $game->latestPrice?->currency,
                     ];
@@ -75,7 +80,7 @@ class VideoGameController extends Controller
             ->get()
             ->map(function ($price) {
                 $meta = $price->metadata ?? [];
-                
+
                 return [
                     'id' => $price->id,
                     'retailer' => $price->retailer,
@@ -90,12 +95,13 @@ class VideoGameController extends Controller
 
         // Organize media for the frontend
         $media = [
-            'hero' => $game->images->firstWhere('primary_collection', 'hero')?->url,
-            'logo' => $game->images->firstWhere('primary_collection', 'clear_logo')?->url,
-            'poster' => $game->images->firstWhere('primary_collection', 'posters')?->url,
-            'background' => $game->images->firstWhere('primary_collection', 'backgrounds')?->url,
-            'screenshots' => $game->images->where('primary_collection', 'screenshots')->pluck('url')->take(6),
-            'trailers' => $game->videos->pluck('url'),
+            'hero' => $game->getHeroImageUrl(),
+            'logo' => $game->getFirstMediaUrl('clear_logo'),
+            'poster' => $game->getFirstMediaUrl('posters'),
+            'background' => $game->getFirstMediaUrl('backgrounds'),
+            'cover' => $game->getCoverUrl('t_1080p'),
+            'screenshots' => $game->getScreenshots()->pluck('url')->take(6)->values()->all(),
+            'trailers' => $game->getTrailers()->pluck('youtube_watch_url')->filter()->values()->all(),
         ];
 
         return Inertia::render('VideoGames/Show', [
@@ -109,7 +115,9 @@ class VideoGameController extends Controller
                 'platforms' => $game->platform ?? [],
                 'developer' => $game->developer,
                 'publisher' => $game->publisher,
+                'theme' => $game->attributes['theme'] ?? null,
             ],
+
             'prices' => $prices,
             'media' => $media,
         ]);

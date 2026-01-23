@@ -35,6 +35,7 @@ class ProviderDiscoveryService
         'igdb',
         'tgdb',
         'steam',
+        'rawg',
     ];
 
     /**

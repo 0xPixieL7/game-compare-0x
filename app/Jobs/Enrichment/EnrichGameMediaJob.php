@@ -35,8 +35,7 @@ class EnrichGameMediaJob implements ShouldQueue
 
     public function __construct(
         public int $videoGameId
-    ) {
-    }
+    ) {}
 
     /**
      * Rate limit based on which provider we use.

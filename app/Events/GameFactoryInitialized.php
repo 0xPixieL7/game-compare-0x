@@ -15,7 +15,7 @@ class GameFactoryInitialized
     /**
      * Create a new event instance.
      *
-     * @param array<int, mixed> $gameIds The IDs of the games that were initialized/created.
+     * @param  array<int, mixed>  $gameIds  The IDs of the games that were initialized/created.
      */
     public function __construct(
         public array $gameIds

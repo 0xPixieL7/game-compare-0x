@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Import\Providers;
 
+use App\Jobs\Enrichment\Traits\CategorizesVideoTypes;
 use App\Models\Image;
 use App\Models\Product;
 use App\Models\Video;
@@ -11,22 +12,21 @@ use App\Models\VideoGame;
 use App\Models\VideoGameSource;
 use App\Models\VideoGameTitle;
 use App\Models\VideoGameTitleSource;
-use App\Services\Import\Concerns\InteractsWithConsole;
 use App\Services\Import\Contracts\ImportProvider;
 use App\Services\Normalization\IgdbRatingHelper;
 use App\Services\Normalization\PlatformNormalizer;
+use Closure;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Symfony\Component\Console\Helper\ProgressBar;
-use Closure;
 
 class IgdbImportProvider implements ImportProvider
 {
-use App\Services\Import\Concerns\HasProgressBar;
-use App\Services\Import\Concerns\InteractsWithConsole;
+    use App\Services\Import\Concerns\HasProgressBar;
+    use App\Services\Import\Concerns\InteractsWithConsole;
+    use CategorizesVideoTypes;
 
     private const BATCH_SIZE = 4000;
 
@@ -47,6 +47,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
     private const CHECKPOINT_SECONDS_INTERVAL = 2.0;
 
     private const SUCCESS = 0;
+
     private const FAILURE = 1;
 
     /**
@@ -297,6 +298,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             $this->newLine();
         }
     }
+
     private function calculateTableIdOffsets(bool $fixedOffsets = false): void
     {
         $tables = [
@@ -330,6 +332,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             $this->tableIdCounters[$table] = 0;
         }
     }
+
     private function alignPostgresSequences(): void
     {
         if (DB::getDriverName() !== 'pgsql') {
@@ -360,6 +363,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             DB::statement('SELECT setval(?, ?, true)', [$sequenceName, $maxId]);
         }
     }
+
     private function updateProviderItemsCount(string $provider): void
     {
         $source = VideoGameSource::query()->where('provider', $provider)->first();
@@ -376,6 +380,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             'items_count' => $count,
         ])->save();
     }
+
     private function findFile(string $directory, string $basename): ?string
     {
         $candidates = [];
@@ -397,7 +402,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
             // Strict check: must match "basename.ext" or "timestamp_basename.ext"
             // We use word boundary or underscore limit to prevent "involved_companies" matching "companies"
-            if (! preg_match('/(?:^|_)' . preg_quote($basename, '/') . '\./', $name)) {
+            if (! preg_match('/(?:^|_)'.preg_quote($basename, '/').'\./', $name)) {
                 continue;
             }
 
@@ -447,6 +452,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $candidates[0]->getPathname();
     }
+
     private function processGamesStreaming(string $file, string $provider, int $limit): int
     {
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
@@ -457,6 +463,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $this->processGamesJson($file, $provider, $limit);
     }
+
     private function processGamesCsv(string $file, string $provider, int $limit): int
     {
         $handle = fopen($file, 'r');
@@ -647,6 +654,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $processed;
     }
+
     private function processGamesJson(string $file, string $provider, int $limit): int
     {
         $raw = File::get($file);
@@ -773,6 +781,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $processed;
     }
+
     /**
      * Persist a batch of game records using set-based writes.
      *
@@ -995,7 +1004,9 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $errors;
     }
+
     private function processGameRecord(array $record, string $provider): void {}
+
     private function flushBatches(): void
     {
         $this->flushVideoGameTitleSourceBatch();
@@ -1281,6 +1292,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         $this->imageBatch = [];
     }
+
     private function flushVideoBatch(): void
     {
         if (empty($this->videoBatch)) {
@@ -1333,13 +1345,24 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             // Extract first video_id as external_id
             $externalId = $mergedUrls[0] ?? null;
 
+            $videoCollections = [];
+            foreach ($mergedMetadata as $meta) {
+                if (is_array($meta) && isset($meta['name'])) {
+                    $videoCollections[] = $this->categorizeVideoType((string) $meta['name']);
+                }
+            }
+            $videoCollections = array_values(array_unique($videoCollections));
+            if (empty($videoCollections)) {
+                $videoCollections = ['trailers'];
+            }
+
             $upsertData[] = [
                 'videoable_type' => \App\Models\VideoGame::class,
                 'videoable_id' => $videoGameId,
                 'video_game_id' => $videoGameId,
                 'uuid' => (string) \Illuminate\Support\Str::uuid(),
-                'collection_names' => json_encode(['trailers']),
-                'primary_collection' => 'trailers',
+                'collection_names' => json_encode($videoCollections),
+                'primary_collection' => $videoCollections[0],
                 'url' => $primaryUrl,
                 'external_id' => $externalId,
                 'video_id' => $externalId,
@@ -1377,6 +1400,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         $this->videoBatch = [];
     }
+
     private function checkpointPath(string $file, string $provider): string
     {
         $hash = md5($file.$provider);
@@ -1419,6 +1443,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             $this->info("Resuming from checkpoint at byte position {$pos}...");
         }
     }
+
     private function countFileRows(string $file, bool $hasHeader): int
     {
         $handle = fopen($file, 'rb');
@@ -1439,6 +1464,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
         return $count;
     }
+
     /**
      * Chunk rows to avoid exceeding SQLite/Prepared statement variable limits.
      *
@@ -2021,6 +2047,7 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 
                     if (is_string($v) && ctype_digit($v)) {
                         $id = (int) $v;
+
                         return $this->platformIdToName[$id] ?? $v;
                     }
 
@@ -2151,6 +2178,4 @@ use App\Services\Import\Concerns\InteractsWithConsole;
             'publisher' => $publisherNames !== [] ? implode(', ', $publisherNames) : null,
         ];
     }
-
-
 }

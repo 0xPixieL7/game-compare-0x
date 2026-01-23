@@ -40,12 +40,16 @@ class IgdbDownloadDumpCommand extends Command
             return $this->listDumps();
         }
 
-        // Download specific endpoint
+        // Download specific endpoint(s)
         $endpoint = $this->argument('endpoint');
         if (! $endpoint) {
-            $this->error('Please specify an endpoint or use --list to see available dumps.');
+            $this->error('Please specify an endpoint, use "all" to download everything, or use --list to see available dumps.');
 
             return self::FAILURE;
+        }
+
+        if ($endpoint === 'all') {
+            return $this->downloadAllDumps();
         }
 
         return $this->downloadDump($endpoint);
@@ -127,6 +131,52 @@ class IgdbDownloadDumpCommand extends Command
         $this->info('To download a dump, run:');
         $this->line('  php artisan igdb:dump:download <endpoint>');
         $this->newLine();
+
+        return self::SUCCESS;
+    }
+
+    private function downloadAllDumps(): int
+    {
+        $this->info('Fetching list of all available dumps...');
+
+        $clientId = $this->clientId();
+        $response = Http::withHeaders([
+            'Client-ID' => $clientId,
+            'Authorization' => 'Bearer '.$this->accessToken,
+        ])->get("{$this->baseUrl}/dumps");
+
+        if (! $response->successful()) {
+            $this->error('Failed to fetch dump list: '.$response->body());
+
+            return self::FAILURE;
+        }
+
+        $dumps = $response->json();
+        if (empty($dumps)) {
+            $this->warn('No dumps available to download.');
+
+            return self::SUCCESS;
+        }
+
+        $this->info('Found '.count($dumps).' dumps. Starting batch download...');
+
+        foreach ($dumps as $dump) {
+            $endpoint = $dump['endpoint'];
+            $this->newLine();
+            $this->info(">>> Downloading '{$endpoint}'...");
+
+            try {
+                $status = $this->downloadDump($endpoint);
+                if ($status !== self::SUCCESS) {
+                    $this->error("Failed to download '{$endpoint}', continuing with others...");
+                }
+            } catch (\Throwable $e) {
+                $this->error("Error downloading '{$endpoint}': ".$e->getMessage());
+            }
+        }
+
+        $this->newLine();
+        $this->info('=== All available dumps have been processed ===');
 
         return self::SUCCESS;
     }

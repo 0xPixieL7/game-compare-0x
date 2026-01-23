@@ -26,6 +26,9 @@ class VideoGameTitleSource extends Model
         'publisher',
         'genre',
         'raw_payload',
+        'hypes',
+        'follows',
+        'popularity_score',
     ];
 
     protected $casts = [
@@ -33,6 +36,9 @@ class VideoGameTitleSource extends Model
         'genre' => 'array',
         'raw_payload' => 'array',
         'release_date' => 'date',
+        'hypes' => 'integer',
+        'follows' => 'integer',
+        'popularity_score' => 'float',
     ];
 
     public function title(): BelongsTo

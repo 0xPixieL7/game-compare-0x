@@ -3,20 +3,20 @@
 
 /**
  * Test script to verify the infinite loop bug fix.
- * 
+ *
  * Tests that malformed CSV rows with --limit=0 (unlimited) don't cause infinite loops.
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+$app = require_once __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 echo "=== Testing Infinite Loop Fix ===\n\n";
 
 // Create test CSV with malformed rows
-$testCsv = sys_get_temp_dir() . '/test_malformed_games.csv';
-$content = <<<CSV
+$testCsv = sys_get_temp_dir().'/test_malformed_games.csv';
+$content = <<<'CSV'
 id,name,slug,summary,platforms,genres
 1,Good Game 1,good-game-1,A test game,{1},"{2,3}"
 2,Malformed

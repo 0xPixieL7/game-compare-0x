@@ -1,4 +1,4 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition, applyUrlDefaults } from './../../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\VideoGameController::index
 * @see app/Http/Controllers/VideoGameController.php:11
@@ -44,8 +44,45 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
+* @see \App\Http\Controllers\VideoGameController::index
+* @see app/Http/Controllers/VideoGameController.php:11
+* @route '/games'
+*/
+const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\VideoGameController::index
+* @see app/Http/Controllers/VideoGameController.php:11
+* @route '/games'
+*/
+indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url(options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\VideoGameController::index
+* @see app/Http/Controllers/VideoGameController.php:11
+* @route '/games'
+*/
+indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: index.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+index.form = indexForm
+
+/**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:66
+* @see app/Http/Controllers/VideoGameController.php:71
 * @route '/games/{game}'
 */
 export const show = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -60,7 +97,7 @@ show.definition = {
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:66
+* @see app/Http/Controllers/VideoGameController.php:71
 * @route '/games/{game}'
 */
 show.url = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
@@ -93,7 +130,7 @@ show.url = (args: { game: number | { id: number } } | [game: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:66
+* @see app/Http/Controllers/VideoGameController.php:71
 * @route '/games/{game}'
 */
 show.get = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -103,13 +140,50 @@ show.get = (args: { game: number | { id: number } } | [game: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:66
+* @see app/Http/Controllers/VideoGameController.php:71
 * @route '/games/{game}'
 */
 show.head = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
     method: 'head',
 })
+
+/**
+* @see \App\Http\Controllers\VideoGameController::show
+* @see app/Http/Controllers/VideoGameController.php:71
+* @route '/games/{game}'
+*/
+const showForm = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\VideoGameController::show
+* @see app/Http/Controllers/VideoGameController.php:71
+* @route '/games/{game}'
+*/
+showForm.get = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, options),
+    method: 'get',
+})
+
+/**
+* @see \App\Http\Controllers\VideoGameController::show
+* @see app/Http/Controllers/VideoGameController.php:71
+* @route '/games/{game}'
+*/
+showForm.head = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: show.url(args, {
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+show.form = showForm
 
 const VideoGameController = { index, show }
 

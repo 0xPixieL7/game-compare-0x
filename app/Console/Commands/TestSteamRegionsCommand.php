@@ -6,11 +6,10 @@ namespace App\Console\Commands;
 
 use App\Services\Price\Steam\SteamStoreService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Test Steam API with diverse regions to understand response format and timing.
- * 
+ *
  * This is a diagnostic tool to validate:
  * - API response format across regions
  * - Rate limiting behavior
@@ -29,7 +28,7 @@ class TestSteamRegionsCommand extends Command
     {
         $appIdsInput = $this->option('app-ids');
         $appIds = array_map('trim', explode(',', $appIdsInput));
-        
+
         $regionsInput = $this->option('regions');
         $regions = array_map('trim', explode(',', $regionsInput));
 
@@ -43,16 +42,16 @@ class TestSteamRegionsCommand extends Command
 
         foreach ($appIds as $appId) {
             $this->info("Testing App ID: {$appId}");
-            
+
             foreach ($regions as $region) {
                 $callStart = microtime(true);
                 $callCount++;
-                
+
                 // Test price fetch
                 $priceData = $steam->getPrice($appId, $region);
-                
+
                 $callDuration = round((microtime(true) - $callStart) * 1000, 2);
-                
+
                 if ($priceData) {
                     $results[] = [
                         'app_id' => $appId,
@@ -62,7 +61,7 @@ class TestSteamRegionsCommand extends Command
                         'duration_ms' => $callDuration,
                         'status' => '✓',
                     ];
-                    
+
                     $this->line("  [{$region}] {$priceData['currency']} ".number_format($priceData['amount_minor'] / 100, 2)." ({$callDuration}ms)");
                 } else {
                     $results[] = [
@@ -73,19 +72,19 @@ class TestSteamRegionsCommand extends Command
                         'duration_ms' => $callDuration,
                         'status' => '✗',
                     ];
-                    
+
                     $this->line("  [{$region}] <fg=red>No price available</> ({$callDuration}ms)");
                 }
-                
+
                 // Small delay to be respectful to API
                 usleep(100000); // 100ms between calls
             }
-            
+
             $this->newLine();
         }
 
         $totalDuration = now()->diffInSeconds($startTime);
-        
+
         // Summary
         $this->newLine();
         $this->info('📊 Summary');
@@ -104,7 +103,7 @@ class TestSteamRegionsCommand extends Command
         // Show unique currencies found
         $currencies = collect($results)->pluck('currency')->filter()->unique()->sort()->values();
         $this->info('Currencies found: '.$currencies->implode(', '));
-        
+
         // Show which regions had no prices
         $failedRegions = collect($results)
             ->where('status', '✗')
@@ -112,7 +111,7 @@ class TestSteamRegionsCommand extends Command
             ->unique()
             ->sort()
             ->values();
-        
+
         if ($failedRegions->isNotEmpty()) {
             $this->newLine();
             $this->warn('Regions with no prices: '.$failedRegions->implode(', '));

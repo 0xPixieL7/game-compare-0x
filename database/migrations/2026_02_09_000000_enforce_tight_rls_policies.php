@@ -41,6 +41,8 @@ return new class extends Migration
             'video_game_sources',
             'video_game_title_sources',
             'video_game_prices',
+            'provider_toplists',
+            'provider_toplist_items',
             'media',
             'currencies',
             'exchange_rates',
@@ -66,6 +68,96 @@ return new class extends Migration
         }
 
         // ==========================================
+        // MATERIALIZED VIEWS (NO RLS; GRANT SELECT ONLY)
+        // ==========================================
+        // Postgres does not support RLS on materialized views.
+        // We still want anon/auth to be able to SELECT them.
+        $publicMaterializedViews = [
+            'video_games_ranked_mv',
+            'video_games_genre_ranked_mv',
+            'video_games_upcoming_mv',
+            'video_games_toplists_mv',
+        ];
+
+        foreach ($publicMaterializedViews as $matView) {
+            $exists = DB::selectOne(
+                "select 1 as one from pg_matviews where schemaname = 'public' and matviewname = ? limit 1",
+                [$matView],
+            );
+
+            if ($exists === null) {
+                continue;
+            }
+
+            try {
+                DB::statement("GRANT SELECT ON public.{$matView} TO anon, authenticated");
+                $this->info("  ✓ {$matView}: Materialized view (public SELECT)");
+            } catch (\Throwable $e) {
+                $this->warn("  ⚠ {$matView}: {$e->getMessage()}");
+            }
+        }
+
+        // ==========================================
+        // MATERIALIZED VIEW REFRESH (SERVICE ROLE ONLY)
+        // ==========================================
+        // anon/authenticated MUST NOT be able to refresh.
+        // Use a SECURITY DEFINER function and grant EXECUTE only to service_role.
+        try {
+            DB::statement(<<<'SQL'
+CREATE OR REPLACE FUNCTION public.refresh_game_materialized_views()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'video_games_ranked_mv') THEN
+    BEGIN
+      REFRESH MATERIALIZED VIEW CONCURRENTLY public.video_games_ranked_mv;
+    EXCEPTION WHEN OTHERS THEN
+      REFRESH MATERIALIZED VIEW public.video_games_ranked_mv;
+    END;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'video_games_genre_ranked_mv') THEN
+    BEGIN
+      REFRESH MATERIALIZED VIEW CONCURRENTLY public.video_games_genre_ranked_mv;
+    EXCEPTION WHEN OTHERS THEN
+      REFRESH MATERIALIZED VIEW public.video_games_genre_ranked_mv;
+    END;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'video_games_upcoming_mv') THEN
+    BEGIN
+      REFRESH MATERIALIZED VIEW CONCURRENTLY public.video_games_upcoming_mv;
+    EXCEPTION WHEN OTHERS THEN
+      REFRESH MATERIALIZED VIEW public.video_games_upcoming_mv;
+    END;
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'public' AND matviewname = 'video_games_toplists_mv') THEN
+    BEGIN
+      REFRESH MATERIALIZED VIEW CONCURRENTLY public.video_games_toplists_mv;
+    EXCEPTION WHEN OTHERS THEN
+      REFRESH MATERIALIZED VIEW public.video_games_toplists_mv;
+    END;
+  END IF;
+END;
+$$;
+SQL);
+
+            // Remove default EXECUTE for PUBLIC.
+            DB::statement('REVOKE ALL ON FUNCTION public.refresh_game_materialized_views() FROM PUBLIC');
+
+            // Supabase role (may not exist in non-Supabase PG).
+            DB::statement('GRANT EXECUTE ON FUNCTION public.refresh_game_materialized_views() TO service_role');
+
+            $this->info('  ✓ refresh_game_materialized_views(): service_role-only');
+        } catch (\Throwable $e) {
+            $this->warn('  ⚠ refresh_game_materialized_views(): '.$e->getMessage());
+        }
+
+        // ==========================================
         // SYSTEM TABLES (RLS enabled, no public access)
         // ==========================================
         $systemTables = [
@@ -79,6 +171,8 @@ return new class extends Migration
             'migrations',
             'password_reset_tokens',
             'personal_access_tokens',
+            'price_charting_igdb_mappings',
+            'webhook_events',
             'telescope_entries',
             'telescope_entries_tags',
             'telescope_monitoring',
@@ -167,6 +261,28 @@ return new class extends Migration
             } catch (\Throwable $e) {
                 $this->warn("  ⚠ Could not revert {$table}: {$e->getMessage()}");
             }
+        }
+
+        // Materialized views
+        $publicMaterializedViews = [
+            'video_games_ranked_mv',
+            'video_games_genre_ranked_mv',
+            'video_games_upcoming_mv',
+            'video_games_toplists_mv',
+        ];
+
+        foreach ($publicMaterializedViews as $matView) {
+            try {
+                DB::statement("REVOKE SELECT ON public.{$matView} FROM anon, authenticated");
+            } catch (\Throwable $e) {
+                // Ignore on rollback
+            }
+        }
+
+        try {
+            DB::statement('DROP FUNCTION IF EXISTS public.refresh_game_materialized_views()');
+        } catch (\Throwable $e) {
+            // Ignore on rollback
         }
 
         $this->info('✅ RLS policies reverted');

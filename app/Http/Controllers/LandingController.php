@@ -20,13 +20,13 @@ use Inertia\Response;
 
 class LandingController extends Controller
 {
-    private const ROW_LIMIT = 12;
+    private const ROW_LIMIT = 20;
 
     private const GENRE_POOL_LIMIT = 100;
 
     private const COUNTRY_CURRENCY_CACHE_TTL = 3600;
 
-    private const ROW_CACHE_TTL = 3600; // Increased to 1 hour to prevent timeouts during imports
+    private const ROW_CACHE_TTL = 14400; // 4 hours - Premium data is relatively stable
 
     public function __construct(private readonly TradingViewClient $tradingViewClient) {}
 
@@ -37,7 +37,7 @@ class LandingController extends Controller
         Log::info('Homepage hit', [
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
-            'auth' => $request->user()?->id
+            'auth' => $request->user()?->id,
         ]);
 
         $isAuthenticated = $request->user() !== null;
@@ -51,7 +51,7 @@ class LandingController extends Controller
 
         $displayIds = $this->collectDisplayIds($topRated, $newReleases, $mostReviewed, $bestDealsData['games'], $genreRows);
         $displayIds = array_unique(array_merge($displayIds, $upcoming->pluck('id')->all()));
-        
+
         $pricingMap = $isAuthenticated ? $this->buildPricingMapForIds($displayIds) : [];
         $pricingMap = array_replace($pricingMap, $bestDealsData['pricing']);
 
@@ -91,8 +91,28 @@ class LandingController extends Controller
             ];
         }
 
-        $hero = $this->selectHero($topRated, $newReleases, $mostReviewed);
-        $spotlightGames = $this->fetchSpotlightGames(6);
+        $heroCandidate = $this->selectHero($topRated, $newReleases, $mostReviewed);
+        $spotlightGames = $this->fetchSpotlightGames(20);
+        $zeldaHero = $this->fetchZeldaHero();
+
+        if ($zeldaHero) {
+            $spotlightGames = collect($spotlightGames)
+                ->reject(fn ($game) => data_get($game, 'id') === $zeldaHero['id'])
+                ->prepend($zeldaHero)
+                ->values()
+                ->all();
+        }
+
+        $hero = $spotlightGames[0] ?? null;
+
+        if (! $hero && $heroCandidate) {
+            // Re-fetch or at least map with the same structure
+            // For now, mapping the existing object but we need to ensure it has raw_payload if possible
+            // Actually, selectHero uses data from video_games_ranked_mv which doesn't have raw_payload
+            // So we'll try to find it in spotlightGames first
+            $hero = collect($spotlightGames)->firstWhere('id', $heroCandidate->id)
+                ?? $this->mapSpotlightGame($heroCandidate);
+        }
 
         Log::info('Homepage data fetched', [
             'topRated' => $topRated->count(),
@@ -102,11 +122,11 @@ class LandingController extends Controller
             'bestDeals' => $bestDealsData['games']->count(),
             'genreRows' => count($genreRows),
             'heroLinked' => $hero !== null,
-            'spotlightCount' => count($spotlightGames)
+            'spotlightCount' => count($spotlightGames),
         ]);
 
         return Inertia::render('welcome', [
-            'hero' => $hero ? $this->mapGame($hero, $pricingMap, $isAuthenticated) : null,
+            'hero' => $hero,
             'spotlightGames' => $spotlightGames,
             'rows' => $rows,
             'cta' => [
@@ -115,209 +135,257 @@ class LandingController extends Controller
         ]);
     }
 
+    public function debugSpotlight()
+    {
+        return response()->json($this->fetchSpotlightGames(20));
+    }
+
     private function fetchSpotlightGames(int $limit = 6): array
     {
-        return $this->cacheStore()->remember('landing:spotlight-games-v7', self::ROW_CACHE_TTL, function () use ($limit) {
-            // Target IDs: GTA VI, EA FC 26, NBA 2K26, Witcher 3, Cloud Cutter, Skyrim Anniversary
-            $forcedIds = [121815, 741167, 741505, 1014215, 1018, 195630];
-            
-            // Use base video_games table but select columns required for mapping
-            $games = DB::table('video_games')
+        return $this->cacheStore()->remember('landing:spotlight-games-v19', self::ROW_CACHE_TTL, function () use ($limit) {
+            // These are prioritized "Marquee" titles the user expects to see
+            // Mario Kart 8, EA FC, NBA 2K, Halo, COD, Pokemon, GTA V/VI, Fortnite, Minecraft, CS2, LoL, Valorant, F1 25, GT7, Tekken 8
+            $marqueeIds = [
+                12026, 199224, 117836, 221441, 174739, 221545, 233062,
+                220587, 235660, 260502, 92989, 142457, 220450, 274649, 257269,
+                37470, 53320,
+            ];
+
+            // 1. Fetch Marquee Games first
+            $marqueeQuery = DB::table('video_games')
+                ->join('video_games_ranked_mv', 'video_games.id', '=', 'video_games_ranked_mv.id')
                 ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
                 ->leftJoin('video_game_title_sources', function ($join) {
                     $join->on('video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
                         ->where('video_game_title_sources.provider', '=', 'igdb');
                 })
-                ->leftJoin('videos', 'video_games.id', '=', 'videos.video_game_id')
                 ->select([
                     'video_games.*',
+                    'video_games_ranked_mv.image_url',
+                    'video_games_ranked_mv.image_urls',
+                    'video_games_ranked_mv.media as mv_media',
                     'video_game_titles.name as canonical_name',
                     'video_game_title_sources.raw_payload',
                     'video_game_title_sources.platform as source_platform',
                     'video_game_title_sources.genre as source_genre',
-                    'videos.video_id',
-                    'videos.metadata as video_metadata'
+                    DB::raw("(SELECT json_agg(json_build_object(
+                        'video_id', video_id, 
+                        'name', COALESCE(title, primary_collection, 'Trailer'),
+                        'type', COALESCE(primary_collection, 'trailer'),
+                        'duration', duration
+                    )) FROM videos WHERE videos.video_game_id = video_games.id) as all_videos"),
                 ])
-                ->whereIn('video_games.id', $forcedIds)
-                ->get();
+                ->whereIn('video_games.id', $marqueeIds)
+                ->whereNotNull('video_game_title_sources.raw_payload');
 
-            // Fetch enriched images for backdrop selection
-            $images = DB::table('images')
-                ->whereIn('imageable_id', $forcedIds)
-                ->where('imageable_type', 'App\Models\VideoGame')
-                ->get()
-                ->keyBy('imageable_id');
+            $marqueeGames = $marqueeQuery->get();
 
-            // Sort to match requested order and reset keys to ensure sequential array
-            $games = $games->sortBy(function($game) use ($forcedIds) {
-                return array_search($game->id, $forcedIds);
-            })->values();
+            // 2. Fetch Dynamic "High Quality" Games to fill remaining slots
+            $remainingLimit = max(0, $limit - $marqueeGames->count());
+            $dynamicGames = collect();
 
-            return $games->map(function ($game) use ($images) {
-                // Parse media from raw_payload for high-res screenshots/artworks
-                $rawPayload = property_exists($game, 'raw_payload') && $game->raw_payload 
-                    ? json_decode($game->raw_payload, true) 
-                    : [];
-                $baseUrl = 'https://images.igdb.com/igdb/image/upload/';
-                
-                $screenshots = [];
-                if (!empty($rawPayload['screenshots'])) {
-                    $ids = is_string($rawPayload['screenshots']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['screenshots'])) : $rawPayload['screenshots'];
-                    foreach (array_slice($ids, 0, 5) as $id) {
-                        if ($id) $screenshots[] = ['url' => $baseUrl . 't_1080p/sc' . base_convert((string)$id, 10, 36) . '.webp'];
-                    }
-                }
+            if ($remainingLimit > 0) {
+                $dynamicQuery = DB::table('video_games')
+                    ->join('video_games_ranked_mv', 'video_games.id', '=', 'video_games_ranked_mv.id')
+                    ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
+                    ->leftJoin('video_game_title_sources', function ($join) {
+                        $join->on('video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
+                            ->where('video_game_title_sources.provider', '=', 'igdb');
+                    })
+                    ->select([
+                        'video_games.*',
+                        'video_games_ranked_mv.image_url',
+                        'video_games_ranked_mv.image_urls',
+                        'video_games_ranked_mv.media as mv_media',
+                        'video_game_titles.name as canonical_name',
+                        'video_game_title_sources.raw_payload',
+                        'video_game_title_sources.platform as source_platform',
+                        'video_game_title_sources.genre as source_genre',
+                        DB::raw("(SELECT json_agg(json_build_object(
+                        'video_id', video_id, 
+                        'name', COALESCE(title, primary_collection, 'Trailer'),
+                        'type', COALESCE(primary_collection, 'trailer'),
+                        'duration', duration
+                    )) FROM videos WHERE videos.video_game_id = video_games.id) as all_videos"),
+                    ])
+                    ->where('video_games.release_date', '>=', now()->subMonths(18))
+                    ->where('video_games.release_date', '<=', now())
+                    ->whereNotIn('video_games.id', $marqueeIds)
+                    ->whereNotNull('video_game_title_sources.raw_payload');
 
-                $artworks = [];
-                if (!empty($rawPayload['artworks'])) {
-                    $ids = is_string($rawPayload['artworks']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['artworks'])) : $rawPayload['artworks'];
-                    foreach (array_slice($ids, 0, 5) as $id) {
-                        if ($id) $artworks[] = ['url' => $baseUrl . 't_1080p/ar' . base_convert((string)$id, 10, 36) . '.webp'];
-                    }
-                }
-                
-                // Extract trailers
-                $trailers = [];
-                if ($game->video_metadata) {
-                    $metadata = json_decode($game->video_metadata, true);
-                    if (is_array($metadata)) {
-                        foreach ($metadata as $v) {
-                            if (!empty($v['video_id'])) {
-                                $trailers[] = [
-                                    'video_id' => $v['video_id'],
-                                    'name' => $v['name'] ?? 'Trailer',
-                                    'url' => 'https://www.youtube.com/watch?v=' . $v['video_id']
-                                ];
-                            }
-                        }
-                    }
-                }
+                $dynamicGames = $this->applyPremiumFilter($dynamicQuery);
+                $dynamicGames = $this->applyLandingRanking($dynamicGames)
+                    ->limit($remainingLimit)
+                    ->get();
+            }
 
-                if (empty($trailers) && $game->video_id) {
-                    $trailers[] = [
-                        'video_id' => $game->video_id,
-                        'name' => 'Trailer',
-                        'url' => 'https://www.youtube.com/watch?v=' . $game->video_id
-                    ];
-                }
+            // Merge and preserve order: Marquee first, then Dynamic
+            $allGames = $marqueeGames->concat($dynamicGames);
 
-                // Manual fallback for Witcher 3 if no media found
-                if ($game->id == 1014215 && empty($trailers)) {
-                    $trailers[] = [
-                        'video_id' => 'rIoPrbzI5Z4',
-                        'name' => 'The Witcher 3: Wild Hunt Trailer',
-                        'url' => 'https://www.youtube.com/watch?v=rIoPrbzI5Z4'
-                    ];
-                }
+            return $allGames->map(function ($game) {
+                $mapped = $this->mapSpotlightGame($game);
+                $mapped['raw_payload_debug'] = $game->raw_payload;
 
-                $mapped = $this->mapGame($game, [], false);
-                $mapped['media']['trailers'] = $trailers;
-                
-                // Prioritize high-res screenshots/artworks from raw_payload if available
-                if (!empty($screenshots)) {
-                    $mapped['media']['screenshots'] = array_merge($screenshots, $mapped['media']['screenshots'] ?? []);
-                }
-                if (!empty($artworks)) {
-                    $mapped['media']['artworks'] = array_merge($artworks, $mapped['media']['artworks'] ?? []);
-                }
-                
-                // Determine Backdrop URL
-                // Strategy: Check local images table first (metadata > details), then fall back to raw_payload
-                $backdropUrl = null;
-                $dbImage = $images->get($game->id);
-
-                if ($dbImage && $dbImage->metadata) {
-                    $metadata = json_decode($dbImage->metadata, true);
-                    $details = $metadata['details'] ?? $metadata['all_details'] ?? [];
-                    
-                    if (!empty($details)) {
-                        // Filter for artworks and screenshots
-                        $artworksList = array_filter($details, fn($d) => ($d['collection'] ?? '') === 'artworks');
-                        $screenshotsList = array_filter($details, fn($d) => ($d['collection'] ?? '') === 'screenshots');
-
-                        // Sort by resolution (width * height) descending
-                        $sortByRes = function($a, $b) {
-                            $resA = ($a['width'] ?? 0) * ($a['height'] ?? 0);
-                            $resB = ($b['width'] ?? 0) * ($b['height'] ?? 0);
-                            return $resB <=> $resA;
-                        };
-
-                        usort($artworksList, $sortByRes);
-                        usort($screenshotsList, $sortByRes);
-
-                        // Pick best candidate: Best Artwork > Best Screenshot
-                        $bestCandidate = $artworksList[0] ?? $screenshotsList[0] ?? null;
-
-                        if ($bestCandidate && isset($bestCandidate['url'])) {
-                            $url = $bestCandidate['url'];
-                            // If it's an IGDB URL, upgrade to original size if possible
-                            // IGDB usually puts size variants in 'size_variants' or we can replace the size in URL
-                            // Check 'size_variants' first if available
-                            $foundOriginal = false;
-                            if (isset($bestCandidate['size_variants']) && is_array($bestCandidate['size_variants'])) {
-                                foreach ($bestCandidate['size_variants'] as $variant) {
-                                    if (str_contains($variant, 't_original') || str_contains($variant, 't_1080p')) {
-                                        // Prefer original if found, or 1080p
-                                        if (str_contains($variant, 't_original')) {
-                                            $backdropUrl = $variant;
-                                            $foundOriginal = true;
-                                            break;
-                                        }
-                                        $backdropUrl = $variant; // Keep 1080p as fallback
-                                    }
-                                }
-                            }
-                            
-                            if (!$foundOriginal && str_contains($url, 'images.igdb.com')) {
-                                // Manual upgrade if variants didn't yield 't_original'
-                                $backdropUrl = preg_replace('/\/t_[a-zA-Z0-9_]+\//', '/t_original/', $url);
-                            } elseif (!$backdropUrl) {
-                                $backdropUrl = $url;
-                            }
-                        }
-                    }
-                }
-
-                // Fallback to raw_payload logic if DB image yielded nothing
-                if (!$backdropUrl) {
-                    // 1. Try first Artwork (usually landscape/high-res)
-                    if (!empty($artworks) && isset($artworks[0]['url'])) {
-                        $backdropUrl = str_replace('t_1080p', 't_original', $artworks[0]['url']);
-                    }
-                    // 2. Fallback to first Screenshot
-                    elseif (!empty($screenshots) && isset($screenshots[0]['url'])) {
-                        $backdropUrl = str_replace('t_1080p', 't_original', $screenshots[0]['url']);
-                    }
-                }
-
-                $mapped['backdrop_url'] = $backdropUrl;
-                
-                // Fallback: Check images table if no cover found in payload
-                if (empty($mapped['media']['cover_url']) && $dbImage) {
-                    $mapped['media']['cover_url'] = $dbImage->url;
-                    // Use higher res variant if available in urls array
-                    if ($dbImage->urls) {
-                        $urls = json_decode($dbImage->urls, true);
-                        foreach ($urls as $url) {
-                            if (str_contains($url, 't_1080p') || str_contains($url, 't_cover_big')) {
-                                $mapped['media']['cover_url_high_res'] = $url;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
                 return $mapped;
             })->toArray();
         });
     }
 
+    private function mapSpotlightGame(object $game): array
+    {
+        // Parse media from raw_payload for high-res screenshots/artworks
+        $rawPayload = property_exists($game, 'raw_payload') && $game->raw_payload
+            ? (is_array($game->raw_payload) ? $game->raw_payload : json_decode((string) $game->raw_payload, true))
+            : [];
+
+        // Handle double-encoded JSON (common implementation quirk)
+        if (is_string($rawPayload)) {
+            $rawPayload = json_decode($rawPayload, true) ?? [];
+        }
+
+        $baseUrl = 'https://images.igdb.com/igdb/image/upload/';
+
+        $coverUrl = null;
+        if (! empty($rawPayload['cover'])) {
+            // Check for direct image_id found in IGDB objects
+            if (is_array($rawPayload['cover']) && ! empty($rawPayload['cover']['image_id'])) {
+                $coverUrl = $baseUrl.'t_1080p/'.$rawPayload['cover']['image_id'].'.webp';
+            } else {
+                // Fallback for ID-only references
+                $coverId = is_array($rawPayload['cover']) ? ($rawPayload['cover']['id'] ?? $rawPayload['cover']) : $rawPayload['cover'];
+                if (is_numeric($coverId)) {
+                    $coverUrl = $baseUrl.'t_1080p/co'.base_convert((string) $coverId, 10, 36).'.webp';
+                } elseif (is_string($coverId) && ! empty($coverId)) {
+                    $coverUrl = $baseUrl.'t_1080p/'.(str_starts_with($coverId, 'co') ? '' : 'co').$coverId.'.webp';
+                }
+            }
+        }
+
+        $screenshots = [];
+        if (! empty($rawPayload['screenshots'])) {
+            $items = is_string($rawPayload['screenshots']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['screenshots'])) : $rawPayload['screenshots'];
+            // Normalize to array of items
+            $normalizedItems = is_array($items) ? $items : [];
+
+            foreach (array_slice($normalizedItems, 0, 8) as $item) {
+                if (is_array($item) && ! empty($item['image_id'])) {
+                    $screenshots[] = ['url' => $baseUrl.'t_1080p/'.$item['image_id'].'.webp'];
+                } elseif (is_numeric($item)) {
+                    $screenshots[] = ['url' => $baseUrl.'t_1080p/sc'.base_convert((string) $item, 10, 36).'.webp'];
+                } elseif (is_string($item) && ! empty($item)) {
+                    $screenshots[] = ['url' => $baseUrl.'t_1080p/'.$item.'.webp'];
+                }
+            }
+        }
+
+        $artworks = [];
+        if (! empty($rawPayload['artworks'])) {
+            $items = is_string($rawPayload['artworks']) ? explode(',', str_replace(['{', '}'], '', $rawPayload['artworks'])) : $rawPayload['artworks'];
+            $normalizedItems = is_array($items) ? $items : [];
+
+            foreach (array_slice($normalizedItems, 0, 8) as $item) {
+                if (is_array($item) && ! empty($item['image_id'])) {
+                    $artworks[] = ['url' => $baseUrl.'t_1080p/'.$item['image_id'].'.webp'];
+                } elseif (is_numeric($item)) {
+                    $artworks[] = ['url' => $baseUrl.'t_1080p/ar'.base_convert((string) $item, 10, 36).'.webp'];
+                } elseif (is_string($item) && ! empty($item)) {
+                    $artworks[] = ['url' => $baseUrl.'t_1080p/'.$item.'.webp'];
+                }
+            }
+        }
+
+        // Extract all videos (trailers, gameplay, etc.)
+        $trailers = [];
+        $allVideos = property_exists($game, 'all_videos') ? $game->all_videos : null;
+        if ($allVideos) {
+            $videoList = is_array($allVideos) ? $allVideos : json_decode((string) $allVideos, true);
+            if (is_array($videoList)) {
+                foreach ($videoList as $v) {
+                    if (! empty($v['video_id'])) {
+                        $trailers[] = [
+                            'video_id' => $v['video_id'],
+                            'name' => $v['name'] ?? 'Trailer',
+                            'type' => $v['type'] ?? 'trailer',
+                            'url' => 'https://www.youtube.com/watch?v='.$v['video_id'],
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Manual fallback for specific games (like Witcher 3)
+        if ($game->id == 1014215 && empty($trailers)) {
+            $trailers[] = [
+                'video_id' => 'rIoPrbzI5Z4',
+                'name' => 'The Witcher 3: Wild Hunt Trailer',
+                'type' => 'trailer',
+                'url' => 'https://www.youtube.com/watch?v=rIoPrbzI5Z4',
+            ];
+        }
+
+        $reviewScore = (float) ($game->review_score ?? $game->rating ?? $game->mv_rating ?? 85);
+        $verdict = match (true) {
+            $reviewScore >= 90 => 'Masterpiece',
+            $reviewScore >= 80 => 'Essential',
+            $reviewScore >= 70 => 'Great',
+            default => 'Strong',
+        };
+
+        $gallery = [];
+        foreach ($trailers as $t) {
+            $gallery[] = [
+                'id' => Str::random(8),
+                'type' => 'video',
+                'url' => $t['video_id'],
+                'source' => 'YouTube',
+                'title' => $t['name'],
+                'video_type' => $t['type'],
+                'duration' => $t['duration'] ?? null,
+            ];
+        }
+        foreach ($artworks as $a) {
+            $gallery[] = ['id' => Str::random(8), 'type' => 'image', 'url' => $a['url'], 'source' => 'IGDB'];
+        }
+        foreach ($screenshots as $s) {
+            $gallery[] = ['id' => Str::random(8), 'type' => 'image', 'url' => $s['url'], 'source' => 'IGDB'];
+        }
+
+        $sourcePlatform = property_exists($game, 'source_platform') ? $game->source_platform : null;
+        $platforms = $sourcePlatform ? (is_string($sourcePlatform) ? json_decode($sourcePlatform, true) : $sourcePlatform) : [];
+
+        // Prioritize cover for background as well if requested, but falling back to others for variety
+        $backdropUrl = $coverUrl ?: (! empty($artworks) ? $artworks[0]['url'] : (! empty($screenshots) ? $screenshots[0]['url'] : null));
+        $mainImage = $coverUrl ?: $backdropUrl;
+
+        return [
+            'id' => $game->id,
+            'name' => $game->canonical_name ?? $game->name,
+            'slug' => property_exists($game, 'slug') ? $game->slug : Str::slug($game->name),
+            'image' => $mainImage ? $this->upscaleImage($mainImage, 't_1080p') : null,
+            'background' => $backdropUrl ? $this->upscaleImage($backdropUrl, 't_1080p') : null,
+            'platform_labels' => is_array($platforms) ? $platforms : [$platforms],
+            'spotlight_score' => [
+                'total' => round($reviewScore / 10, 1),
+                'grade' => $reviewScore >= 90 ? 'S' : ($reviewScore >= 80 ? 'A' : 'B'),
+                'verdict' => $verdict,
+                'breakdown' => [
+                    ['label' => 'Critical Reception', 'score' => (int) $reviewScore, 'summary' => 'Aggregated rating.', 'weight_percentage' => 40],
+                    ['label' => 'Popularity', 'score' => (int) min($game->popularity_score ?? $game->mv_popularity_score ?? 0, 100), 'summary' => 'Market demand.', 'weight_percentage' => 30],
+                    ['label' => 'Quality Proxy', 'score' => (int) min($game->rating_count ?? $game->mv_rating_count ?? 0, 100), 'summary' => 'Sentiment signals.', 'weight_percentage' => 30],
+                ],
+            ],
+            'spotlight_gallery' => ! empty($gallery) ? $gallery : [
+                ['id' => '1', 'type' => 'image', 'url' => $this->upscaleImage($mainImage, 't_1080p'), 'source' => 'IGDB'],
+            ],
+        ];
+    }
+
     private function fetchTopRated(int $limit): Collection
     {
-        return $this->cacheStore()->remember('landing:top-rated', self::ROW_CACHE_TTL, function () use ($limit) {
-            return $this->baseGameQuery()
-                ->whereNotNull('rating')
-                ->orderByDesc('rating')
+        return $this->cacheStore()->remember('landing:top-rated-v4', self::ROW_CACHE_TTL, function () use ($limit) {
+            $query = $this->applyPremiumFilter($this->baseGameQuery());
+
+            return $this->applyLandingRanking($query)
                 ->limit($limit)
                 ->get();
         });
@@ -325,9 +393,12 @@ class LandingController extends Controller
 
     private function fetchUpcoming(int $limit): Collection
     {
-        return $this->cacheStore()->remember('landing:upcoming', self::ROW_CACHE_TTL, function () use ($limit) {
-            return DB::table('video_games_upcoming_mv')
-                ->select($this->mvColumns())
+        return $this->cacheStore()->remember('landing:upcoming-v4', self::ROW_CACHE_TTL, function () use ($limit) {
+            $query = $this->applyPremiumFilter(
+                DB::table('video_games_upcoming_mv')->select($this->mvColumns())
+            );
+
+            return $this->applyLandingRanking($query)
                 ->limit($limit)
                 ->get();
         });
@@ -335,11 +406,13 @@ class LandingController extends Controller
 
     private function fetchNewReleases(int $limit): Collection
     {
-        return $this->cacheStore()->remember('landing:new-releases', self::ROW_CACHE_TTL, function () use ($limit) {
-            return $this->baseGameQuery()
+        return $this->cacheStore()->remember('landing:new-releases-v4', self::ROW_CACHE_TTL, function () use ($limit) {
+            $query = $this->applyPremiumFilter($this->baseGameQuery())
                 ->whereNotNull('release_date')
                 ->where('release_date', '<=', now())
-                ->orderByDesc('release_date')
+                ->where('release_date', '>=', now()->subMonths(6)); // Slightly wider window for premium results
+
+            return $this->applyLandingRanking($query)
                 ->limit($limit)
                 ->get();
         });
@@ -347,9 +420,10 @@ class LandingController extends Controller
 
     private function fetchMostReviewed(int $limit): Collection
     {
-        return $this->cacheStore()->remember('landing:most-reviewed', self::ROW_CACHE_TTL, function () use ($limit) {
-            return $this->baseGameQuery()
-                ->orderByDesc('review_score')
+        return $this->cacheStore()->remember('landing:most-reviewed-v4', self::ROW_CACHE_TTL, function () use ($limit) {
+            $query = $this->applyPremiumFilter($this->baseGameQuery());
+
+            return $this->applyLandingRanking($query)
                 ->limit($limit)
                 ->get();
         });
@@ -360,11 +434,66 @@ class LandingController extends Controller
         $candidates = $topRated
             ->merge($newReleases)
             ->merge($mostReviewed)
-            ->filter(fn ($game) => ! empty($game->image_url) || ! empty($game->image_urls))
+            ->filter(function ($game) {
+                // Ensure properties exist before checking them to avoid undefined property errors
+                $imageUrl = $game->image_url ?? null;
+                $imageUrls = $game->image_urls ?? null;
+
+                return ! empty($imageUrl) || ! empty($imageUrls);
+            })
             ->sortByDesc(fn ($game) => $game->rating ?? 0)
             ->values();
 
-        return $candidates->first();
+        $preferredHero = $candidates->first(function ($game) {
+            $name = Str::lower((string) ($game->name ?? ''));
+
+            return Str::contains($name, 'zelda');
+        });
+
+        return $preferredHero ?? $candidates->first();
+    }
+
+    private function fetchZeldaHero(): ?array
+    {
+        return $this->cacheStore()->remember('landing:hero-zelda-v2', self::ROW_CACHE_TTL, function () {
+            $zeldaGame = DB::table('video_games')
+                ->join('video_games_ranked_mv', 'video_games.id', '=', 'video_games_ranked_mv.id')
+                ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
+                ->leftJoin('video_game_title_sources', function ($join) {
+                    $join->on('video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
+                        ->where('video_game_title_sources.provider', '=', 'igdb');
+                })
+                ->select([
+                    'video_games.*',
+                    'video_games_ranked_mv.image_url',
+                    'video_games_ranked_mv.image_urls',
+                    'video_games_ranked_mv.media as mv_media',
+                    'video_game_titles.name as canonical_name',
+                    'video_game_title_sources.raw_payload',
+                    'video_game_title_sources.platform as source_platform',
+                    'video_game_title_sources.genre as source_genre',
+                    DB::raw("(SELECT json_agg(json_build_object(
+                        'video_id', video_id, 
+                        'name', COALESCE(title, primary_collection, 'Trailer'),
+                        'type', COALESCE(primary_collection, 'trailer'),
+                        'duration', duration
+                    )) FROM videos WHERE videos.video_game_id = video_games.id) as all_videos"),
+                ])
+                ->whereNotNull('video_game_title_sources.raw_payload')
+                ->whereRaw("lower(video_games.name) like '%zelda%'")
+                ->orderByRaw("case
+                    when lower(video_games.name) like '%tears of the kingdom%' then 1
+                    when lower(video_games.name) like '%breath of the wild%' then 2
+                    when lower(video_games.name) like '%legend of zelda%' then 3
+                    else 4
+                end asc")
+                ->orderByRaw('video_games.release_date desc nulls last')
+                ->orderByDesc('video_games.rating')
+                ->limit(1)
+                ->first();
+
+            return $zeldaGame ? $this->mapSpotlightGame($zeldaGame) : null;
+        });
     }
 
     /**
@@ -372,26 +501,30 @@ class LandingController extends Controller
      */
     private function fetchBestDeals(int $limit): array
     {
-        return $this->cacheStore()->remember('landing:best-deals', self::ROW_CACHE_TTL, function () use ($limit) {
+        return $this->cacheStore()->remember('landing:best-deals-v3', self::ROW_CACHE_TTL, function () use ($limit) {
             $pricingMap = $this->buildPricingMapFromQuery($this->latestPriceQuery());
 
             $sorted = collect($pricingMap)
                 ->filter(fn ($pricing) => $pricing['btc_price'] !== null)
-                ->sortBy('btc_price')
-                ->take($limit);
+                ->sortBy('btc_price');
 
             $ids = $sorted->keys()->all();
+
             $games = $ids === []
                 ? collect()
-                : $this->baseGameQuery()
+                : $this->applyPremiumFilter($this->baseGameQuery())
                     ->whereIn('id', $ids)
                     ->get()
                     ->sortBy(fn ($game) => array_search($game->id, $ids, true))
+                    ->take($limit)
                     ->values();
+
+            $finalIds = $games->pluck('id')->toArray();
+            $finalPricing = $sorted->only($finalIds)->toArray();
 
             return [
                 'games' => $games,
-                'pricing' => $sorted->toArray(),
+                'pricing' => $finalPricing,
             ];
         });
     }
@@ -401,7 +534,7 @@ class LandingController extends Controller
      */
     private function fetchGenreRows(int $limit): array
     {
-        return $this->cacheStore()->remember('landing:genre-rows', self::ROW_CACHE_TTL, function () use ($limit) {
+        return $this->cacheStore()->remember('landing:genre-rows-v4', self::ROW_CACHE_TTL, function () use ($limit) {
             $targetGenres = [
                 'Action' => 'Action & Adventure',
                 'Role-playing (RPG)' => 'Top RPGs',
@@ -419,9 +552,13 @@ class LandingController extends Controller
 
             $rows = [];
             foreach ($targetGenres as $genreName => $displayTitle) {
-                $games = DB::table('video_games_genre_ranked_mv')
-                    ->select($this->mvColumns())
-                    ->where('genre_name', $genreName)
+                $query = $this->applyPremiumFilter(
+                    DB::table('video_games_genre_ranked_mv')
+                        ->select($this->mvColumns())
+                        ->where('genre_name', $genreName)
+                );
+
+                $games = $this->applyLandingRanking($query)
                     ->limit($limit)
                     ->get();
 
@@ -453,6 +590,7 @@ class LandingController extends Controller
             'image_urls',
             'image_url',
             'review_score',
+            'popularity_score',
         ];
     }
 
@@ -460,6 +598,60 @@ class LandingController extends Controller
     {
         return DB::table('video_games_ranked_mv')
             ->select($this->mvColumns());
+    }
+
+    /**
+     * Apply landing page ranking logic:
+     * Popularity > Rating Count > Quality > Recency
+     * Optimized version without expensive JSON operations
+     */
+    private function applyLandingRanking(Builder $query): Builder
+    {
+        // Determine table prefix more efficiently
+        $from = $query->from ?? '';
+        $prefix = match (true) {
+            str_contains($from, 'video_games_upcoming_mv') => 'video_games_upcoming_mv.',
+            str_contains($from, 'video_games_genre_ranked_mv') => 'video_games_genre_ranked_mv.',
+            default => 'video_games_ranked_mv.'  // Default to ranked MV which is safer for joined queries
+        };
+
+        return $query
+            ->orderByDesc($prefix.'popularity_score')
+            ->orderByDesc($prefix.'rating_count')
+            ->orderByDesc($prefix.'rating')
+            ->orderByDesc($prefix.'release_date');
+    }
+
+    /**
+     * Strict filters to ensure only high-quality "Premium" games are shown.
+     * Optimized version with efficient table detection
+     */
+    private function applyPremiumFilter(Builder $query): Builder
+    {
+        // Determine table prefix efficiently
+        $from = $query->from ?? '';
+        $isUpcoming = str_contains($from, 'video_games_upcoming_mv');
+
+        $prefix = match (true) {
+            $isUpcoming => 'video_games_upcoming_mv.',
+            str_contains($from, 'video_games_genre_ranked_mv') => 'video_games_genre_ranked_mv.',
+            default => 'video_games_ranked_mv.' // Default to ranked MV which is safer for joined queries
+        };
+
+        if ($isUpcoming) {
+            // For upcoming games, we can't filter by rating yet.
+            // We ensure they have at least one image to maintain the premium visual.
+            return $query->whereNotNull($prefix.'name')
+                ->where(function ($q) use ($prefix) {
+                    $q->whereNotNull($prefix.'image_url')
+                        ->orWhereNotNull($prefix.'image_urls');
+                });
+        }
+
+        return $query
+            ->whereNotNull($prefix.'rating')
+            ->where($prefix.'rating', '>=', 60)
+            ->where($prefix.'rating_count', '>=', 5);
     }
 
     private function latestPriceQuery(): Builder
@@ -480,7 +672,6 @@ class LandingController extends Controller
             ->orderBy('video_game_id')
             ->orderByDesc('recorded_at');
     }
-
 
     /**
      * @param  Collection<int, mixed>  $topRated
@@ -629,14 +820,14 @@ class LandingController extends Controller
     private function mapGame(object $game, array $pricingMap, bool $includePricing): array
     {
         $media = $this->normalizeMedia(
-            $game->media ?? null, 
-            $game->image_urls ?? null, 
+            $game->media ?? null,
+            $game->image_urls ?? null,
             $game->image_url ?? null
         );
         $pricing = $includePricing ? ($pricingMap[$game->id] ?? null) : null;
 
-        $genres = property_exists($game, 'genre') 
-            ? $this->normalizeGenres($game->genre) 
+        $genres = property_exists($game, 'genre')
+            ? $this->normalizeGenres($game->genre)
             : (property_exists($game, 'genre_name') ? [$game->genre_name] : []);
 
         return [
@@ -848,6 +1039,25 @@ class LandingController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Upscale IGDB image URLs to higher quality versions.
+     */
+    private function upscaleImage(?string $url, string $target = 't_cover_big'): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_contains($url, 'igdb.com')) {
+            $url = str_replace(['t_thumb', 't_cover_small', 't_logo_med'], $target, $url);
+            if (str_starts_with($url, '//')) {
+                $url = 'https:'.$url;
+            }
+        }
+
+        return $url;
     }
 
     private function cacheStore(): CacheRepository

@@ -13,7 +13,7 @@ return new class extends Migration
         Schema::table('video_game_prices', function (Blueprint $table) {
             // Drop duplicates first if any (cleanup)
             // This is tricky in migration, assuming empty or clean for now for this specific tuple
-            
+
             // Add unique constraint for upsert support
             $table->unique(['video_game_id', 'retailer', 'country_code'], 'vgp_unique_pricing_idx');
         });

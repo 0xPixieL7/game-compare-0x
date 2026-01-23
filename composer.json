@@ -20,7 +20,9 @@
         "laravel/wayfinder": "^0.1.9",
         "league/csv": "^9.28",
         "mrt1m/playstation-store-api": "^2.2",
-        "spatie/laravel-medialibrary": "*"
+        "spatie/laravel-medialibrary": "*",
+        "symfony/css-selector": "^8.0",
+        "symfony/dom-crawler": "^8.0"
     },
     "require-dev": {
         "arielmejiadev/larapex-charts": "*",

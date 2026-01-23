@@ -1,5 +1,8 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
+use RuntimeException;
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -13,8 +16,25 @@
 
 uses(
     Tests\TestCase::class,
-    Illuminate\Foundation\Testing\RefreshDatabase::class
+    // Intentionally no destructive DB-reset traits.
 )->in('Feature');
+
+uses(
+    Tests\TestCase::class,
+)->in('Unit');
+
+beforeEach(function () {
+    // Hard safety: tests must run against SQLite :memory: only.
+    if (config('database.default') !== 'sqlite') {
+        throw new RuntimeException('Tests must use sqlite to avoid touching external databases.');
+    }
+
+    static $migrated = false;
+    if (! $migrated) {
+        Artisan::call('migrate', ['--force' => true]);
+        $migrated = true;
+    }
+});
 
 /*
 |--------------------------------------------------------------------------

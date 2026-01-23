@@ -40,7 +40,7 @@ test('VideoGame observer dispatches enrichment job when identity fields change',
     Queue::assertPushed(EnrichVideoGameJob::class, function ($job) use ($videoGame) {
         return $job->videoGameId === $videoGame->id;
     });
-    
+
     expect(Queue::pushed(EnrichVideoGameJob::class)->count())->toBe(1);
 });
 

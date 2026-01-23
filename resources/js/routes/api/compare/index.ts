@@ -1,6 +1,6 @@
-import { queryParams, type RouteQueryOptions, type RouteDefinition } from './../../../wayfinder'
+import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
-* @see routes/api.php:18
+* @see routes/api.php:21
 * @route '/api/compare/stats'
 */
 export const stats = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -14,7 +14,7 @@ stats.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/api.php:18
+* @see routes/api.php:21
 * @route '/api/compare/stats'
 */
 stats.url = (options?: RouteQueryOptions) => {
@@ -22,7 +22,7 @@ stats.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see routes/api.php:18
+* @see routes/api.php:21
 * @route '/api/compare/stats'
 */
 stats.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -31,7 +31,7 @@ stats.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 
 /**
-* @see routes/api.php:18
+* @see routes/api.php:21
 * @route '/api/compare/stats'
 */
 stats.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -40,7 +40,41 @@ stats.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
-* @see routes/api.php:26
+* @see routes/api.php:21
+* @route '/api/compare/stats'
+*/
+const statsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:21
+* @route '/api/compare/stats'
+*/
+statsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:21
+* @route '/api/compare/stats'
+*/
+statsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: stats.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+stats.form = statsForm
+
+/**
+* @see routes/api.php:29
 * @route '/api/compare/entries'
 */
 export const entries = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -54,7 +88,7 @@ entries.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/api.php:26
+* @see routes/api.php:29
 * @route '/api/compare/entries'
 */
 entries.url = (options?: RouteQueryOptions) => {
@@ -62,7 +96,7 @@ entries.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see routes/api.php:26
+* @see routes/api.php:29
 * @route '/api/compare/entries'
 */
 entries.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -71,7 +105,7 @@ entries.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 
 /**
-* @see routes/api.php:26
+* @see routes/api.php:29
 * @route '/api/compare/entries'
 */
 entries.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
@@ -80,7 +114,41 @@ entries.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 })
 
 /**
-* @see routes/api.php:35
+* @see routes/api.php:29
+* @route '/api/compare/entries'
+*/
+const entriesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:29
+* @route '/api/compare/entries'
+*/
+entriesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:29
+* @route '/api/compare/entries'
+*/
+entriesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: entries.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+entries.form = entriesForm
+
+/**
+* @see routes/api.php:38
 * @route '/api/compare/spotlight'
 */
 export const spotlight = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -94,7 +162,7 @@ spotlight.definition = {
 } satisfies RouteDefinition<["get","head"]>
 
 /**
-* @see routes/api.php:35
+* @see routes/api.php:38
 * @route '/api/compare/spotlight'
 */
 spotlight.url = (options?: RouteQueryOptions) => {
@@ -102,7 +170,7 @@ spotlight.url = (options?: RouteQueryOptions) => {
 }
 
 /**
-* @see routes/api.php:35
+* @see routes/api.php:38
 * @route '/api/compare/spotlight'
 */
 spotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
@@ -111,13 +179,47 @@ spotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 })
 
 /**
-* @see routes/api.php:35
+* @see routes/api.php:38
 * @route '/api/compare/spotlight'
 */
 spotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: spotlight.url(options),
     method: 'head',
 })
+
+/**
+* @see routes/api.php:38
+* @route '/api/compare/spotlight'
+*/
+const spotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:38
+* @route '/api/compare/spotlight'
+*/
+spotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url(options),
+    method: 'get',
+})
+
+/**
+* @see routes/api.php:38
+* @route '/api/compare/spotlight'
+*/
+spotlightForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
+    action: spotlight.url({
+        [options?.mergeQuery ? 'mergeQuery' : 'query']: {
+            _method: 'HEAD',
+            ...(options?.query ?? options?.mergeQuery ?? {}),
+        }
+    }),
+    method: 'get',
+})
+
+spotlight.form = spotlightForm
 
 const compare = {
     stats: Object.assign(stats, stats),

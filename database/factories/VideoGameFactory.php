@@ -32,10 +32,10 @@ class VideoGameFactory extends Factory
     {
         $platforms = ['PC', 'PlayStation 5', 'Xbox Series X|S', 'Nintendo Switch'];
         $platformCount = rand(1, 3);
-        
+
         return [
             'video_game_title_id' => VideoGameTitle::factory(),
-            'slug' => Str::slug(fake()->words(3, true)) . '-' . fake()->randomNumber(5),
+            'slug' => Str::slug(fake()->words(3, true)).'-'.fake()->randomNumber(5),
             'provider' => 'factory-provider',
             'external_id' => fake()->unique()->numberBetween(1, 9_999_999),
             'name' => function () {

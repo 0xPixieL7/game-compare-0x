@@ -168,14 +168,34 @@ class DatabaseOptimizationService
 
     public function refreshTitleSourcesMaterializedView(): void
     {
+        $this->refreshView('video_game_title_sources_mv');
+    }
+
+    public function refreshAllMaterializedViews(): void
+    {
+        $views = [
+            'video_game_title_sources_mv',
+            'video_games_ranked_mv',
+            'video_games_genre_ranked_mv',
+            'video_games_upcoming_mv',
+            'video_games_toplists_mv',
+        ];
+
+        foreach ($views as $view) {
+            $this->refreshView($view);
+        }
+    }
+
+    private function refreshView(string $view): void
+    {
         if (DB::getDriverName() !== 'pgsql') {
             return;
         }
 
         try {
-            DB::statement('REFRESH MATERIALIZED VIEW CONCURRENTLY public.video_game_title_sources_mv');
+            DB::statement("REFRESH MATERIALIZED VIEW CONCURRENTLY public.{$view}");
         } catch (\Throwable $e) {
-            DB::statement('REFRESH MATERIALIZED VIEW public.video_game_title_sources_mv');
+            DB::statement("REFRESH MATERIALIZED VIEW public.{$view}");
         }
     }
 

@@ -27,14 +27,14 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { UserMenuContent } from '@/components/user-menu-content';
-import { useInitials } from '@/hooks/use-initials';
 import { useActiveUrl } from '@/hooks/use-active-url';
+import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
 import { dashboard } from '@/routes';
-import route from 'ziggy-js';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid, Menu, Search } from 'lucide-react';
+import route from 'ziggy-js';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -163,7 +163,8 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                             href={item.href}
                                             className={cn(
                                                 navigationMenuTriggerStyle(),
-                                                urlIsActive(item.href) && activeItemStyles,
+                                                urlIsActive(item.href) &&
+                                                    activeItemStyles,
                                                 'h-9 cursor-pointer px-3',
                                             )}
                                         >
@@ -244,14 +245,17 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                         </Avatar>
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-56" align="end">
+                                <DropdownMenuContent
+                                    className="w-56"
+                                    align="end"
+                                >
                                     <UserMenuContent user={auth.user} />
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         ) : (
                             <Link
                                 href={route('login')}
-                                className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-neutral-600 transition hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white"
+                                className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold tracking-[0.2em] text-neutral-600 uppercase transition hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white"
                             >
                                 Sign in
                             </Link>

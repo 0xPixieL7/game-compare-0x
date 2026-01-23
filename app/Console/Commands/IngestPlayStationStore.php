@@ -25,15 +25,15 @@ class IngestPlayStationStore extends Command
     public function handle(): int
     {
         $regionsInput = $this->option('regions');
-        
+
         if (strtolower($regionsInput ?? '') === 'all') {
-             $regions = array_map(fn($r) => $r->value, \PlaystationStoreApi\Enum\RegionEnum::cases());
-             $regionsInput = implode(',', $regions); // For passing to workers
+            $regions = array_map(fn ($r) => $r->value, \PlaystationStoreApi\Enum\RegionEnum::cases());
+            $regionsInput = implode(',', $regions); // For passing to workers
         } else {
-             if (!$regionsInput) {
-                 $regionsInput = config('services.playstation.regions', 'en-us');
-             }
-             $regions = array_filter(array_map('trim', explode(',', $regionsInput)));
+            if (! $regionsInput) {
+                $regionsInput = config('services.playstation.regions', 'en-us');
+            }
+            $regions = array_filter(array_map('trim', explode(',', $regionsInput)));
         }
 
         $categoryStr = $this->option('category');
@@ -52,29 +52,29 @@ class IngestPlayStationStore extends Command
 
         $this->info('Starting PlayStation Store ingestion...');
         $this->info("Mode: {$mode}");
-        $this->info("Regions: " . implode(',', $regions));
+        $this->info('Regions: '.implode(',', $regions));
 
         // MODE: DISCOVER (or AUTO)
         if ($mode === 'discover' || $mode === 'auto') {
             $this->info("Phase 1: Discovery ({$categoryStr}, max {$maxPages} pages, stop year {$stopYear})");
             $provider = new PlayStationStoreProvider($regions);
-            
+
             // Allow file override or default
             $targetFile = $file ?? storage_path("app/ps_concepts_{$categoryStr}.json");
-            
+
             $conceptIds = $provider->fetchCatalogConceptIds($regions[0], $category, $maxPages, $stopYear);
             $conceptIds = array_values(array_unique($conceptIds)); // Deduplicate
             $count = count($conceptIds);
-            
+
             $this->info("Discovered {$count} concepts.");
-            
+
             file_put_contents($targetFile, json_encode($conceptIds));
             $this->info("Saved concept IDs to: {$targetFile}");
-            
+
             if ($mode === 'discover') {
                 return self::SUCCESS;
             }
-            
+
             // Pass file to next phase
             $file = $targetFile;
         }
@@ -85,14 +85,15 @@ class IngestPlayStationStore extends Command
         }
 
         // Single Process Ingest
-        $this->info("Phase 2: Ingestion (Single Process)");
-        
+        $this->info('Phase 2: Ingestion (Single Process)');
+
         $conceptIds = json_decode(file_get_contents($file), true);
-        if (!$conceptIds) {
+        if (! $conceptIds) {
             $this->error("No concepts to process in file: {$file}");
+
             return self::FAILURE;
         }
-        
+
         $provider = new PlayStationStoreProvider($regions);
         $bar = $this->output->createProgressBar(count($conceptIds));
         $bar->start();
@@ -102,11 +103,15 @@ class IngestPlayStationStore extends Command
         foreach ($conceptIds as $conceptId) {
             try {
                 $result = $provider->ingestConceptWithMultiRegionPricing($conceptId);
-                
-                if ($result['created']) $stats['created']++;
-                elseif ($result['updated']) $stats['updated']++;
-                else $stats['skipped']++;
-                
+
+                if ($result['created']) {
+                    $stats['created']++;
+                } elseif ($result['updated']) {
+                    $stats['updated']++;
+                } else {
+                    $stats['skipped']++;
+                }
+
             } catch (\Throwable $e) {
                 $stats['errors']++;
                 // Log::error(...)
@@ -116,7 +121,7 @@ class IngestPlayStationStore extends Command
 
         $bar->finish();
         $this->newLine(2);
-        
+
         $this->table(
             ['Metric', 'Count'],
             [
@@ -137,7 +142,7 @@ class IngestPlayStationStore extends Command
     {
         $conceptIds = json_decode(file_get_contents($filePath), true);
         $totalToProcess = $conceptIds ? count($conceptIds) : 0;
-        
+
         $this->info("🚀 Starting parallel ingestion of {$totalToProcess} items with {$workers} workers...");
 
         // Baseline count to track progress
@@ -153,17 +158,17 @@ class IngestPlayStationStore extends Command
                 $artisanPath,
                 'ingest:playstation',
                 "--file={$filePath}",
-                "--workers=1",
+                '--workers=1',
                 "--chunk={$i}/{$workers}",
                 "--regions={$regionsInput}",
-                "--mode=ingest", // Force ingest mode for workers
+                '--mode=ingest', // Force ingest mode for workers
             ];
 
             $process = new \Symfony\Component\Process\Process($cmd);
             $process->setTimeout(null);
             $process->start();
             $processes[$i] = $process;
-            
+
             $this->info("Started worker {$i}");
         }
 
@@ -172,8 +177,8 @@ class IngestPlayStationStore extends Command
         // Monitoring Loop
         while (count($processes) > 0) {
             foreach ($processes as $key => $proc) {
-                if (!$proc->isRunning()) {
-                    $this->info("Worker {$key} finished (Exit: " . $proc->getExitCode() . ")");
+                if (! $proc->isRunning()) {
+                    $this->info("Worker {$key} finished (Exit: ".$proc->getExitCode().')');
                     if ($proc->getExitCode() !== 0) {
                         $this->error($proc->getErrorOutput());
                     }
@@ -185,14 +190,15 @@ class IngestPlayStationStore extends Command
             $current = \App\Models\VideoGameTitleSource::where('provider', 'playstation_store')->count();
             $progress = $current - $baseline;
             $percent = $totalToProcess > 0 ? round(($progress / $totalToProcess) * 100, 2) : 0;
-            
+
             // Overwrite current line with progress
             $this->output->write("\r<info>Global Progress:</info> {$progress} / {$totalToProcess} games processed ({$percent}%)   ");
-            
+
             sleep(2);
         }
 
         $this->newLine();
+
         return self::SUCCESS;
     }
 
@@ -201,17 +207,19 @@ class IngestPlayStationStore extends Command
      */
     private function runAsChildWorker(string $filePath, string $chunkSpec, array $regions): int
     {
-        list($index, $total) = explode('/', $chunkSpec);
-        
+        [$index, $total] = explode('/', $chunkSpec);
+
         $conceptIds = json_decode(file_get_contents($filePath), true);
-        if (!$conceptIds) return self::FAILURE;
+        if (! $conceptIds) {
+            return self::FAILURE;
+        }
 
         $chunkSize = ceil(count($conceptIds) / $total);
         $offset = ($index - 1) * $chunkSize;
-        $myIds = array_slice($conceptIds, (int)$offset, (int)$chunkSize);
+        $myIds = array_slice($conceptIds, (int) $offset, (int) $chunkSize);
 
         $provider = new PlayStationStoreProvider($regions);
-        
+
         $i = 0;
         foreach ($myIds as $conceptId) {
             try {
@@ -221,13 +229,12 @@ class IngestPlayStationStore extends Command
                     \Illuminate\Support\Facades\Log::info("PS Worker [Chunk {$index}/{$total}]: Processed {$conceptId}");
                 }
             } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error("PS Worker Error for {$conceptId}: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error("PS Worker Error for {$conceptId}: ".$e->getMessage());
             }
         }
 
         return self::SUCCESS;
     }
-
 
     private function resolveCategoryEnum(string $category): CategoryEnum
     {

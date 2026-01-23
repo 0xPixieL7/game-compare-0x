@@ -2,7 +2,7 @@
 
 /**
  * AI Fix Types Commands
- * 
+ *
  * This file records fixes applied to resolve TypeErrors and route parameter mismatches.
  */
 
@@ -13,9 +13,7 @@
 // 2. Updated Controller signature to accept string and cast to int.
 //    File: app/Http/Controllers/DashboardController.php
 //    Change: Changed type hint to 'string $gameId' and added '$gameId = (int) $gameId;'.
-// Result: Requesting /dashboard/{ (invalid ID) now returns 404 instead of a 500 TypeError. 
+// Result: Requesting /dashboard/{ (invalid ID) now returns 404 instead of a 500 TypeError.
 // Fix 2: Resolve potential issues in the /debug/{gameId} route.
 // File: routes/web.php
 // Change: Added explicit cast '$gameId = (int) $gameId;' to the closure.
-
-

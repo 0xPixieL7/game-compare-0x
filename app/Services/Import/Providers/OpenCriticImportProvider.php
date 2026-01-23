@@ -10,7 +10,6 @@ use App\Services\Import\Concerns\InteractsWithConsole;
 use App\Services\Import\Contracts\ImportProvider;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 class OpenCriticImportProvider implements ImportProvider
 {
@@ -73,12 +72,14 @@ class OpenCriticImportProvider implements ImportProvider
                 $game = $gamesMap[$gameId] ?? null;
                 if (! $game || $response->failed()) {
                     $progressBar->advance(); // Count as handled if failed here
+
                     continue;
                 }
 
                 $results = $response->json();
                 if (empty($results)) {
                     $progressBar->advance();
+
                     continue;
                 }
 
@@ -118,7 +119,7 @@ class OpenCriticImportProvider implements ImportProvider
 
                 if ($game && $response->successful()) {
                     $data = $response->json();
-                    
+
                     $game->update([
                         'opencritic_id' => $ocId,
                         'opencritic_score' => $data['topCriticScore'] ?? null,
@@ -128,10 +129,10 @@ class OpenCriticImportProvider implements ImportProvider
                         'opencritic_updated_at' => now(),
                     ]);
                 }
-                
+
                 $progressBar->advance();
             }
-            
+
             // Basic rate limit between chunks to be safe
             usleep(250000); // 0.25s
         });
