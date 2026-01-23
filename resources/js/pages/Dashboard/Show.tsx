@@ -288,7 +288,7 @@ export default function DashboardShow({
             loadChart().then((module) => {
                 setApexChart(() => module.default);
             });
-        }, [ApexChart, isMember]);
+        }, [isMember]);
 
         if (!ApexChart) {
             return (
