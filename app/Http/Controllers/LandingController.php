@@ -866,6 +866,10 @@ class LandingController extends Controller
             $coverThumb = $coverThumb ?? $coverUrl;
         }
 
+        // Upscale cover URL for better quality and ensure HTTPS
+        $coverUrl = $this->upscaleImage($coverUrl, 't_1080p');
+        $coverThumb = $this->upscaleImage($coverThumb, 't_cover_big');
+
         $screenshots = $this->screenshotsFromMedia($media);
         $artworks = $this->artworksFromMedia($media);
         $trailers = $this->videosFromMedia($media);

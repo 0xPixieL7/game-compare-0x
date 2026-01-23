@@ -509,7 +509,7 @@ class DashboardController extends Controller
             ->where('video_game_title_sources.rating', '>=', 60)
             ->where('video_game_title_sources.rating_count', '>=', 5)
             ->whereNotNull('video_game_title_sources.genre')
-            ->whereRaw('LOWER(video_game_title_sources.genre) LIKE LOWER(?)', ["%{$genre}%"])
+            ->whereRaw('LOWER(video_game_title_sources.genre::text) LIKE LOWER(?)', ["%{$genre}%"])
             ->orderBy('video_game_title_sources.rating', 'desc')
             ->limit($limit)
             ->get()
@@ -682,7 +682,8 @@ class DashboardController extends Controller
         if (! empty($payload['cover'])) {
             $imageId = is_string($payload['cover']) ? $payload['cover'] : $payload['cover']['image_id'] ?? null;
             if ($imageId) {
-                $result['cover_url'] = $baseUrl.'t_cover_big/co'.base_convert($imageId, 10, 36).'.webp';
+                // Use t_1080p for high quality covers
+                $result['cover_url'] = $baseUrl.'t_1080p/co'.base_convert($imageId, 10, 36).'.webp';
                 $result['cover_url_thumb'] = $baseUrl.'t_thumb/co'.base_convert($imageId, 10, 36).'.webp';
             }
         }

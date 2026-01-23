@@ -90,7 +90,7 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
             onClick={() => navigateCardToDetail(href)}
             className={`group/card block h-full w-full text-left transition-all duration-300 disabled:opacity-50 ${className}`}
         >
-            <AppleTvCard className="h-full w-full overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl">
+            <AppleTvCard className="h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl">
                 {/* Background Artwork */}
                 <div className="absolute inset-0 z-0">
                     <Image
