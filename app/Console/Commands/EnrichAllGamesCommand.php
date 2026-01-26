@@ -199,10 +199,17 @@ class EnrichAllGamesCommand extends Command
                 // Update cursor every 10 games for performance
                 // Store the LAST PROCESSED ID as the current position
                 if ($processed % 10 === 0) {
+                    $metadata = json_decode(DB::table('command_cursors')->where('command_name', $commandName)->value('metadata') ?? '{}', true);
+                    $metadata['processed_count'] = $processed; // In sequential mode, $processed is the total so far (if starting from 0)
+                    // Note: If resuming, we should add to previous count, but for simplicity in sequential mode
+                    // we might just want to track "processed in this run".
+                    // Better: Let's just rely on ID for sequential resume, but update metadata for consistency.
+
                     DB::table('command_cursors')
                         ->where('command_name', $commandName)
                         ->update([
                             'current_position' => $game->id, // Store ID, not count
+                            'metadata' => json_encode($metadata),
                             'updated_at' => now(),
                         ]);
                 }
@@ -213,10 +220,14 @@ class EnrichAllGamesCommand extends Command
             // Force cursor update after each chunk
             // Use the last game's ID from the chunk
             if ($games->isNotEmpty()) {
+                $metadata = json_decode(DB::table('command_cursors')->where('command_name', $commandName)->value('metadata') ?? '{}', true);
+                $metadata['processed_count'] = $processed;
+
                 DB::table('command_cursors')
                     ->where('command_name', $commandName)
                     ->update([
                         'current_position' => $games->last()->id,
+                        'metadata' => json_encode($metadata),
                         'updated_at' => now(),
                     ]);
             }
@@ -259,30 +270,37 @@ class EnrichAllGamesCommand extends Command
         $this->newLine();
 
         $jobsDispatched = 0;
+        $totalProcessed = 0;
         $bar = $this->output->createProgressBar($totalGames);
         $bar->setFormat(' %current%/%max% [%bar%] %percent:3s%% | Jobs dispatched');
         $bar->start();
 
         // Use chunkById to dispatch jobs without loading all IDs into memory
         // This is extremely memory efficient for millions of records
-        $query->chunkById($chunkSize, function ($games) use (&$jobsDispatched, $bar, $skipPrices, $skipMedia, $commandName) {
+        $query->chunkById($chunkSize, function ($games) use (&$jobsDispatched, &$totalProcessed, $bar, $skipPrices, $skipMedia, $commandName) {
             $ids = $games->pluck('id')->toArray();
             $lastId = $games->last()->id;
+            $count = count($ids);
 
             \App\Jobs\EnrichGameBatchJob::dispatch($ids, $skipPrices, $skipMedia);
 
-            // Update cursor after dispatching batch
-            // This allows resuming DISPATCH if the command is interrupted
+            $jobsDispatched++;
+            $totalProcessed += $count;
+
+            // Update cursor with ID and processed count
+            $metadata = json_decode(DB::table('command_cursors')->where('command_name', $commandName)->value('metadata') ?? '{}', true);
+            $metadata['processed_count'] = ($metadata['processed_count'] ?? 0) + $count;
+
             DB::table('command_cursors')->updateOrInsert(
                 ['command_name' => $commandName],
                 [
                     'current_position' => $lastId,
+                    'metadata' => json_encode($metadata),
                     'updated_at' => now(),
                 ]
             );
 
-            $jobsDispatched++;
-            $bar->advance(count($ids));
+            $bar->advance($count);
         });
 
         $bar->finish();
