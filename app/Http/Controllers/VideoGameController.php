@@ -111,7 +111,7 @@ class VideoGameController extends Controller
         ];
 
         // Get unique countries from prices
-        $uniqueCountries = $prices->pluck('country_code')->unique()->count();
+        $uniqueCountries = count(array_unique(array_column($prices, 'country_code')));
 
         // Extract ratings from various sources
         $ratings = [
