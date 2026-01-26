@@ -431,7 +431,8 @@ trait InteractsWithEnrichmentProviders
                 }
                 $payload = $decoded;
             }
-            $websites = is_array($payload) ? ($payload['websites'] ?? []) : [];
+            $websitesFromPayload = is_array($payload) ? ($payload['websites'] ?? []) : [];
+            $websites = is_array($websitesFromPayload) ? $websitesFromPayload : [];
         }
 
         // Also check IGDB source directly if websites still empty
@@ -450,7 +451,8 @@ trait InteractsWithEnrichmentProviders
                     }
                     $payload = $decoded;
                 }
-                $websites = is_array($payload) ? ($payload['websites'] ?? []) : [];
+                $websitesFromPayload = is_array($payload) ? ($payload['websites'] ?? []) : [];
+                $websites = is_array($websitesFromPayload) ? $websitesFromPayload : [];
             }
         }
 
@@ -458,6 +460,11 @@ trait InteractsWithEnrichmentProviders
         $dbWebsites = DB::table('video_game_websites')
             ->where('video_game_id', $game->id)
             ->get();
+
+        // Ensure $websites is an array before appending
+        if (! is_array($websites)) {
+            $websites = [];
+        }
 
         foreach ($dbWebsites as $dbSite) {
             $websites[] = ['url' => $dbSite->url];
