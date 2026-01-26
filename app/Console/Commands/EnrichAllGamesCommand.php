@@ -93,6 +93,10 @@ class EnrichAllGamesCommand extends Command
         $this->info('⚡ Queue mode: '.($useQueue ? 'YES (PARALLEL)' : 'NO (SEQUENTIAL)'));
         $this->newLine();
 
+        // Get or create cursor
+        $cursor = DB::table('command_cursors')->where('command_name', $commandName)->first();
+        $startPosition = 0;
+
         // If queue mode, dispatch jobs and return
         if ($useQueue) {
             // Apply resume filter if needed
@@ -105,13 +109,9 @@ class EnrichAllGamesCommand extends Command
             return $this->dispatchQueuedJobs($query, $chunkSize, $skipPrices, $skipMedia, $totalGames, $commandName);
         }
 
-        // Get or create cursor
-        $cursor = DB::table('command_cursors')->where('command_name', $commandName)->first();
-        $startPosition = 0;
-
         if ($this->option('resume') && $cursor) {
             $startPosition = $cursor->current_position;
-            $this->info("↻ Resuming from Game ID > {$startPosition} (Total: {$totalGames})");
+            $this->info("↻ Resuming from position {$startPosition} of {$totalGames}");
         } else {
             DB::table('command_cursors')->updateOrInsert(
                 ['command_name' => $commandName],
