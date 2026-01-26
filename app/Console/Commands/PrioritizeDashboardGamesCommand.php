@@ -16,7 +16,10 @@ class PrioritizeDashboardGamesCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'games:prioritize-dashboard {--limit= : Limit the number of games per section}';
+    protected $signature = 'games:prioritize-dashboard 
+                            {--limit= : Limit the number of games per section}
+                            {--resume : Resume from last saved position}
+                            {--reset : Reset cursor and start from beginning}';
 
     /**
      * The console command description.
@@ -34,6 +37,14 @@ class PrioritizeDashboardGamesCommand extends Command
         \App\Services\Price\Xbox\XboxStoreService $xbox,
         \App\Services\Price\PlayStation\PlayStationStoreService $playstation
     ) {
+        $commandName = 'games:prioritize-dashboard';
+
+        // Handle reset option
+        if ($this->option('reset')) {
+            DB::table('command_cursors')->where('command_name', $commandName)->delete();
+            $this->info('✓ Cursor reset. Starting fresh.');
+        }
+
         $this->info('Starting priority price sync for Dashboard games...');
         $startTime = microtime(true);
 
@@ -44,8 +55,31 @@ class PrioritizeDashboardGamesCommand extends Command
 
         $this->info('Found '.count($gameIds).' unique games on the dashboard.');
 
-        // 2. Sync prices for each
+        // 2. Get or create cursor
+        $cursor = DB::table('command_cursors')->where('command_name', $commandName)->first();
+        $startPosition = 0;
+
+        if ($this->option('resume') && $cursor) {
+            $startPosition = $cursor->current_position;
+            $this->info("↻ Resuming from position {$startPosition} of ".count($gameIds));
+        } else {
+            // Create or reset cursor
+            DB::table('command_cursors')->updateOrInsert(
+                ['command_name' => $commandName],
+                [
+                    'current_position' => 0,
+                    'total_items' => count($gameIds),
+                    'started_at' => now(),
+                    'completed_at' => null,
+                    'metadata' => json_encode(['game_ids' => $gameIds]),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+
+        // 3. Sync prices for each (starting from cursor position)
         $bar = $this->output->createProgressBar(count($gameIds));
+        $bar->setProgress($startPosition);
         $bar->start();
 
         $marqueeIds = [
@@ -54,10 +88,21 @@ class PrioritizeDashboardGamesCommand extends Command
             37470, 53320, 1014215,
         ];
 
-        foreach ($gameIds as $gameId) {
+        foreach ($gameIds as $index => $gameId) {
+            // Skip already processed items when resuming
+            if ($index < $startPosition) {
+                continue;
+            }
+
             try {
                 $game = \App\Models\VideoGame::find($gameId);
                 if (! $game) {
+                    // Update cursor even for skipped items
+                    DB::table('command_cursors')
+                        ->where('command_name', $commandName)
+                        ->update(['current_position' => $index + 1, 'updated_at' => now()]);
+                    $bar->advance();
+
                     continue;
                 }
 
@@ -89,8 +134,18 @@ class PrioritizeDashboardGamesCommand extends Command
                 // 3. Standard global refresh for other retailers (Amazon, Epic, etc.)
                 $aggregator->getAllData($game->id, $syncWorldwide, true);
 
+                // Update cursor after successful processing
+                DB::table('command_cursors')
+                    ->where('command_name', $commandName)
+                    ->update(['current_position' => $index + 1, 'updated_at' => now()]);
+
             } catch (\Exception $e) {
                 Log::error("Failed to sync dashboard game {$gameId}: ".$e->getMessage());
+
+                // Update cursor even on failure to avoid getting stuck
+                DB::table('command_cursors')
+                    ->where('command_name', $commandName)
+                    ->update(['current_position' => $index + 1, 'updated_at' => now()]);
             }
             $bar->advance();
         }
@@ -98,8 +153,18 @@ class PrioritizeDashboardGamesCommand extends Command
         $bar->finish();
         $this->newLine();
 
+        // Mark as completed
+        DB::table('command_cursors')
+            ->where('command_name', $commandName)
+            ->update([
+                'current_position' => count($gameIds),
+                'completed_at' => now(),
+                'updated_at' => now(),
+            ]);
+
         $duration = round(microtime(true) - $startTime, 2);
-        $this->info("Completed priority sync in {$duration}s.");
+        $this->info("✓ Completed priority sync in {$duration}s.");
+        $this->info('  Processed '.count($gameIds).' games total.');
 
         return 0;
     }
