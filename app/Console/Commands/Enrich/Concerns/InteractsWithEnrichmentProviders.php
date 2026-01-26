@@ -18,11 +18,11 @@ trait InteractsWithEnrichmentProviders
     /**
      * Enrich with Steam media AND prices - Standardized.
      */
-    protected function enrichWithSteam(SteamStoreService $steam, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false): array
+    protected function enrichWithSteam(SteamStoreService $steam, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false, bool $search = true): array
     {
         // 1. Resolve Steam ID
         $attributes = is_string($game->attributes ?? null) ? json_decode($game->attributes, true) : (array) ($game->attributes ?? []);
-        $steamId = $attributes['steam_id'] ?? $steam->search($game->name);
+        $steamId = $attributes['steam_id'] ?? ($search ? $steam->search($game->name) : null);
 
         if (! $steamId) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
@@ -65,11 +65,11 @@ trait InteractsWithEnrichmentProviders
     /**
      * Enrich with Xbox Store data - Standardized.
      */
-    protected function enrichWithXbox(XboxStoreService $xbox, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false): array
+    protected function enrichWithXbox(XboxStoreService $xbox, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false, bool $search = true): array
     {
         // 1. Resolve Xbox Product ID
         $attributes = is_string($game->attributes ?? null) ? json_decode($game->attributes, true) : (array) ($game->attributes ?? []);
-        $productId = $attributes['xbox_bigid'] ?? $xbox->resolveProductId($game->name);
+        $productId = $attributes['xbox_bigid'] ?? ($search ? $xbox->resolveProductId($game->name) : null);
 
         if (! $productId) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
@@ -112,11 +112,11 @@ trait InteractsWithEnrichmentProviders
     /**
      * Enrich with PlayStation Store data - Standardized.
      */
-    protected function enrichWithPlayStation(PlayStationStoreService $playstation, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false): array
+    protected function enrichWithPlayStation(PlayStationStoreService $playstation, GameDataAggregatorService $aggregator, object $game, bool $worldwide = false, bool $search = true): array
     {
         // 1. Resolve PS Product ID
         $attributes = is_string($game->attributes ?? null) ? json_decode($game->attributes, true) : (array) ($game->attributes ?? []);
-        $productId = $attributes['ps_product_id'] ?? $playstation->resolveProductId($game->name);
+        $productId = $attributes['ps_product_id'] ?? ($search ? $playstation->resolveProductId($game->name) : null);
 
         if (! $productId) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];

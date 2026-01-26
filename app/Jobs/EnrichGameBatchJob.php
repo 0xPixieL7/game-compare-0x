@@ -60,9 +60,10 @@ class EnrichGameBatchJob implements ShouldQueue
 
                 // Enrich with providers
                 if (! $this->skipPrices) {
-                    $this->enrichWithSteam($steam, $aggregator, $game, false);
-                    $this->enrichWithXbox($xbox, $aggregator, $game, false);
-                    $this->enrichWithPlayStation($playstation, $aggregator, $game, false);
+                    // Pass false for search to avoid slow scraping in bulk jobs
+                    $this->enrichWithSteam($steam, $aggregator, $game, false, false);
+                    $this->enrichWithXbox($xbox, $aggregator, $game, false, false);
+                    $this->enrichWithPlayStation($playstation, $aggregator, $game, false, false);
                 }
 
                 // Media enrichment
@@ -73,5 +74,7 @@ class EnrichGameBatchJob implements ShouldQueue
                 Log::error("Batch job failed for game {$game->id}: ".$e->getMessage());
             }
         }
+
+        Log::info('Batch completed: '.count($this->gameIds).' games processed.');
     }
 }
