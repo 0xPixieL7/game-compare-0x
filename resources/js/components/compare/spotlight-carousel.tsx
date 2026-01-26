@@ -1,5 +1,5 @@
 import { AppleTvCard } from '@/components/apple-tv-card';
-import { Link } from '@inertiajs/react';
+import { useTransitionNav } from '@/components/transition/TransitionProvider';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface SpotlightScore {
@@ -53,6 +53,8 @@ export function SpotlightCarousel({
     spotlight = [],
     hero,
 }: SpotlightCarouselProps) {
+    const { navigateCardToDetail, isRunning } = useTransitionNav();
+
     if (!spotlight || spotlight.length === 0) {
         return (
             <div className="p-8 text-center text-gray-500">
@@ -409,9 +411,15 @@ export function SpotlightCarousel({
                     </p>
 
                     <div className="flex flex-wrap gap-4">
-                        <Link
-                            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-400"
-                            href={`/games/${currentGame.id}`}
+                        <button
+                            className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:opacity-50"
+                            onClick={() =>
+                                navigateCardToDetail(
+                                    `/games/${currentGame.id}`,
+                                    backgroundImage,
+                                )
+                            }
+                            disabled={isRunning}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -429,7 +437,7 @@ export function SpotlightCarousel({
                                 <circle cx="12" cy="12" r="10" />
                             </svg>
                             Start Analysis
-                        </Link>
+                        </button>
                         <a
                             href="#rows"
                             className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/40"
@@ -624,9 +632,15 @@ export function SpotlightCarousel({
                     </button>
 
                     {/* Apple TV Card (Billboard Style) */}
-                    <Link
-                        href={`/games/${currentGame.id}`}
-                        className="inline-block w-full cursor-pointer lg:w-full"
+                    <button
+                        onClick={() =>
+                            navigateCardToDetail(
+                                `/games/${currentGame.id}`,
+                                backgroundImage,
+                            )
+                        }
+                        disabled={isRunning}
+                        className="inline-block w-full cursor-pointer text-left disabled:opacity-50 lg:w-full"
                     >
                         <AppleTvCard
                             className="group/atv aspect-video !h-auto !min-h-0 w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
@@ -822,7 +836,7 @@ export function SpotlightCarousel({
                                 <div className="pointer-events-none absolute inset-0 z-30 bg-gradient-to-t from-black via-transparent to-transparent" />
                             </div>
                         </AppleTvCard>
-                    </Link>
+                    </button>
                 </div>
             </div>
 
