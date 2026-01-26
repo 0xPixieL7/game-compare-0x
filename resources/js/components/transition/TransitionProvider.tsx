@@ -419,21 +419,57 @@ export function TransitionProvider({
             const lidW = bw * 1.02;
             const lidH = 36;
 
-            const lidGrad = ctx.createLinearGradient(
-                -lidW / 2,
-                -lidH,
-                lidW / 2,
-                lidH,
-            );
-            lidGrad.addColorStop(0, 'rgba(15,50,150,0.95)');
-            lidGrad.addColorStop(1, 'rgba(60,170,255,0.95)');
+            // Draw lid with cover image if available
+            if (coverImageRef.current && coverImageRef.current.complete) {
+                const img = coverImageRef.current;
 
-            ctx.fillStyle = lidGrad;
+                // Clip to rounded rectangle
+                roundRect(ctx, -lidW / 2, -lidH, lidW, lidH, 16);
+                ctx.clip();
+
+                // Draw a slice of the cover image for the lid
+                const imgAspect = img.width / img.height;
+                const boxAspect = bw / bh;
+
+                let drawWidth, drawHeight, drawX, drawY;
+
+                if (imgAspect > boxAspect) {
+                    drawHeight = bh;
+                    drawWidth = bh * imgAspect;
+                    drawX = -drawWidth / 2;
+                    drawY = -lidH - bh / 2;
+                } else {
+                    drawWidth = bw;
+                    drawHeight = bw / imgAspect;
+                    drawX = -drawWidth / 2;
+                    drawY = -lidH - drawHeight / 2;
+                }
+
+                ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+                // Add dark overlay for depth
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.fillRect(-lidW / 2, -lidH, lidW, lidH);
+            } else {
+                // Fallback gradient when image not loaded
+                const lidGrad = ctx.createLinearGradient(
+                    -lidW / 2,
+                    -lidH,
+                    lidW / 2,
+                    lidH,
+                );
+                lidGrad.addColorStop(0, 'rgba(15,50,150,0.95)');
+                lidGrad.addColorStop(1, 'rgba(60,170,255,0.95)');
+
+                ctx.fillStyle = lidGrad;
+                roundRect(ctx, -lidW / 2, -lidH, lidW, lidH, 16);
+                ctx.fill();
+            }
+
+            // Draw lid border
             ctx.strokeStyle = 'rgba(255,255,255,0.20)';
             ctx.lineWidth = 2;
-
             roundRect(ctx, -lidW / 2, -lidH, lidW, lidH, 16);
-            ctx.fill();
             ctx.stroke();
 
             ctx.restore();

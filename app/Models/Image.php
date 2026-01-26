@@ -330,7 +330,7 @@ class Image extends Model
         $urls = $this->urls ?? [];
 
         foreach ($urls as $url) {
-            if (str_contains($url, "/{$size}/")) {
+            if ($url !== null && str_contains($url, "/{$size}/")) {
                 return $url;
             }
         }
