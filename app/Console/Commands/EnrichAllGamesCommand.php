@@ -95,7 +95,14 @@ class EnrichAllGamesCommand extends Command
 
         // If queue mode, dispatch jobs and return
         if ($useQueue) {
-            return $this->dispatchQueuedJobs($query, $chunkSize, $skipPrices, $skipMedia, $totalGames);
+            // Apply resume filter if needed
+            if ($this->option('resume') && $cursor) {
+                $startPosition = $cursor->current_position;
+                $query->where('id', '>', $startPosition);
+                $this->info("↻ Resuming dispatch from Game ID > {$startPosition}");
+            }
+
+            return $this->dispatchQueuedJobs($query, $chunkSize, $skipPrices, $skipMedia, $totalGames, $commandName);
         }
 
         // Get or create cursor
@@ -240,7 +247,7 @@ class EnrichAllGamesCommand extends Command
     /**
      * Dispatch jobs to queue for parallel processing
      */
-    private function dispatchQueuedJobs($query, int $chunkSize, bool $skipPrices, bool $skipMedia, int $totalGames): int
+    private function dispatchQueuedJobs($query, int $chunkSize, bool $skipPrices, bool $skipMedia, int $totalGames, string $commandName): int
     {
         $this->info('🚀 Dispatching jobs to queue for parallel processing...');
         $this->newLine();
@@ -252,10 +259,21 @@ class EnrichAllGamesCommand extends Command
 
         // Use chunkById to dispatch jobs without loading all IDs into memory
         // This is extremely memory efficient for millions of records
-        $query->chunkById($chunkSize, function ($games) use (&$jobsDispatched, $bar, $skipPrices, $skipMedia) {
+        $query->chunkById($chunkSize, function ($games) use (&$jobsDispatched, $bar, $skipPrices, $skipMedia, $commandName) {
             $ids = $games->pluck('id')->toArray();
+            $lastId = $games->last()->id;
 
             \App\Jobs\EnrichGameBatchJob::dispatch($ids, $skipPrices, $skipMedia);
+
+            // Update cursor after dispatching batch
+            // This allows resuming DISPATCH if the command is interrupted
+            DB::table('command_cursors')->updateOrInsert(
+                ['command_name' => $commandName],
+                [
+                    'current_position' => $lastId,
+                    'updated_at' => now(),
+                ]
+            );
 
             $jobsDispatched++;
             $bar->advance(count($ids));
