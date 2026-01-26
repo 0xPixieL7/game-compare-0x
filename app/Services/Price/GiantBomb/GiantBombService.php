@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * Giant Bomb API Service
  * API Docs: https://www.giantbomb.com/api/documentation
- * 
+ *
  * Provides rich video content including:
  * - Gameplay videos
  * - Reviews
@@ -20,13 +20,13 @@ use Illuminate\Support\Facades\Log;
 final class GiantBombService
 {
     private const BASE_URL = 'https://www.giantbomb.com/api';
-    
+
     private string $apiKey;
 
     public function __construct()
     {
         $this->apiKey = config('services.giantbomb.api_key', '');
-        
+
         if (empty($this->apiKey)) {
             Log::warning('GiantBombService: API key not configured');
         }
@@ -34,9 +34,8 @@ final class GiantBombService
 
     /**
      * Get full game details including videos and metadata.
-     * 
-     * @param string $gameGuid Giant Bomb game GUID (e.g., "3030-41484")
-     * @return array|null
+     *
+     * @param  string  $gameGuid  Giant Bomb game GUID (e.g., "3030-41484")
      */
     public function getFullDetails(string $gameGuid): ?array
     {
@@ -47,8 +46,8 @@ final class GiantBombService
         try {
             // Get game details
             $gameData = $this->getGame($gameGuid);
-            
-            if (!$gameData) {
+
+            if (! $gameData) {
                 return null;
             }
 
@@ -77,8 +76,8 @@ final class GiantBombService
      */
     private function getGame(string $gameGuid): ?array
     {
-        $url = self::BASE_URL . "/game/{$gameGuid}/";
-        
+        $url = self::BASE_URL."/game/{$gameGuid}/";
+
         $response = Http::get($url, [
             'api_key' => $this->apiKey,
             'format' => 'json',
@@ -89,7 +88,7 @@ final class GiantBombService
         }
 
         $data = $response->json();
-        
+
         if (($data['status_code'] ?? 0) !== 1) {
             return null;
         }
@@ -102,8 +101,8 @@ final class GiantBombService
      */
     private function getGameVideos(string $gameGuid): array
     {
-        $url = self::BASE_URL . '/videos/';
-        
+        $url = self::BASE_URL.'/videos/';
+
         $response = Http::get($url, [
             'api_key' => $this->apiKey,
             'format' => 'json',
@@ -117,7 +116,7 @@ final class GiantBombService
         }
 
         $data = $response->json();
-        
+
         if (($data['status_code'] ?? 0) !== 1) {
             return [];
         }
@@ -158,7 +157,7 @@ final class GiantBombService
     private function extractImages(array $gameData): array
     {
         $image = $gameData['image'] ?? [];
-        
+
         return [
             'icon' => $image['icon_url'] ?? null,
             'medium' => $image['medium_url'] ?? null,
@@ -202,8 +201,8 @@ final class GiantBombService
             return [];
         }
 
-        $url = self::BASE_URL . '/search/';
-        
+        $url = self::BASE_URL.'/search/';
+
         $response = Http::get($url, [
             'api_key' => $this->apiKey,
             'format' => 'json',
@@ -217,7 +216,7 @@ final class GiantBombService
         }
 
         $data = $response->json();
-        
+
         if (($data['status_code'] ?? 0) !== 1) {
             return [];
         }
@@ -240,7 +239,7 @@ final class GiantBombService
 
     /**
      * Get video stream URLs for a specific video.
-     * 
+     *
      * Note: Giant Bomb videos require API key for streaming.
      */
     public function getVideoStreamUrls(string $videoGuid): ?array
@@ -249,8 +248,8 @@ final class GiantBombService
             return null;
         }
 
-        $url = self::BASE_URL . "/video/{$videoGuid}/";
-        
+        $url = self::BASE_URL."/video/{$videoGuid}/";
+
         $response = Http::get($url, [
             'api_key' => $this->apiKey,
             'format' => 'json',
@@ -261,14 +260,14 @@ final class GiantBombService
         }
 
         $data = $response->json();
-        
+
         if (($data['status_code'] ?? 0) !== 1) {
             return null;
         }
 
         $video = $data['results'] ?? null;
-        
-        if (!$video) {
+
+        if (! $video) {
             return null;
         }
 
@@ -278,5 +277,45 @@ final class GiantBombService
             'hd_url' => $video['hd_url'] ?? null,
             'youtube_id' => $video['youtube_id'] ?? null,
         ];
+    }
+
+    /**
+     * Get games by release date (recently added/released).
+     */
+    public function getRecentlyAddedGames(int $limit = 20): array
+    {
+        if (empty($this->apiKey)) {
+            return [];
+        }
+
+        $url = self::BASE_URL.'/games/';
+
+        $response = Http::get($url, [
+            'api_key' => $this->apiKey,
+            'format' => 'json',
+            'sort' => 'date_added:desc',
+            'limit' => $limit,
+            // Filter by ID > 0 to get all valid games
+            'filter' => 'id:0|999999',
+        ]);
+
+        if ($response->failed()) {
+            return [];
+        }
+
+        $data = $response->json();
+        $results = [];
+
+        foreach ($data['results'] ?? [] as $game) {
+            $results[] = [
+                'guid' => $game['guid'] ?? null,
+                'name' => $game['name'] ?? null,
+                'original_release_date' => $game['original_release_date'] ?? null,
+                'image_url' => $game['image']['medium_url'] ?? null,
+                'deck' => $game['deck'] ?? null,
+            ];
+        }
+
+        return $results;
     }
 }

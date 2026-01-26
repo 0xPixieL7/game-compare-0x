@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -11,13 +11,13 @@ export const show = (args: { id: string | number } | [id: string | number ] | st
 
 show.definition = {
     methods: ["get","head"],
-    url: '/horizon/api/jobs/{id}',
+    url: '//127.0.0.1:8000/horizon/api/jobs/{id}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -44,7 +44,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -54,7 +54,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
@@ -64,7 +64,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -74,7 +74,7 @@ const showForm = (args: { id: string | number } | [id: string | number ] | strin
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -84,7 +84,7 @@ showForm.get = (args: { id: string | number } | [id: string | number ] | string 
 /**
 * @see \Laravel\Horizon\Http\Controllers\JobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/JobsController.php:35
-* @route '/horizon/api/jobs/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/{id}'
 */
 showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, {

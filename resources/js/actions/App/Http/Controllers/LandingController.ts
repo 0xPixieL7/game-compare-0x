@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/',
+    url: '//127.0.0.1:8000/',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -36,7 +36,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -46,7 +46,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -56,7 +56,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -66,7 +66,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::index
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({
@@ -82,8 +82,8 @@ index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 export const debugSpotlight = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: debugSpotlight.url(options),
@@ -92,13 +92,13 @@ export const debugSpotlight = (options?: RouteQueryOptions): RouteDefinition<'ge
 
 debugSpotlight.definition = {
     methods: ["get","head"],
-    url: '/api/debug/spotlight',
+    url: '//127.0.0.1:8000/api/debug/spotlight',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 debugSpotlight.url = (options?: RouteQueryOptions) => {
     return debugSpotlight.definition.url + queryParams(options)
@@ -106,8 +106,8 @@ debugSpotlight.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 debugSpotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: debugSpotlight.url(options),
@@ -116,8 +116,8 @@ debugSpotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 debugSpotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: debugSpotlight.url(options),
@@ -126,8 +126,8 @@ debugSpotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 const debugSpotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: debugSpotlight.url(options),
@@ -136,8 +136,8 @@ const debugSpotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'g
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 debugSpotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: debugSpotlight.url(options),
@@ -146,8 +146,8 @@ debugSpotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get
 
 /**
 * @see \App\Http\Controllers\LandingController::debugSpotlight
-* @see app/Http/Controllers/LandingController.php:138
-* @route '/api/debug/spotlight'
+* @see app/Http/Controllers/LandingController.php:122
+* @route '//127.0.0.1:8000/api/debug/spotlight'
 */
 debugSpotlightForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: debugSpotlight.url({

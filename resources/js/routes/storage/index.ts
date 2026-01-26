@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 export const local = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: local.url(args, options),
@@ -10,12 +10,12 @@ export const local = (args: { path: string | number } | [path: string | number ]
 
 local.definition = {
     methods: ["get","head"],
-    url: '/storage/{path}',
+    url: '//127.0.0.1:8000/storage/{path}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 local.url = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -41,7 +41,7 @@ local.url = (args: { path: string | number } | [path: string | number ] | string
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 local.get = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: local.url(args, options),
@@ -50,7 +50,7 @@ local.get = (args: { path: string | number } | [path: string | number ] | string
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 local.head = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: local.url(args, options),
@@ -59,7 +59,7 @@ local.head = (args: { path: string | number } | [path: string | number ] | strin
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 const localForm = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: local.url(args, options),
@@ -68,7 +68,7 @@ const localForm = (args: { path: string | number } | [path: string | number ] | 
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 localForm.get = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: local.url(args, options),
@@ -77,7 +77,7 @@ localForm.get = (args: { path: string | number } | [path: string | number ] | st
 
 /**
 * @see vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemServiceProvider.php:98
-* @route '/storage/{path}'
+* @route '//127.0.0.1:8000/storage/{path}'
 */
 localForm.head = (args: { path: string | number } | [path: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: local.url(args, {

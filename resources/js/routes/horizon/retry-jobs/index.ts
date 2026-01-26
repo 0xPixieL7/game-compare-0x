@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/retry/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: show.url(args, options),
@@ -11,13 +11,13 @@ export const show = (args: { id: string | number } | [id: string | number ] | st
 
 show.definition = {
     methods: ["post"],
-    url: '/horizon/api/jobs/retry/{id}',
+    url: '//127.0.0.1:8000/horizon/api/jobs/retry/{id}',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/retry/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -44,7 +44,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/retry/{id}'
 */
 show.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: show.url(args, options),
@@ -54,7 +54,7 @@ show.post = (args: { id: string | number } | [id: string | number ] | string | n
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/retry/{id}'
 */
 const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: show.url(args, options),
@@ -64,7 +64,7 @@ const showForm = (args: { id: string | number } | [id: string | number ] | strin
 /**
 * @see \Laravel\Horizon\Http\Controllers\RetryController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/RetryController.php:15
-* @route '/horizon/api/jobs/retry/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/retry/{id}'
 */
 showForm.post = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: show.url(args, options),

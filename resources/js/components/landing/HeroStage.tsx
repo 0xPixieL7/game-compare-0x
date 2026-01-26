@@ -365,7 +365,7 @@ export default function HeroStage({
                                     }}
                                 >
                                     <AppleTvCard
-                                        className="aspect-video !min-h-0 !h-auto w-full overflow-hidden border border-white/10 bg-black shadow-2xl transition-all duration-300 group-hover/card:border-white/20"
+                                        className="aspect-video !h-auto !min-h-0 w-full overflow-hidden border border-white/10 bg-black shadow-2xl transition-all duration-300 group-hover/card:border-white/20"
                                         shineClassName="mix-blend-screen"
                                     >
                                         {/* Background Image (Always visible as base) */}
@@ -388,7 +388,8 @@ export default function HeroStage({
                                                     allow="autoplay; encrypted-media"
                                                     title="Spotlight Trailer"
                                                     onLoad={(e) => {
-                                                        e.currentTarget.style.opacity = '1';
+                                                        e.currentTarget.style.opacity =
+                                                            '1';
                                                     }}
                                                 />
                                                 <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/90 via-transparent to-black/30" />

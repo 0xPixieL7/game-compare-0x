@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
@@ -11,13 +11,13 @@ export const create = (options?: RouteQueryOptions): RouteDefinition<'get'> => (
 
 create.definition = {
     methods: ["get","head"],
-    url: '/forgot-password',
+    url: '//127.0.0.1:8000/forgot-password',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 create.url = (options?: RouteQueryOptions) => {
     return create.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ create.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: create.url(options),
@@ -36,7 +36,7 @@ create.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: create.url(options),
@@ -46,7 +46,7 @@ create.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: create.url(options),
@@ -56,7 +56,7 @@ const createForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => 
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: create.url(options),
@@ -66,7 +66,7 @@ createForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::create
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:22
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 createForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: create.url({
@@ -83,7 +83,7 @@ create.form = createForm
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::store
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:30
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -92,13 +92,13 @@ export const store = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 
 store.definition = {
     methods: ["post"],
-    url: '/forgot-password',
+    url: '//127.0.0.1:8000/forgot-password',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::store
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:30
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 store.url = (options?: RouteQueryOptions) => {
     return store.definition.url + queryParams(options)
@@ -107,7 +107,7 @@ store.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::store
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:30
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: store.url(options),
@@ -117,7 +117,7 @@ store.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::store
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:30
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: store.url(options),
@@ -127,7 +127,7 @@ const storeForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => 
 /**
 * @see \Laravel\Fortify\Http\Controllers\PasswordResetLinkController::store
 * @see vendor/laravel/fortify/src/Http/Controllers/PasswordResetLinkController.php:30
-* @route '/forgot-password'
+* @route '//127.0.0.1:8000/forgot-password'
 */
 storeForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: store.url(options),

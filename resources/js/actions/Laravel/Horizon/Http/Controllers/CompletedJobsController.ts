@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/horizon/api/jobs/completed',
+    url: '//127.0.0.1:8000/horizon/api/jobs/completed',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -36,7 +36,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -46,7 +46,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -56,7 +56,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -66,7 +66,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\CompletedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/CompletedJobsController.php:36
-* @route '/horizon/api/jobs/completed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/completed'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({

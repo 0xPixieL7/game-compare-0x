@@ -1,8 +1,8 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../../../wayfinder'
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/dashboard',
+    url: '//127.0.0.1:8000/dashboard',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -25,8 +25,8 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -35,8 +35,8 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -45,8 +45,8 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -55,8 +55,8 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -65,8 +65,8 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::index
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({
@@ -83,7 +83,7 @@ index.form = indexForm
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 export const show = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -92,13 +92,13 @@ export const show = (args: { gameId: string | number } | [gameId: string | numbe
 
 show.definition = {
     methods: ["get","head"],
-    url: '/dashboard/{gameId}',
+    url: '//127.0.0.1:8000/dashboard/{gameId}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.url = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -125,7 +125,7 @@ show.url = (args: { gameId: string | number } | [gameId: string | number ] | str
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -135,7 +135,7 @@ show.get = (args: { gameId: string | number } | [gameId: string | number ] | str
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
@@ -145,7 +145,7 @@ show.head = (args: { gameId: string | number } | [gameId: string | number ] | st
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 const showForm = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -155,7 +155,7 @@ const showForm = (args: { gameId: string | number } | [gameId: string | number ]
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 showForm.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -165,7 +165,7 @@ showForm.get = (args: { gameId: string | number } | [gameId: string | number ] |
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 showForm.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, {

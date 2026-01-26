@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Enrichment;
 
 use App\Models\VideoGame;
+use App\Services\Price\GameDataAggregatorService;
 use App\Services\Provider\ProviderDiscoveryService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -58,8 +59,10 @@ class EnrichVideoGameJob implements ShouldBeUnique, ShouldQueue
         return (string) $this->videoGameId;
     }
 
-    public function handle(ProviderDiscoveryService $discovery): void
-    {
+    public function handle(
+        ProviderDiscoveryService $discovery,
+        GameDataAggregatorService $aggregator
+    ): void {
         // Atomic Lock to prevent race conditions
         $lockKey = "enrich_game:{$this->videoGameId}";
         $lock = Cache::lock($lockKey, 120); // 2 minute lock for comprehensive enrichment
@@ -113,6 +116,26 @@ class EnrichVideoGameJob implements ShouldBeUnique, ShouldQueue
             if ($xboxId) {
                 // FetchXboxDataJob::dispatch($game->id, $xboxId)->onQueue('prices-xbox');
                 $dispatched['stores'][] = 'xbox';
+            }
+
+            // Amazon: Sync price using Aggregator (scrapes if URL discovered)
+            // Function handles its own checks for URL presence
+            // We run this inline as it's a single sync request
+            $amazonResult = $aggregator->syncAmazonPrice($game);
+            if (! empty($amazonResult['prices'])) {
+                $dispatched['stores'][] = 'amazon';
+            }
+
+            // GOG
+            $gogResult = $aggregator->syncGogPrice($game);
+            if (! empty($gogResult['prices'])) {
+                $dispatched['stores'][] = 'gog';
+            }
+
+            // Epic Games
+            $epicResult = $aggregator->syncEpicPrice($game);
+            if (! empty($epicResult['prices'])) {
+                $dispatched['stores'][] = 'epic';
             }
 
             // ═══════════════════════════════════════════════════════════════════

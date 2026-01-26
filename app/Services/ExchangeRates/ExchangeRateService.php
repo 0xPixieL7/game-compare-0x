@@ -117,6 +117,30 @@ class ExchangeRateService
     }
 
     /**
+     * Get the BTC rate for a currency using all available providers.
+     */
+    public function getBtcRateForCurrency(string $currency): ?float
+    {
+        $normalized = strtoupper($currency);
+
+        try {
+            $rates = $this->tradingView->getBtcRates($normalized, true);
+            $primary = $rates['rates'][0]['close'] ?? null;
+
+            if ($primary !== null) {
+                return (float) $primary;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('TradingView BTC rate fetch failed', [
+                'currency' => $normalized,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $this->deriveBtcRate($normalized);
+    }
+
+    /**
      * Derive BTC rate for a currency, possibly via USD.
      */
     private function deriveBtcRate(string $currency): ?float

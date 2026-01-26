@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 export const __invoke = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: __invoke.url(options),
@@ -11,13 +11,13 @@ export const __invoke = (options?: RouteQueryOptions): RouteDefinition<'get'> =>
 
 __invoke.definition = {
     methods: ["get","head"],
-    url: '/email/verify',
+    url: '//127.0.0.1:8000/email/verify',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 __invoke.url = (options?: RouteQueryOptions) => {
     return __invoke.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ __invoke.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 __invoke.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: __invoke.url(options),
@@ -36,7 +36,7 @@ __invoke.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 __invoke.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: __invoke.url(options),
@@ -46,7 +46,7 @@ __invoke.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 const __invokeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: __invoke.url(options),
@@ -56,7 +56,7 @@ const __invokeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 __invokeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: __invoke.url(options),
@@ -66,7 +66,7 @@ __invokeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => 
 /**
 * @see \Laravel\Fortify\Http\Controllers\EmailVerificationPromptController::__invoke
 * @see vendor/laravel/fortify/src/Http/Controllers/EmailVerificationPromptController.php:18
-* @route '/email/verify'
+* @route '//127.0.0.1:8000/email/verify'
 */
 __invokeForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: __invoke.url({

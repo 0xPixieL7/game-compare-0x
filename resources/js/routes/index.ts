@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 export const login = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: login.url(options),
@@ -11,13 +11,13 @@ export const login = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 login.definition = {
     methods: ["get","head"],
-    url: '/login',
+    url: '//127.0.0.1:8000/login',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 login.url = (options?: RouteQueryOptions) => {
     return login.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ login.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 login.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: login.url(options),
@@ -36,7 +36,7 @@ login.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 login.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: login.url(options),
@@ -46,7 +46,7 @@ login.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 const loginForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: login.url(options),
@@ -56,7 +56,7 @@ const loginForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 loginForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: login.url(options),
@@ -66,7 +66,7 @@ loginForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::login
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:47
-* @route '/login'
+* @route '//127.0.0.1:8000/login'
 */
 loginForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: login.url({
@@ -83,7 +83,7 @@ login.form = loginForm
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::logout
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:100
-* @route '/logout'
+* @route '//127.0.0.1:8000/logout'
 */
 export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: logout.url(options),
@@ -92,13 +92,13 @@ export const logout = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
 
 logout.definition = {
     methods: ["post"],
-    url: '/logout',
+    url: '//127.0.0.1:8000/logout',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::logout
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:100
-* @route '/logout'
+* @route '//127.0.0.1:8000/logout'
 */
 logout.url = (options?: RouteQueryOptions) => {
     return logout.definition.url + queryParams(options)
@@ -107,7 +107,7 @@ logout.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::logout
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:100
-* @route '/logout'
+* @route '//127.0.0.1:8000/logout'
 */
 logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: logout.url(options),
@@ -117,7 +117,7 @@ logout.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::logout
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:100
-* @route '/logout'
+* @route '//127.0.0.1:8000/logout'
 */
 const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: logout.url(options),
@@ -127,7 +127,7 @@ const logoutForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> =>
 /**
 * @see \Laravel\Fortify\Http\Controllers\AuthenticatedSessionController::logout
 * @see vendor/laravel/fortify/src/Http/Controllers/AuthenticatedSessionController.php:100
-* @route '/logout'
+* @route '//127.0.0.1:8000/logout'
 */
 logoutForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: logout.url(options),
@@ -139,7 +139,7 @@ logout.form = logoutForm
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 export const register = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: register.url(options),
@@ -148,13 +148,13 @@ export const register = (options?: RouteQueryOptions): RouteDefinition<'get'> =>
 
 register.definition = {
     methods: ["get","head"],
-    url: '/register',
+    url: '//127.0.0.1:8000/register',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 register.url = (options?: RouteQueryOptions) => {
     return register.definition.url + queryParams(options)
@@ -163,7 +163,7 @@ register.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 register.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: register.url(options),
@@ -173,7 +173,7 @@ register.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 register.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: register.url(options),
@@ -183,7 +183,7 @@ register.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 const registerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: register.url(options),
@@ -193,7 +193,7 @@ const registerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 registerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: register.url(options),
@@ -203,7 +203,7 @@ registerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => 
 /**
 * @see \Laravel\Fortify\Http\Controllers\RegisteredUserController::register
 * @see vendor/laravel/fortify/src/Http/Controllers/RegisteredUserController.php:41
-* @route '/register'
+* @route '//127.0.0.1:8000/register'
 */
 registerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: register.url({
@@ -220,7 +220,7 @@ register.form = registerForm
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
@@ -229,13 +229,13 @@ export const home = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 home.definition = {
     methods: ["get","head"],
-    url: '/',
+    url: '//127.0.0.1:8000/',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 home.url = (options?: RouteQueryOptions) => {
     return home.definition.url + queryParams(options)
@@ -244,7 +244,7 @@ home.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: home.url(options),
@@ -254,7 +254,7 @@ home.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: home.url(options),
@@ -264,7 +264,7 @@ home.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 const homeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: home.url(options),
@@ -274,7 +274,7 @@ const homeForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 homeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: home.url(options),
@@ -284,7 +284,7 @@ homeForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\LandingController::home
 * @see app/Http/Controllers/LandingController.php:33
-* @route '/'
+* @route '//127.0.0.1:8000/'
 */
 homeForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: home.url({
@@ -300,8 +300,8 @@ home.form = homeForm
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 export const dashboard = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(options),
@@ -310,13 +310,13 @@ export const dashboard = (options?: RouteQueryOptions): RouteDefinition<'get'> =
 
 dashboard.definition = {
     methods: ["get","head"],
-    url: '/dashboard',
+    url: '//127.0.0.1:8000/dashboard',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 dashboard.url = (options?: RouteQueryOptions) => {
     return dashboard.definition.url + queryParams(options)
@@ -324,8 +324,8 @@ dashboard.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 dashboard.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: dashboard.url(options),
@@ -334,8 +334,8 @@ dashboard.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: dashboard.url(options),
@@ -344,8 +344,8 @@ dashboard.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 const dashboardForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: dashboard.url(options),
@@ -354,8 +354,8 @@ const dashboardForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> 
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 dashboardForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: dashboard.url(options),
@@ -364,8 +364,8 @@ dashboardForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =>
 
 /**
 * @see \App\Http\Controllers\DashboardController::dashboard
-* @see app/Http/Controllers/DashboardController.php:385
-* @route '/dashboard'
+* @see app/Http/Controllers/DashboardController.php:392
+* @route '//127.0.0.1:8000/dashboard'
 */
 dashboardForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: dashboard.url({
@@ -382,7 +382,7 @@ dashboard.form = dashboardForm
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 export const compare = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: compare.url(options),
@@ -391,13 +391,13 @@ export const compare = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
 
 compare.definition = {
     methods: ["get","head"],
-    url: '/compare',
+    url: '//127.0.0.1:8000/compare',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 compare.url = (options?: RouteQueryOptions) => {
     return compare.definition.url + queryParams(options)
@@ -406,7 +406,7 @@ compare.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 compare.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: compare.url(options),
@@ -416,7 +416,7 @@ compare.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 compare.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: compare.url(options),
@@ -426,7 +426,7 @@ compare.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 const compareForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: compare.url(options),
@@ -436,7 +436,7 @@ const compareForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =>
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 compareForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: compare.url(options),
@@ -446,7 +446,7 @@ compareForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \App\Http\Controllers\CompareController::compare
 * @see app/Http/Controllers/CompareController.php:17
-* @route '/compare'
+* @route '//127.0.0.1:8000/compare'
 */
 compareForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: compare.url({
@@ -462,7 +462,7 @@ compare.form = compareForm
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 export const privacyPolicy = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: privacyPolicy.url(options),
@@ -471,12 +471,12 @@ export const privacyPolicy = (options?: RouteQueryOptions): RouteDefinition<'get
 
 privacyPolicy.definition = {
     methods: ["get","head"],
-    url: '/privacy-policy',
+    url: '//127.0.0.1:8000/privacy-policy',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 privacyPolicy.url = (options?: RouteQueryOptions) => {
     return privacyPolicy.definition.url + queryParams(options)
@@ -484,7 +484,7 @@ privacyPolicy.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 privacyPolicy.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: privacyPolicy.url(options),
@@ -493,7 +493,7 @@ privacyPolicy.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 privacyPolicy.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: privacyPolicy.url(options),
@@ -502,7 +502,7 @@ privacyPolicy.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => (
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 const privacyPolicyForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: privacyPolicy.url(options),
@@ -511,7 +511,7 @@ const privacyPolicyForm = (options?: RouteQueryOptions): RouteFormDefinition<'ge
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 privacyPolicyForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: privacyPolicy.url(options),
@@ -520,7 +520,7 @@ privacyPolicyForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'
 
 /**
 * @see routes/web.php:71
-* @route '/privacy-policy'
+* @route '//127.0.0.1:8000/privacy-policy'
 */
 privacyPolicyForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: privacyPolicy.url({
@@ -536,7 +536,7 @@ privacyPolicy.form = privacyPolicyForm
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 export const termsOfService = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: termsOfService.url(options),
@@ -545,12 +545,12 @@ export const termsOfService = (options?: RouteQueryOptions): RouteDefinition<'ge
 
 termsOfService.definition = {
     methods: ["get","head"],
-    url: '/terms-of-service',
+    url: '//127.0.0.1:8000/terms-of-service',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 termsOfService.url = (options?: RouteQueryOptions) => {
     return termsOfService.definition.url + queryParams(options)
@@ -558,7 +558,7 @@ termsOfService.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 termsOfService.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: termsOfService.url(options),
@@ -567,7 +567,7 @@ termsOfService.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 termsOfService.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: termsOfService.url(options),
@@ -576,7 +576,7 @@ termsOfService.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => 
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 const termsOfServiceForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: termsOfService.url(options),
@@ -585,7 +585,7 @@ const termsOfServiceForm = (options?: RouteQueryOptions): RouteFormDefinition<'g
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 termsOfServiceForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: termsOfService.url(options),
@@ -594,7 +594,7 @@ termsOfServiceForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get
 
 /**
 * @see routes/web.php:77
-* @route '/terms-of-service'
+* @route '//127.0.0.1:8000/terms-of-service'
 */
 termsOfServiceForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: termsOfService.url({

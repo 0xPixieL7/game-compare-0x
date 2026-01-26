@@ -96,6 +96,7 @@ class CompareController extends Controller
 
         // 3. Get Top Rated from the last 12 months
         $topRecent = DB::table('public.video_games_ranked_mv')
+            ->where('rating', '>=', 60)
             ->where('release_date', '>', now()->subMonths(12))
             ->orderBy('review_score', 'desc')
             ->limit(10)
@@ -103,6 +104,7 @@ class CompareController extends Controller
 
         // 4. Latest Shooters (with video and cover)
         $shooters = DB::table('public.video_games_ranked_mv')
+            ->where('rating', '>=', 60)
             ->where('genre', 'ilike', '%Shooter%')
             ->whereNotNull('primary_video_id')
             ->whereNotNull('cover_url')
@@ -113,6 +115,7 @@ class CompareController extends Controller
 
         // 5. Latest Sports (with video and cover)
         $sports = DB::table('public.video_games_ranked_mv')
+            ->where('rating', '>=', 60)
             ->where(function ($q) {
                 $q->where('genre', 'ilike', '%Sport%')
                     ->orWhere('genre', 'ilike', '%Sports%');
@@ -221,7 +224,8 @@ class CompareController extends Controller
 
     private function getGameComparisons(string $search = '', int $limit = 20): array
     {
-        $query = DB::table('public.video_games_ranked_mv');
+        $query = DB::table('public.video_games_ranked_mv')
+            ->where('rating', '>=', 60);
 
         if ($search) {
             $query->where(function ($q) use ($search) {

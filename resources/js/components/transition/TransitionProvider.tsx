@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 
 type TransitionContextValue = {
-    navigateCardToDetail: (href: string) => void;
+    navigateCardToDetail: (href: string, coverUrl?: string) => void;
     isRunning: boolean;
 };
 
@@ -53,6 +53,60 @@ function lifeS(v: number) {
     return v * v;
 }
 
+/** Extract dominant color from image for particle effects */
+function extractDominantColor(img: HTMLImageElement): string {
+    try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return 'rgba(255,180,40,1)';
+
+        // Sample center area of image for dominant color
+        const size = 50;
+        canvas.width = size;
+        canvas.height = size;
+        ctx.drawImage(
+            img,
+            img.width / 2 - size / 2,
+            img.height / 2 - size / 2,
+            size,
+            size,
+            0,
+            0,
+            size,
+            size,
+        );
+
+        const imageData = ctx.getImageData(0, 0, size, size).data;
+        let r = 0,
+            g = 0,
+            b = 0,
+            count = 0;
+
+        // Calculate average color
+        for (let i = 0; i < imageData.length; i += 4) {
+            r += imageData[i];
+            g += imageData[i + 1];
+            b += imageData[i + 2];
+            count++;
+        }
+
+        r = Math.floor(r / count);
+        g = Math.floor(g / count);
+        b = Math.floor(b / count);
+
+        // Brighten and saturate for particle effect
+        const brighten = 1.4;
+        r = Math.min(255, Math.floor(r * brighten));
+        g = Math.min(255, Math.floor(g * brighten));
+        b = Math.min(255, Math.floor(b * brighten));
+
+        return `rgba(${r},${g},${b},1)`;
+    } catch (e) {
+        // Fallback to default orange if extraction fails
+        return 'rgba(255,180,40,1)';
+    }
+}
+
 /** Canvas helper */
 function roundRect(
     ctx: CanvasRenderingContext2D,
@@ -93,6 +147,9 @@ export function TransitionProvider({
     const startTimeRef = useRef<number>(0);
     const navigatedRef = useRef<boolean>(false);
     const targetHrefRef = useRef<string>('');
+    const coverImageRef = useRef<HTMLImageElement | null>(null);
+    const coverUrlRef = useRef<string>('');
+    const dominantColorRef = useRef<string>('rgba(255,180,40,1)');
 
     const particlesRef = useRef<Particle[]>([]);
     const explosionSpawnedRef = useRef<boolean>(false);
@@ -126,6 +183,9 @@ export function TransitionProvider({
         particlesRef.current = [];
         explosionSpawnedRef.current = false;
         navigatedRef.current = false;
+        coverImageRef.current = null;
+        coverUrlRef.current = '';
+        dominantColorRef.current = 'rgba(255,180,40,1)';
     }, []);
 
     const spawnExplosion = useCallback((cx: number, cy: number) => {
@@ -222,28 +282,117 @@ export function TransitionProvider({
             ctx.fill();
             ctx.restore();
 
-            // Draw box base
+            // Draw box base with subtle 3D perspective
             ctx.save();
             ctx.globalAlpha = overlayAlpha;
 
             const baseX = cx - bw / 2;
             const baseY = boxY - bh / 2;
 
-            const baseGrad = ctx.createLinearGradient(
-                baseX,
-                baseY,
-                baseX + bw,
-                baseY + bh,
-            );
-            baseGrad.addColorStop(0, 'rgba(40,140,255,0.95)');
-            baseGrad.addColorStop(1, 'rgba(20,70,200,0.95)');
+            // Apply subtle perspective transform (slight tilt)
+            const perspectiveT = easeOutCubic(clamp01(elapsed / 400));
+            const tiltAngle = (1 - perspectiveT) * 0.05; // 3 degrees max tilt
+            const scaleY = 1 - (1 - perspectiveT) * 0.05;
 
-            ctx.fillStyle = baseGrad;
+            ctx.translate(cx, boxY);
+            ctx.rotate(tiltAngle);
+            ctx.scale(1, scaleY);
+            ctx.translate(-cx, -boxY);
+
+            // Draw rounded rectangle path for clipping
+            roundRect(ctx, baseX, baseY, bw, bh, 20);
+            ctx.clip();
+
+            // Draw cover image if loaded, otherwise fallback to gradient with loading state
+            if (coverImageRef.current && coverImageRef.current.complete) {
+                const img = coverImageRef.current;
+
+                // Calculate scaling to cover the box while maintaining aspect ratio
+                const imgAspect = img.width / img.height;
+                const boxAspect = bw / bh;
+
+                let drawWidth, drawHeight, drawX, drawY;
+
+                if (imgAspect > boxAspect) {
+                    // Image is wider - fit to height
+                    drawHeight = bh;
+                    drawWidth = bh * imgAspect;
+                    drawX = baseX - (drawWidth - bw) / 2;
+                    drawY = baseY;
+                } else {
+                    // Image is taller - fit to width
+                    drawWidth = bw;
+                    drawHeight = bw / imgAspect;
+                    drawX = baseX;
+                    drawY = baseY - (drawHeight - bh) / 2;
+                }
+
+                ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+                // Add subtle dark overlay for depth
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.fillRect(baseX, baseY, bw, bh);
+
+                // Add subtle shine/reflection effect on cover
+                const shineGrad = ctx.createLinearGradient(
+                    baseX,
+                    baseY,
+                    baseX + bw * 0.6,
+                    baseY + bh * 0.6,
+                );
+                shineGrad.addColorStop(0, 'rgba(255,255,255,0.15)');
+                shineGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
+                shineGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+                ctx.fillStyle = shineGrad;
+                ctx.fillRect(baseX, baseY, bw, bh);
+            } else {
+                // Fallback gradient when image not loaded
+                const baseGrad = ctx.createLinearGradient(
+                    baseX,
+                    baseY,
+                    baseX + bw,
+                    baseY + bh,
+                );
+                baseGrad.addColorStop(0, 'rgba(40,140,255,0.95)');
+                baseGrad.addColorStop(1, 'rgba(20,70,200,0.95)');
+                ctx.fillStyle = baseGrad;
+                ctx.fillRect(baseX, baseY, bw, bh);
+
+                // Show loading spinner if image is still loading
+                if (coverImageRef.current && !coverImageRef.current.complete) {
+                    ctx.save();
+                    ctx.translate(cx, boxY);
+                    const spinnerT = (elapsed % 1000) / 1000;
+                    ctx.rotate(spinnerT * Math.PI * 2);
+
+                    // Draw spinner circle segments
+                    for (let i = 0; i < 8; i++) {
+                        const a = (i / 8) * Math.PI * 2;
+                        const opacity = (i / 8) * 0.8 + 0.2;
+                        ctx.globalAlpha = overlayAlpha * opacity;
+                        ctx.beginPath();
+                        ctx.arc(
+                            Math.cos(a) * 30,
+                            Math.sin(a) * 30,
+                            4,
+                            0,
+                            Math.PI * 2,
+                        );
+                        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+
+            ctx.restore();
+
+            // Draw box border
+            ctx.save();
+            ctx.globalAlpha = overlayAlpha;
             ctx.strokeStyle = 'rgba(255,255,255,0.25)';
             ctx.lineWidth = 2;
-
             roundRect(ctx, baseX, baseY, bw, bh, 20);
-            ctx.fill();
             ctx.stroke();
 
             // Front decal strip
@@ -314,7 +463,7 @@ export function TransitionProvider({
                     const lifeT = clamp01(p.life / p.maxLife);
                     const a = (1 - lifeT) * overlayAlpha;
 
-                    // Fire core
+                    // Fire core (using dominant color from cover)
                     ctx.globalAlpha = a * 0.9;
                     ctx.beginPath();
                     ctx.arc(
@@ -324,7 +473,7 @@ export function TransitionProvider({
                         0,
                         Math.PI * 2,
                     );
-                    ctx.fillStyle = 'rgba(255,180,40,1)';
+                    ctx.fillStyle = dominantColorRef.current;
                     ctx.fill();
 
                     // Smoke halo
@@ -363,10 +512,26 @@ export function TransitionProvider({
     );
 
     const navigateCardToDetail = useCallback(
-        (href: string) => {
+        (href: string, coverUrl?: string) => {
             if (isRunning) return;
 
             targetHrefRef.current = href;
+            coverUrlRef.current = coverUrl || '';
+
+            // Preload cover image if provided
+            if (coverUrl) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    // Extract dominant color for particles when image loads
+                    dominantColorRef.current = extractDominantColor(img);
+                };
+                img.src = coverUrl;
+                coverImageRef.current = img;
+            } else {
+                coverImageRef.current = null;
+                dominantColorRef.current = 'rgba(255,180,40,1)';
+            }
 
             setIsRunning(true);
             setVisible(true);
@@ -417,3 +582,5 @@ export function TransitionProvider({
         </TransitionContext.Provider>
     );
 }
+
+export default TransitionProvider;

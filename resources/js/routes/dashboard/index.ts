@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 export const show = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -11,13 +11,13 @@ export const show = (args: { gameId: string | number } | [gameId: string | numbe
 
 show.definition = {
     methods: ["get","head"],
-    url: '/dashboard/{gameId}',
+    url: '//127.0.0.1:8000/dashboard/{gameId}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.url = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -44,7 +44,7 @@ show.url = (args: { gameId: string | number } | [gameId: string | number ] | str
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -54,7 +54,7 @@ show.get = (args: { gameId: string | number } | [gameId: string | number ] | str
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 show.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
@@ -64,7 +64,7 @@ show.head = (args: { gameId: string | number } | [gameId: string | number ] | st
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 const showForm = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -74,7 +74,7 @@ const showForm = (args: { gameId: string | number } | [gameId: string | number ]
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 showForm.get = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -84,7 +84,7 @@ showForm.get = (args: { gameId: string | number } | [gameId: string | number ] |
 /**
 * @see \App\Http\Controllers\DashboardController::show
 * @see app/Http/Controllers/DashboardController.php:15
-* @route '/dashboard/{gameId}'
+* @route '//127.0.0.1:8000/dashboard/{gameId}'
 */
 showForm.head = (args: { gameId: string | number } | [gameId: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, {

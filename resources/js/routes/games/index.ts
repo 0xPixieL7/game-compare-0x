@@ -1,8 +1,8 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition, applyUrlDefaults } from './../../wayfinder'
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/games',
+    url: '//127.0.0.1:8000/games',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -25,8 +25,8 @@ index.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -35,8 +35,8 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -45,8 +45,8 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -55,8 +55,8 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -65,8 +65,8 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see \App\Http\Controllers\VideoGameController::index
-* @see app/Http/Controllers/VideoGameController.php:11
-* @route '/games'
+* @see app/Http/Controllers/VideoGameController.php:16
+* @route '//127.0.0.1:8000/games'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({
@@ -82,8 +82,8 @@ index.form = indexForm
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 export const show = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -92,13 +92,13 @@ export const show = (args: { game: number | { id: number } } | [game: number | {
 
 show.definition = {
     methods: ["get","head"],
-    url: '/games/{game}',
+    url: '//127.0.0.1:8000/games/{game}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 show.url = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -130,8 +130,8 @@ show.url = (args: { game: number | { id: number } } | [game: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 show.get = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -140,8 +140,8 @@ show.get = (args: { game: number | { id: number } } | [game: number | { id: numb
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 show.head = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
@@ -150,8 +150,8 @@ show.head = (args: { game: number | { id: number } } | [game: number | { id: num
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 const showForm = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -160,8 +160,8 @@ const showForm = (args: { game: number | { id: number } } | [game: number | { id
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 showForm.get = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -170,8 +170,8 @@ showForm.get = (args: { game: number | { id: number } } | [game: number | { id: 
 
 /**
 * @see \App\Http\Controllers\VideoGameController::show
-* @see app/Http/Controllers/VideoGameController.php:71
-* @route '/games/{game}'
+* @see app/Http/Controllers/VideoGameController.php:78
+* @route '//127.0.0.1:8000/games/{game}'
 */
 showForm.head = (args: { game: number | { id: number } } | [game: number | { id: number } ] | number | { id: number }, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, {

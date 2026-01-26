@@ -42,56 +42,53 @@ class LandingController extends Controller
 
         $isAuthenticated = $request->user() !== null;
 
-        $topRated = $this->fetchTopRated(self::ROW_LIMIT);
-        $newReleases = $this->fetchNewReleases(self::ROW_LIMIT);
-        $upcoming = $this->fetchUpcoming(self::ROW_LIMIT);
-        $mostReviewed = $this->fetchMostReviewed(self::ROW_LIMIT);
+        // Fetch curated top lists from provider data
+        $topLists = $this->fetchProviderTopLists();
+
+        // Also fetch some of the original rows for variety
         $bestDealsData = $this->fetchBestDeals(self::ROW_LIMIT);
-        $genreRows = $this->fetchGenreRows(self::ROW_LIMIT);
 
-        $displayIds = $this->collectDisplayIds($topRated, $newReleases, $mostReviewed, $bestDealsData['games'], $genreRows);
-        $displayIds = array_unique(array_merge($displayIds, $upcoming->pluck('id')->all()));
+        // Convert to rows format
+        $rows = [];
+        $allGameIds = [];
 
-        $pricingMap = $isAuthenticated ? $this->buildPricingMapForIds($displayIds) : [];
-        $pricingMap = array_replace($pricingMap, $bestDealsData['pricing']);
+        // Add top lists first
+        foreach ($topLists as $list) {
+            if (! empty($list['games'])) {
+                $gameIds = $list['games']->pluck('id')->toArray();
+                $allGameIds = array_merge($allGameIds, $gameIds);
 
-        $rows = [
-            [
-                'id' => 'top-rated',
-                'title' => 'Top Rated',
-                'games' => $this->mapGames($topRated, $pricingMap, $isAuthenticated),
-            ],
-            [
-                'id' => 'upcoming',
-                'title' => 'Upcoming Games',
-                'games' => $this->mapGames($upcoming, $pricingMap, $isAuthenticated),
-            ],
-            [
-                'id' => 'new-releases',
-                'title' => 'New Releases',
-                'games' => $this->mapGames($newReleases, $pricingMap, $isAuthenticated),
-            ],
-            [
+                $rows[] = [
+                    'id' => $list['key'],
+                    'title' => $list['title'],
+                    'games' => $list['games'],
+                ];
+            }
+        }
+
+        // Add best deals if we have them
+        if (! empty($bestDealsData['games'])) {
+            $dealIds = $bestDealsData['games']->pluck('id')->toArray();
+            $allGameIds = array_merge($allGameIds, $dealIds);
+
+            $rows[] = [
                 'id' => 'best-deals',
                 'title' => 'Best Deals',
-                'games' => $this->mapGames($bestDealsData['games'], $pricingMap, $isAuthenticated),
-            ],
-            [
-                'id' => 'most-reviewed',
-                'title' => 'Most Reviewed',
-                'games' => $this->mapGames($mostReviewed, $pricingMap, $isAuthenticated),
-            ],
-        ];
-
-        foreach ($genreRows as $genreRow) {
-            $rows[] = [
-                'id' => 'genre-'.Str::slug($genreRow['genre']),
-                'title' => $genreRow['title'],
-                'games' => $this->mapGames($genreRow['games'], $pricingMap, $isAuthenticated),
+                'games' => $bestDealsData['games'],
             ];
         }
 
-        $heroCandidate = $this->selectHero($topRated, $newReleases, $mostReviewed);
+        // Get unique game IDs for pricing
+        $displayIds = array_unique($allGameIds);
+        $pricingMap = $isAuthenticated ? $this->buildPricingMapForIds($displayIds) : [];
+        $pricingMap = array_replace($pricingMap, $bestDealsData['pricing'] ?? []);
+
+        // Map all games to the expected format
+        foreach ($rows as &$row) {
+            $row['games'] = $this->mapGames($row['games'], $pricingMap, $isAuthenticated);
+        }
+
+        // Get spotlight games for hero selection
         $spotlightGames = $this->fetchSpotlightGames(20);
         $zeldaHero = $this->fetchZeldaHero();
 
@@ -105,22 +102,9 @@ class LandingController extends Controller
 
         $hero = $spotlightGames[0] ?? null;
 
-        if (! $hero && $heroCandidate) {
-            // Re-fetch or at least map with the same structure
-            // For now, mapping the existing object but we need to ensure it has raw_payload if possible
-            // Actually, selectHero uses data from video_games_ranked_mv which doesn't have raw_payload
-            // So we'll try to find it in spotlightGames first
-            $hero = collect($spotlightGames)->firstWhere('id', $heroCandidate->id)
-                ?? $this->mapSpotlightGame($heroCandidate);
-        }
-
         Log::info('Homepage data fetched', [
-            'topRated' => $topRated->count(),
-            'upcoming' => $upcoming->count(),
-            'newReleases' => $newReleases->count(),
-            'mostReviewed' => $mostReviewed->count(),
-            'bestDeals' => $bestDealsData['games']->count(),
-            'genreRows' => count($genreRows),
+            'topLists' => count($topLists),
+            'totalRows' => count($rows),
             'heroLinked' => $hero !== null,
             'spotlightCount' => count($spotlightGames),
         ]);
@@ -480,6 +464,7 @@ class LandingController extends Controller
                     )) FROM videos WHERE videos.video_game_id = video_games.id) as all_videos"),
                 ])
                 ->whereNotNull('video_game_title_sources.raw_payload')
+                ->where('video_games.rating', '>=', 60)
                 ->whereRaw("lower(video_games.name) like '%zelda%'")
                 ->orderByRaw("case
                     when lower(video_games.name) like '%tears of the kingdom%' then 1
@@ -567,7 +552,7 @@ class LandingController extends Controller
                 }
 
                 $rows[] = [
-                    'genre' => $genreName,
+                    'key' => Str::slug($genreName),
                     'title' => $displayTitle,
                     'games' => $games,
                 ];
@@ -694,6 +679,88 @@ class LandingController extends Controller
         }
 
         return $ids->unique()->values()->all();
+    }
+
+    /**
+     * Fetch curated top lists from provider data
+     *
+     * @return array<int, array{key: string, title: string, games: Collection}>
+     */
+    private function fetchProviderTopLists(): array
+    {
+        return $this->cacheStore()->remember('landing:provider-top-lists-v1', self::ROW_CACHE_TTL, function () {
+            // Get the most recent top lists
+            $topLists = DB::table('provider_toplists')
+                ->select('id', 'provider_key', 'list_key', 'name')
+                ->whereIn('list_key', ['trending', 'popular', 'top_rated', 'top-rated', 'new_releases', 'new-releases', 'upcoming'])
+                ->orderByRaw("
+                    CASE 
+                        WHEN list_key = 'trending' THEN 0 
+                        WHEN list_key = 'popular' THEN 1 
+                        WHEN list_key IN ('top-rated', 'top_rated') THEN 2
+                        WHEN list_key IN ('new-releases', 'new_releases') THEN 3
+                        WHEN list_key = 'upcoming' THEN 4
+                        ELSE 5 
+                    END
+                ")
+                ->orderByDesc('snapshot_at')
+                ->limit(5)
+                ->get();
+
+            $results = [];
+
+            foreach ($topLists as $list) {
+                // Get games for this list
+                $games = DB::table('provider_toplist_items as pti')
+                    ->join('video_games_ranked_mv as vg', 'pti.video_game_id', '=', 'vg.id')
+                    ->where('pti.provider_toplist_id', $list->id)
+                    ->where('vg.rating', '>=', 60)
+                    ->select(array_map(fn ($col) => "vg.{$col}", $this->mvColumns()))
+                    ->orderBy('pti.rank')
+                    ->limit(self::ROW_LIMIT)
+                    ->get();
+
+                if ($games->isNotEmpty()) {
+                    $results[] = [
+                        'key' => $list->list_key,
+                        'title' => $this->formatListTitle($list->name, $list->list_key),
+                        'games' => $games,
+                    ];
+                }
+            }
+
+            // If we don't have enough lists, fall back to some genre-based lists
+            if (count($results) < 3) {
+                $genreRows = $this->fetchGenreRows(self::ROW_LIMIT);
+                foreach ($genreRows as $genreRow) {
+                    if (count($results) >= 5) {
+                        break;
+                    }
+                    $results[] = $genreRow;
+                }
+            }
+
+            return $results;
+        });
+    }
+
+    /**
+     * Format list title for display
+     */
+    private function formatListTitle(string $name, string $key): string
+    {
+        // Clean up provider-specific naming
+        $title = str_replace(['IGDB ', 'RAWG ', 'Giant Bomb '], '', $name);
+
+        // Use friendly names for common keys
+        return match ($key) {
+            'trending' => '🔥 Trending Now',
+            'popular' => '⭐ Most Popular',
+            'top-rated', 'top_rated' => '🏆 Top Rated',
+            'new-releases', 'new_releases' => '🆕 New Releases',
+            'upcoming' => '🎮 Coming Soon',
+            default => $title
+        };
     }
 
     /**
@@ -881,7 +948,9 @@ class LandingController extends Controller
                 'height' => 1440,
             ] : null,
             'cover_url' => $coverUrl,
+            'cover_url_high_res' => $coverUrl,
             'cover_url_thumb' => $coverThumb,
+            'hero_url' => $artworks[0]['url'] ?? $screenshots[0]['url'] ?? $coverUrl,
             'screenshots' => $screenshots,
             'artworks' => $artworks,
             'trailers' => $trailers,

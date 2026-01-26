@@ -1,0 +1,206 @@
+name: lowkey-mcps
+version: 0.0.1
+schema: v1
+
+mcpServers:
+  # -------------------------
+  # CORE: Local utility MCPs
+  # -------------------------
+
+  - name: time
+    command: uvx
+    args:
+      - mcp-server-time
+    env: {}
+
+  # Fetch / Web URL -> text/markdown
+  # Ref: official MCP "fetch" server (web content fetching)  [oai_citation:0‡GitHub](https://github.com/modelcontextprotocol/servers/blob/main/src/fetch/README.md?utm_source=chatgpt.com)
+  - name: fetch
+    command: uvx
+    args:
+      - mcp-server-fetch
+    env: {}
+
+  # Desktop Commander (terminal + filesystem + editing)
+  # Ref: DesktopCommanderMCP project  [oai_citation:1‡GitHub](https://github.com/wonderwhy-er/DesktopCommanderMCP?utm_source=chatgpt.com)
+  - name: desktop-commander
+    command: npx
+    args:
+      - -y
+      - "@wonderwhy-er/desktop-commander"
+    env: {}
+
+  # Chrome DevTools MCP (browser inspection/control)
+  # Ref: Chrome DevTools MCP preview  [oai_citation:2‡Chrome for Developers](https://developer.chrome.com/blog/chrome-devtools-mcp?utm_source=chatgpt.com)
+  - name: chrome-devtools
+    command: npx
+    args:
+      - -y
+      - "chrome-devtools-mcp@latest"
+    env: {}
+
+  # Alternative Chrome DevTools MCP package (often used by config examples)
+  # Ref: socket.dev shows npx usage for "mcp-chromedevtools@latest"  [oai_citation:3‡Socket](https://socket.dev/npm/package/mcp-chromedevtools?utm_source=chatgpt.com)
+  - name: chrome-devtools-alt
+    command: npx
+    args:
+      - -y
+      - "mcp-chromedevtools@latest"
+    env: {}
+
+  # -------------------------
+  # Docker-based MCPs
+  # -------------------------
+
+  # Task Orchestrator (Docker)
+  # Ref: official quickstart uses docker run + volumes  [oai_citation:4‡GitHub](https://github.com/jpicklyk/task-orchestrator?utm_source=chatgpt.com)
+  - name: task-orchestrator
+    command: docker
+    args:
+      - run
+      - --rm
+      - -i
+      - --volume
+      - mcp-task-data:/app/data
+      - --volume
+      - ".:/project"
+      - --env
+      - AGENT_CONFIG_DIR=/project
+      - --env
+      - DATABASE_PATH=/app/data/my-tasks.db
+      - ghcr.io/jpicklyk/task-orchestrator:latest
+    env: {}
+
+  # Docker MCP Gateway (Toolkit)
+  # Docs: gateway explained here  [oai_citation:5‡Docker Documentation](https://docs.docker.com/ai/mcp-catalog-and-toolkit/mcp-gateway/?utm_source=chatgpt.com)
+  # NOTE: you typically DON'T need to run this manually if Docker Desktop MCP Toolkit is enabled.
+  - name: docker-mcp-gateway
+    command: docker
+    args:
+      - mcp
+      - gateway
+      - run
+    env: {}
+
+  # -------------------------
+  # Your custom/local MCP builds
+  # -------------------------
+
+  - name: advanced-reasoning
+    command: node
+    args:
+      - /Users/lowkey/advanced-reasoning-mcp/build/index.js
+    env: {}
+
+  - name: mcp-logic
+    command: uv
+    args:
+      - --directory
+      - /Users/lowkey/mcp-logic
+      - run
+      - mcp_logic
+      - --prover-path
+      - /Users/lowkey/mcp-logic/ladr/bin
+    env: {}
+
+  # -------------------------
+  # Remote MCP servers via "mcp-remote" proxy
+  # -------------------------
+  # Ref: mcp-remote exists specifically for connecting local stdio clients to remote MCP servers  [oai_citation:6‡npmjs.com](https://www.npmjs.com/package/mcp-remote?utm_source=chatgpt.com)
+
+  # DeepWiki (SSE endpoint)
+  # DeepWiki is free, no auth required  [oai_citation:7‡Cognition](https://cognition.ai/blog/deepwiki-mcp-server?utm_source=chatgpt.com)
+  - name: deepwiki
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://mcp.deepwiki.com/sse
+    env: {}
+
+  # Ref.tools (streamable HTTP endpoint)
+  # Ref docs: endpoint + where to find API key  [oai_citation:8‡Ref Tools](https://docs.ref.tools/install?utm_source=chatgpt.com)
+  - name: ref-tools
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://api.ref.tools/mcp
+    env:
+      # If your client supports header injection via env, store it here.
+      # Otherwise, keep the key inside your MCPHost config format.
+      REF_TOOLS_API_KEY: "PASTE_REF_TOOLS_KEY_HERE"
+
+  # Supabase MCP (streamable HTTP endpoint)
+  # Supabase: official MCP docs + endpoint  [oai_citation:9‡Supabase](https://supabase.com/docs/guides/getting-started/mcp?utm_source=chatgpt.com)
+  - name: supabase
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://mcp.supabase.com/mcp?project_ref=bdnjdkgkpgznqjfnelwj
+    env:
+      SUPABASE_ACCESS_TOKEN: "PASTE_SUPABASE_PAT_OR_TOKEN_HERE"
+
+  # HuggingFace MCP (optional)
+  - name: huggingface
+    command: npx
+    args:
+      - -y
+      - mcp-remote
+      - https://hf.co/mcp
+    env: {}
+
+  # -------------------------
+  # Optional / discussed (may timeout depending on your machine)
+  # -------------------------
+
+  - name: tavily-mcp
+    command: npx
+    args:
+      - -y
+      - tavily-mcp@latest
+    env:
+      TAVILY_API_KEY: "PASTE_TAVILY_KEY_HERE"
+
+  - name: filesystem
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-filesystem"
+      - "/Users/lowkey/Desktop/OTBot-safe"
+      - "/Users/lowkey/Desktop"
+      - "/Users/lowkey/Documents/prima-member-hub"
+    env: {}
+
+  - name: memory
+    command: npx
+    args:
+      - -y
+      - "@modelcontextprotocol/server-memory"
+    env:
+      MEMORY_FILE_PATH: "brain.json"
+
+  - name: rust-analyzer
+    command: npx
+    args:
+      - -y
+      - mcp-server-rust-analyzer
+    env: {}
+
+  - name: clangd
+    command: npx
+    args:
+      - -y
+      - mcp-server-clangd
+    env:
+      CLANGD_PATH: "/opt/homebrew/opt/llvm/bin/clangd"
+      PROJECT_ROOT: "/Users/lowkey/path/to/your/cpp/project"
+      COMPILE_COMMANDS_DIR: "/Users/lowkey/path/to/your/cpp/project/build"
+
+  - name: solana
+    command: npx
+    args:
+      - -y
+      - solana-mcp-server
+    env: {}

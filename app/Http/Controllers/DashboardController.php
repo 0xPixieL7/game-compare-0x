@@ -15,6 +15,13 @@ class DashboardController extends Controller
     public function show(Request $request, string $gameId): Response
     {
         $gameId = (int) $gameId;
+
+        // Dispatch viewed event for background enrichment
+        $videoGame = \App\Models\VideoGame::find($gameId);
+        if ($videoGame) {
+            \App\Events\VideoGameViewed::dispatch($videoGame);
+        }
+
         $startTime = microtime(true);
 
         // Execute multiple queries in parallel using multiple connections
@@ -386,6 +393,10 @@ class DashboardController extends Controller
     {
         $searchQuery = $request->get('search', '');
 
+        // Get spotlight and hero data for a premium feel
+        $spotlightGames = $this->fetchSpotlightGamesForDashboard(12);
+        $hero = $spotlightGames[0] ?? null;
+
         // Get genre-based carousel rows and user preferences
         $carouselRows = $this->getGenreBasedCarouselRows();
 
@@ -396,14 +407,102 @@ class DashboardController extends Controller
         }
 
         return Inertia::render('Dashboard/Index', [
+            'hero' => $hero,
+            'spotlightGames' => $spotlightGames,
             'carouselRows' => $carouselRows,
             'searchResults' => $searchResults,
             'search' => $searchQuery,
             'meta' => [
                 'total_rows' => count($carouselRows),
-                'query_time' => microtime(true) - LARAVEL_START ?? 0,
+                'query_time' => microtime(true) - (defined('LARAVEL_START') ? LARAVEL_START : microtime(true)),
             ],
         ]);
+    }
+
+    private function fetchSpotlightGamesForDashboard(int $limit = 12): array
+    {
+        return Cache::remember('dashboard:spotlight-games-v2', 3600, function () use ($limit) {
+            // Priority games (marquee)
+            $marqueeIds = [
+                12026, 199224, 117836, 221441, 174739, 221545, 233062,
+                220587, 235660, 260502, 92989, 142457, 220450, 274649, 257269,
+            ];
+
+            $games = DB::table('video_games')
+                ->join('video_games_ranked_mv', 'video_games.id', '=', 'video_games_ranked_mv.id')
+                ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
+                ->leftJoin('video_game_title_sources', function ($join) {
+                    $join->on('video_game_title_sources.video_game_title_id', '=', 'video_game_titles.id')
+                        ->where('video_game_title_sources.provider', '=', 'igdb');
+                })
+                ->select([
+                    'video_games.id',
+                    'video_games.name',
+                    'video_games_ranked_mv.rating',
+                    'video_games_ranked_mv.popularity_score',
+                    'video_game_titles.name as canonical_name',
+                    'video_game_title_sources.raw_payload',
+                ])
+                ->whereIn('video_games.id', $marqueeIds)
+                ->where('video_games_ranked_mv.rating', '>=', 80)
+                ->whereNotNull('video_game_title_sources.raw_payload')
+                ->limit($limit)
+                ->get();
+
+            return $games->map(function ($game) {
+                return $this->mapDashboardSpotlightGame($game);
+            })->toArray();
+        });
+    }
+
+    private function mapDashboardSpotlightGame(object $game): array
+    {
+        $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
+        if (is_string($rawPayload)) {
+            $rawPayload = json_decode($rawPayload, true) ?? [];
+        }
+
+        $baseUrl = 'https://images.igdb.com/igdb/image/upload/';
+        $coverUrl = null;
+        if (! empty($rawPayload['cover'])) {
+            $imageId = is_array($rawPayload['cover']) ? ($rawPayload['cover']['image_id'] ?? null) : null;
+            if ($imageId) {
+                $coverUrl = $baseUrl.'t_1080p/'.$imageId.'.webp';
+            }
+        }
+
+        $screenshots = [];
+        if (! empty($rawPayload['screenshots']) && is_array($rawPayload['screenshots'])) {
+            foreach (array_slice($rawPayload['screenshots'], 0, 5) as $s) {
+                $id = is_array($s) ? ($s['image_id'] ?? null) : null;
+                if ($id) {
+                    $screenshots[] = ['url' => $baseUrl.'t_1080p/'.$id.'.webp'];
+                }
+            }
+        }
+
+        $reviewScore = (float) ($game->rating ?? 85);
+
+        $gallery = [];
+        foreach ($screenshots as $s) {
+            $gallery[] = ['id' => uniqid(), 'type' => 'image', 'url' => $s['url'], 'source' => 'IGDB'];
+        }
+
+        return [
+            'id' => $game->id,
+            'name' => $game->canonical_name ?? $game->name,
+            'image' => $coverUrl ?: ($screenshots[0]['url'] ?? null),
+            'background' => $screenshots[0]['url'] ?? $coverUrl,
+            'spotlight_score' => [
+                'total' => round($reviewScore / 10, 1),
+                'grade' => $reviewScore >= 90 ? 'S' : ($reviewScore >= 80 ? 'A' : 'B'),
+                'verdict' => $reviewScore >= 90 ? 'Masterpiece' : 'Essential',
+                'breakdown' => [
+                    ['label' => 'Critical Reception', 'score' => (int) $reviewScore, 'summary' => 'Aggregated rating.', 'weight_percentage' => 100],
+                ],
+            ],
+            'spotlight_gallery' => $gallery,
+        ];
     }
 
     private function getGenreBasedCarouselRows(): array
@@ -506,8 +605,8 @@ class DashboardController extends Controller
                     ->where('video_game_title_sources.provider', '=', 'igdb');
             })
             ->whereNotNull('video_game_title_sources.rating')
-            ->where('video_game_title_sources.rating', '>=', 60)
-            ->where('video_game_title_sources.rating_count', '>=', 5)
+            ->where('video_game_title_sources.rating', '>=', 75)
+            ->where('video_game_title_sources.rating_count', '>=', 10)
             ->whereNotNull('video_game_title_sources.genre')
             ->whereRaw('LOWER(video_game_title_sources.genre::text) LIKE LOWER(?)', ["%{$genre}%"])
             ->orderBy('video_game_title_sources.rating', 'desc')
@@ -516,7 +615,7 @@ class DashboardController extends Controller
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
                 // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
-                if (!is_array($rawPayload)) {
+                if (! is_array($rawPayload)) {
                     $rawPayload = [];
                 }
                 $cover = $this->getCoverFromPayload($rawPayload);
@@ -556,15 +655,15 @@ class DashboardController extends Controller
                     ->where('video_game_title_sources.provider', '=', 'igdb');
             })
             ->whereNotNull('video_game_title_sources.rating')
-            ->where('video_game_title_sources.rating', '>=', 60)
-            ->where('video_game_title_sources.rating_count', '>=', 5)
+            ->where('video_game_title_sources.rating', '>=', 85)
+            ->where('video_game_title_sources.rating_count', '>=', 20)
             ->orderBy('video_game_title_sources.rating', 'desc')
             ->limit($limit)
             ->get()
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
                 // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
-                if (!is_array($rawPayload)) {
+                if (! is_array($rawPayload)) {
                     $rawPayload = [];
                 }
                 $cover = $this->getCoverFromPayload($rawPayload);
@@ -605,7 +704,7 @@ class DashboardController extends Controller
             })
             ->whereNotNull('video_games.release_date')
             ->whereNotNull('video_game_title_sources.rating')
-            ->where('video_game_title_sources.rating', '>=', 60)
+            ->where('video_game_title_sources.rating', '>=', 75)
             ->where('video_game_title_sources.rating_count', '>=', 5)
             ->orderBy('video_games.release_date', 'desc')
             ->limit($limit)
@@ -613,7 +712,7 @@ class DashboardController extends Controller
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
                 // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
-                if (!is_array($rawPayload)) {
+                if (! is_array($rawPayload)) {
                     $rawPayload = [];
                 }
                 $cover = $this->getCoverFromPayload($rawPayload);
@@ -665,7 +764,7 @@ class DashboardController extends Controller
             ->map(function ($game) {
                 $rawPayload = $game->raw_payload ? json_decode($game->raw_payload, true) : [];
                 // Ensure $rawPayload is always an array (json_decode can return null on invalid JSON)
-                if (!is_array($rawPayload)) {
+                if (! is_array($rawPayload)) {
                     $rawPayload = [];
                 }
                 $cover = $this->getCoverFromPayload($rawPayload);

@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/horizon/api/jobs/failed',
+    url: '//127.0.0.1:8000/horizon/api/jobs/failed',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -36,7 +36,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -46,7 +46,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -56,7 +56,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -66,7 +66,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:46
-* @route '/horizon/api/jobs/failed'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({
@@ -83,7 +83,7 @@ index.form = indexForm
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 export const show = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -92,13 +92,13 @@ export const show = (args: { id: string | number } | [id: string | number ] | st
 
 show.definition = {
     methods: ["get","head"],
-    url: '/horizon/api/jobs/failed/{id}',
+    url: '//127.0.0.1:8000/horizon/api/jobs/failed/{id}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 show.url = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -125,7 +125,7 @@ show.url = (args: { id: string | number } | [id: string | number ] | string | nu
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 show.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(args, options),
@@ -135,7 +135,7 @@ show.get = (args: { id: string | number } | [id: string | number ] | string | nu
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 show.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(args, options),
@@ -145,7 +145,7 @@ show.head = (args: { id: string | number } | [id: string | number ] | string | n
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 const showForm = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -155,7 +155,7 @@ const showForm = (args: { id: string | number } | [id: string | number ] | strin
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 showForm.get = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, options),
@@ -165,7 +165,7 @@ showForm.get = (args: { id: string | number } | [id: string | number ] | string 
 /**
 * @see \Laravel\Horizon\Http\Controllers\FailedJobsController::show
 * @see vendor/laravel/horizon/src/Http/Controllers/FailedJobsController.php:101
-* @route '/horizon/api/jobs/failed/{id}'
+* @route '//127.0.0.1:8000/horizon/api/jobs/failed/{id}'
 */
 showForm.head = (args: { id: string | number } | [id: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(args, {

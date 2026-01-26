@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -11,13 +11,13 @@ export const index = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 index.definition = {
     methods: ["get","head"],
-    url: '/horizon/api/masters',
+    url: '//127.0.0.1:8000/horizon/api/masters',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 index.url = (options?: RouteQueryOptions) => {
     return index.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ index.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(options),
@@ -36,7 +36,7 @@ index.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(options),
@@ -46,7 +46,7 @@ index.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -56,7 +56,7 @@ const indexForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(options),
@@ -66,7 +66,7 @@ indexForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Horizon\Http\Controllers\MasterSupervisorController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/MasterSupervisorController.php:18
-* @route '/horizon/api/masters'
+* @route '//127.0.0.1:8000/horizon/api/masters'
 */
 indexForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url({

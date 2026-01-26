@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\VideoGame;
-use App\Services\Media\RAWG\RawgService;
 use App\Services\Media\TGDB\TGDBService;
+use App\Services\Price\GameDataAggregatorService;
 use App\Services\Price\GiantBomb\GiantBombService;
 use App\Services\Price\PlayStation\PlayStationStoreService;
 use App\Services\Price\Steam\SteamStoreService;
@@ -14,7 +14,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class EnrichVideoGameMediaJob implements ShouldQueue
@@ -22,6 +21,7 @@ class EnrichVideoGameMediaJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public VideoGame $videoGame;
+
     public array $providers;
 
     /**
@@ -37,7 +37,7 @@ class EnrichVideoGameMediaJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(VideoGame $videoGame, array $providers = ['steam', 'giantbomb', 'tgdb'])
+    public function __construct(VideoGame $videoGame, array $providers = ['steam', 'giantbomb', 'tgdb', 'amazon'])
     {
         $this->videoGame = $videoGame;
         $this->providers = $providers;
@@ -50,6 +50,7 @@ class EnrichVideoGameMediaJob implements ShouldQueue
         SteamStoreService $steam,
         XboxStoreService $xbox,
         PlayStationStoreService $playstation,
+        GameDataAggregatorService $aggregator,
         GiantBombService $giantBomb,
         TGDBService $tgdb
     ): void {
@@ -59,10 +60,11 @@ class EnrichVideoGameMediaJob implements ShouldQueue
 
         foreach ($this->providers as $provider) {
             try {
-                $result = match($provider) {
+                $result = match ($provider) {
                     'steam' => $this->enrichWithSteam($steam),
                     'xbox' => $this->enrichWithXbox($xbox),
                     'playstation' => $this->enrichWithPlayStation($playstation),
+                    'amazon' => $this->enrichWithAmazon($aggregator),
                     'giantbomb' => $this->enrichWithGiantBomb($giantBomb),
                     'tgdb' => $this->enrichWithTGDB($tgdb),
                     default => ['images' => 0, 'videos' => 0, 'prices' => 0],
@@ -98,7 +100,7 @@ class EnrichVideoGameMediaJob implements ShouldQueue
         $attributes = json_decode($this->videoGame->attributes ?? '{}', true);
         $steamId = $attributes['steam_id'] ?? $steam->search($this->videoGame->name);
 
-        if (!$steamId) {
+        if (! $steamId) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
         }
 
@@ -108,15 +110,15 @@ class EnrichVideoGameMediaJob implements ShouldQueue
         ]);
 
         $data = $steam->getFullDetails((string) $steamId);
-        
-        if (!$data) {
+
+        if (! $data) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
         }
 
         // Same enrichment logic...
         // For brevity, returning simple counts
         // In production, copy the full enrichment logic from the command
-        
+
         return ['images' => 2, 'videos' => count($data['media']['movies'] ?? []), 'prices' => 1];
     }
 
@@ -133,25 +135,36 @@ class EnrichVideoGameMediaJob implements ShouldQueue
     private function enrichWithGiantBomb(GiantBombService $giantBomb): array
     {
         $results = $giantBomb->search($this->videoGame->name, 1);
-        
+
         if (empty($results)) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
         }
 
         $data = $giantBomb->getFullDetails($results[0]['guid'] ?? '');
-        
+
         return ['images' => 0, 'videos' => count($data['media']['videos'] ?? []), 'prices' => 0];
     }
 
     private function enrichWithTGDB(TGDBService $tgdb): array
     {
         $results = $tgdb->search($this->videoGame->name);
-        
+
         if (empty($results)) {
             return ['images' => 0, 'videos' => 0, 'prices' => 0];
         }
 
         return ['images' => 2, 'videos' => 0, 'prices' => 0];
+    }
+
+    private function enrichWithAmazon(GameDataAggregatorService $aggregator): array
+    {
+        $result = $aggregator->syncAmazonPrice($this->videoGame);
+
+        return [
+            'images' => 0,
+            'videos' => 0,
+            'prices' => $result['prices'] ?? 0,
+        ];
     }
 
     /**

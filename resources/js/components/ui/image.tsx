@@ -16,7 +16,7 @@ export default function Image({
     ...props
 }: ImageProps) {
     const fillClasses = fill
-        ? 'absolute inset-0 h-full w-full object-cover'
+        ? `absolute inset-0 h-full w-full ${className.includes('object-') ? '' : 'object-cover'}`
         : '';
 
     return (

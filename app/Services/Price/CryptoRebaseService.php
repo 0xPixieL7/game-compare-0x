@@ -24,9 +24,10 @@ class CryptoRebaseService
 
         // Get BTC price in the local currency
         $btcInLocal = $rate ?? $this->exchangeRates->getRate('BTC', $currency);
-        
-        if (!$btcInLocal || $btcInLocal <= 0) {
+
+        if (! $btcInLocal || $btcInLocal <= 0) {
             Log::warning("Cannot rebase price: No BTC rate for {$currency}");
+
             return;
         }
 
@@ -51,7 +52,7 @@ class CryptoRebaseService
     {
         $prices = VideoGamePrice::where('is_active', true)->get();
         $currencies = $prices->pluck('currency')->unique();
-        
+
         // Pre-fetch all rates
         $rates = [];
         foreach ($currencies as $currency) {
@@ -62,7 +63,7 @@ class CryptoRebaseService
         foreach ($prices as $price) {
             try {
                 $currency = $price->currency;
-                if (!isset($rates[$currency]) || !$rates[$currency]) {
+                if (! isset($rates[$currency]) || ! $rates[$currency]) {
                     continue;
                 }
 

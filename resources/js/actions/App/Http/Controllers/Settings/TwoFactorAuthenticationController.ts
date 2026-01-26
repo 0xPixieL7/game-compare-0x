@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 export const show = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(options),
@@ -11,13 +11,13 @@ export const show = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 show.definition = {
     methods: ["get","head"],
-    url: '/settings/two-factor',
+    url: '//127.0.0.1:8000/settings/two-factor',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 show.url = (options?: RouteQueryOptions) => {
     return show.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ show.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(options),
@@ -36,7 +36,7 @@ show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(options),
@@ -46,7 +46,7 @@ show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(options),
@@ -56,7 +56,7 @@ const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(options),
@@ -66,7 +66,7 @@ showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \App\Http\Controllers\Settings\TwoFactorAuthenticationController::show
 * @see app/Http/Controllers/Settings/TwoFactorAuthenticationController.php:28
-* @route '/settings/two-factor'
+* @route '//127.0.0.1:8000/settings/two-factor'
 */
 showForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url({

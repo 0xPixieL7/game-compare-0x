@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 const RedirectController = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: RedirectController.url(options),
@@ -11,13 +11,13 @@ const RedirectController = (options?: RouteQueryOptions): RouteDefinition<'get'>
 
 RedirectController.definition = {
     methods: ["get","head","post","put","patch","delete","options"],
-    url: '/settings',
+    url: '//127.0.0.1:8000/settings',
 } satisfies RouteDefinition<["get","head","post","put","patch","delete","options"]>
 
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.url = (options?: RouteQueryOptions) => {
     return RedirectController.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ RedirectController.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: RedirectController.url(options),
@@ -36,7 +36,7 @@ RedirectController.get = (options?: RouteQueryOptions): RouteDefinition<'get'> =
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: RedirectController.url(options),
@@ -46,7 +46,7 @@ RedirectController.head = (options?: RouteQueryOptions): RouteDefinition<'head'>
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: RedirectController.url(options),
@@ -56,7 +56,7 @@ RedirectController.post = (options?: RouteQueryOptions): RouteDefinition<'post'>
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.put = (options?: RouteQueryOptions): RouteDefinition<'put'> => ({
     url: RedirectController.url(options),
@@ -66,7 +66,7 @@ RedirectController.put = (options?: RouteQueryOptions): RouteDefinition<'put'> =
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.patch = (options?: RouteQueryOptions): RouteDefinition<'patch'> => ({
     url: RedirectController.url(options),
@@ -76,7 +76,7 @@ RedirectController.patch = (options?: RouteQueryOptions): RouteDefinition<'patch
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.delete = (options?: RouteQueryOptions): RouteDefinition<'delete'> => ({
     url: RedirectController.url(options),
@@ -86,7 +86,7 @@ RedirectController.delete = (options?: RouteQueryOptions): RouteDefinition<'dele
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectController.options = (options?: RouteQueryOptions): RouteDefinition<'options'> => ({
     url: RedirectController.url(options),
@@ -96,7 +96,7 @@ RedirectController.options = (options?: RouteQueryOptions): RouteDefinition<'opt
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 const RedirectControllerForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: RedirectController.url(options),
@@ -106,7 +106,7 @@ const RedirectControllerForm = (options?: RouteQueryOptions): RouteFormDefinitio
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: RedirectController.url(options),
@@ -116,7 +116,7 @@ RedirectControllerForm.get = (options?: RouteQueryOptions): RouteFormDefinition<
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: RedirectController.url({
@@ -131,7 +131,7 @@ RedirectControllerForm.head = (options?: RouteQueryOptions): RouteFormDefinition
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: RedirectController.url(options),
@@ -141,7 +141,7 @@ RedirectControllerForm.post = (options?: RouteQueryOptions): RouteFormDefinition
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.put = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: RedirectController.url({
@@ -156,7 +156,7 @@ RedirectControllerForm.put = (options?: RouteQueryOptions): RouteFormDefinition<
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: RedirectController.url({
@@ -171,7 +171,7 @@ RedirectControllerForm.patch = (options?: RouteQueryOptions): RouteFormDefinitio
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.delete = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: RedirectController.url({
@@ -186,7 +186,7 @@ RedirectControllerForm.delete = (options?: RouteQueryOptions): RouteFormDefiniti
 /**
 * @see \Illuminate\Routing\RedirectController::__invoke
 * @see vendor/laravel/framework/src/Illuminate/Routing/RedirectController.php:19
-* @route '/settings'
+* @route '//127.0.0.1:8000/settings'
 */
 RedirectControllerForm.options = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: RedirectController.url({

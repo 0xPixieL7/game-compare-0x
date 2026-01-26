@@ -104,8 +104,8 @@ export function SpotlightCarousel({
                         id: `screen-${idx}`,
                         type: 'image',
                         url: s.url
-                            .replace('t_thumb', 't_1080p')
-                            .replace('t_cover_big', 't_1080p'),
+                            .replace('t_thumb', 't_720p')
+                            .replace('t_cover_big', 't_720p'),
                     });
                 });
             }
@@ -310,7 +310,7 @@ export function SpotlightCarousel({
         if (firstImage) {
             // Handle raw IGDB URLs if needed
             if (firstImage.url.includes('igdb.com')) {
-                return firstImage.url.replace('t_thumb', 't_1080p');
+                return firstImage.url.replace('t_thumb', 't_720p');
             }
             return firstImage.url;
         }
@@ -324,8 +324,8 @@ export function SpotlightCarousel({
 
         if (bg && bg.includes('igdb.com')) {
             return bg
-                .replace('t_thumb', 't_1080p')
-                .replace('t_cover_big', 't_1080p');
+                .replace('t_thumb', 't_720p')
+                .replace('t_cover_big', 't_720p');
         }
 
         return bg;
@@ -411,11 +411,7 @@ export function SpotlightCarousel({
                     <div className="flex flex-wrap gap-4">
                         <Link
                             className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-400"
-                            href={
-                                (window as any).route
-                                    ? (window as any).route('register')
-                                    : '/register'
-                            }
+                            href={`/games/${currentGame.id}`}
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -432,7 +428,7 @@ export function SpotlightCarousel({
                                 <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
                                 <circle cx="12" cy="12" r="10" />
                             </svg>
-                            Start tracking
+                            Start Analysis
                         </Link>
                         <a
                             href="#rows"
@@ -633,7 +629,7 @@ export function SpotlightCarousel({
                         className="inline-block w-full cursor-pointer lg:w-full"
                     >
                         <AppleTvCard
-                            className="group/atv aspect-video !min-h-0 !h-auto w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
+                            className="group/atv aspect-video !h-auto !min-h-0 w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
                             enableTilt={activeMedia.type === 'image'}
                         >
                             <div className="relative z-20 flex h-full flex-col justify-between p-8">
@@ -659,6 +655,13 @@ export function SpotlightCarousel({
                                         </svg>
                                         Featured Spotlight
                                     </div>
+                                </div>
+
+                                {/* Title Overlay */}
+                                <div className="pointer-events-none absolute bottom-24 left-8 z-40 max-w-[80%]">
+                                    <h3 className="line-clamp-2 text-3xl leading-none font-black tracking-tighter text-white uppercase shadow-black drop-shadow-lg">
+                                        {currentGame.name}
+                                    </h3>
                                 </div>
 
                                 {/* Combined Bottom Controls */}
@@ -776,7 +779,10 @@ export function SpotlightCarousel({
                                         <div className="absolute inset-0 z-10 animate-pulse bg-slate-900/20" />
                                     )}
                                     <img
-                                        src={backgroundImage || '/placeholder.jpg'}
+                                        src={
+                                            backgroundImage ||
+                                            '/placeholder.jpg'
+                                        }
                                         alt=""
                                         loading="lazy"
                                         onLoad={() => setIsImageLoading(false)}
@@ -792,27 +798,28 @@ export function SpotlightCarousel({
                                     <div className="absolute inset-0 bg-black/10" />
                                 </div>
 
-                                {activeMedia && activeMedia.type === 'video' && (
-                                    <div className="absolute inset-0 z-20 h-full w-full overflow-hidden">
-                                        <iframe
-                                            ref={iframeRef}
-                                            src={`https://www.youtube.com/embed/${String(activeMedia.url).includes('v=') ? String(activeMedia.url).split('v=')[1] : activeMedia.url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}&iv_load_policy=3&disablekb=1&fs=0`}
-                                            className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-opacity duration-1000"
-                                            allow="autoplay; encrypted-media"
-                                            style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                aspectRatio: '16/9',
-                                                pointerEvents: 'none',
-                                            }}
-                                            title={
-                                                activeMedia.title ||
-                                                'Game Video'
-                                            }
-                                        />
-                                    </div>
-                                )}
-                                <div className="absolute inset-0 z-30 bg-gradient-to-t from-black/90 via-transparent to-transparent pointer-events-none" />
+                                {activeMedia &&
+                                    activeMedia.type === 'video' && (
+                                        <div className="absolute inset-0 z-20 h-full w-full overflow-hidden">
+                                            <iframe
+                                                ref={iframeRef}
+                                                src={`https://www.youtube.com/embed/${String(activeMedia.url).includes('v=') ? String(activeMedia.url).split('v=')[1] : activeMedia.url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}&iv_load_policy=3&disablekb=1&fs=0`}
+                                                className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-opacity duration-1000"
+                                                allow="autoplay; encrypted-media"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    aspectRatio: '16/9',
+                                                    pointerEvents: 'none',
+                                                }}
+                                                title={
+                                                    activeMedia.title ||
+                                                    'Game Video'
+                                                }
+                                            />
+                                        </div>
+                                    )}
+                                <div className="pointer-events-none absolute inset-0 z-30 bg-gradient-to-t from-black via-transparent to-transparent" />
                             </div>
                         </AppleTvCard>
                     </Link>

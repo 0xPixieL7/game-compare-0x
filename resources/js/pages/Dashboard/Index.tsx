@@ -1,8 +1,11 @@
+import { SpotlightCarousel } from '@/components/compare/spotlight-carousel';
 import EndlessCarousel from '@/components/EndlessCarousel';
 import { GameCard } from '@/components/GameCard';
 import Header from '@/components/Header';
 import { useUserPreferences } from '@/Utils/userPreferences';
 import { Head, usePage } from '@inertiajs/react';
+import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
 interface Game {
@@ -34,6 +37,8 @@ interface CarouselRow {
 }
 
 interface Props {
+    hero: any;
+    spotlightGames: any[];
     carouselRows: CarouselRow[];
     searchResults: Game[];
     search: string;
@@ -44,6 +49,8 @@ interface Props {
 }
 
 export default function DashboardIndex({
+    hero,
+    spotlightGames,
     carouselRows,
     searchResults,
     search,
@@ -55,23 +62,20 @@ export default function DashboardIndex({
     const [isLoading, setIsLoading] = useState(false);
     const [populatedRows, setPopulatedRows] = useState<CarouselRow[]>([]);
 
-    // User preferences hook
+    // User preferences hook (REACTIVE)
     const preferences = useUserPreferences(isAuthenticated);
 
     // Populate user preference and recent rows on the frontend
     useEffect(() => {
         const processedRows = carouselRows.map((row) => {
             if (row.type === 'user_list') {
-                // Get games from user's favorite list
-                const userLists = preferences.getLists();
-                const favoritesList = userLists.find(
-                    (list) => list.id === 'favorites',
-                );
-                const wishList = userLists.find(
-                    (list) => list.id === 'wishlist',
-                );
+                const favoritesList = preferences
+                    .getLists()
+                    .find((l) => l.id === 'favorites');
+                const wishList = preferences
+                    .getLists()
+                    .find((l) => l.id === 'wishlist');
 
-                // Combine favorite and wishlist games (remove duplicates)
                 const allUserGameIds = new Set([
                     ...(favoritesList?.games || []),
                     ...(wishList?.games || []),
@@ -99,11 +103,9 @@ export default function DashboardIndex({
             }
 
             if (row.type === 'recent') {
-                // Get recently viewed games
                 const recentGameIds = preferences.getRecentlyViewed();
-
-                // Find matching games from all carousel rows
                 const recentGames: Game[] = [];
+
                 recentGameIds.forEach((gameId) => {
                     carouselRows.forEach((otherRow) => {
                         if (
@@ -130,65 +132,62 @@ export default function DashboardIndex({
         });
 
         setPopulatedRows(processedRows);
-    }, [carouselRows, preferences]);
-
-    // Track when user views a game
-    const trackGameView = (gameId: number) => {
-        preferences.addToRecentlyViewed(gameId);
-    };
+    }, [carouselRows, preferences.lists, preferences.recentlyViewed]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!searchTerm.trim()) return;
         setIsLoading(true);
         window.location.href = `/dashboard?search=${encodeURIComponent(searchTerm)}`;
     };
 
-    // Filter out rows with no games
     const validRows = populatedRows.filter((row) => row.games.length > 0);
 
     return (
         <>
             <Head title="Game Dashboard" />
 
-            <div className="min-h-screen bg-black">
+            <div className="min-h-screen bg-[#050505] text-white selection:bg-blue-500 selection:text-white">
                 <Header />
 
-                {/* Sub-header with search */}
-                <div className="border-b border-white/10 bg-black/80 backdrop-blur-sm">
+                {/* Sub-header with search integrated into a premium bar */}
+                <div className="sticky top-16 z-40 border-b border-white/5 bg-black/40 backdrop-blur-xl">
                     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                        <div className="flex h-16 items-center justify-between">
-                            <div className="flex items-center">
-                                <h1 className="text-2xl font-bold text-white">
-                                    Game Dashboard
+                        <div className="flex h-14 items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <h1 className="text-xl font-bold tracking-tight text-white/90">
+                                    Browse Universe
                                 </h1>
-                                <div className="ml-4 rounded-full bg-white/10 px-3 py-1 text-xs text-gray-300">
+                                <div className="hidden items-center gap-1.5 rounded-full border border-blue-500/10 bg-blue-500/5 px-3 py-1 text-[9px] font-bold tracking-[0.2em] text-blue-400 uppercase sm:flex">
+                                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
                                     {isAuthenticated
-                                        ? 'Authenticated'
-                                        : 'Guest Session (30min)'}
+                                        ? 'Titan Node Active'
+                                        : 'Guest Signal'}
                                 </div>
                             </div>
 
                             {/* Search */}
                             <form
                                 onSubmit={handleSearch}
-                                className="flex items-center space-x-4"
+                                className="flex items-center"
                             >
-                                <div className="relative">
+                                <div className="group relative">
+                                    <div className="absolute inset-0 bg-blue-500/5 opacity-0 blur-md transition-opacity group-focus-within:opacity-100" />
                                     <input
                                         type="text"
                                         value={searchTerm}
                                         onChange={(e) =>
                                             setSearchTerm(e.target.value)
                                         }
-                                        placeholder="Search games..."
-                                        className="w-64 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white placeholder-gray-300 focus:border-transparent focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        placeholder="Scan protocols..."
+                                        className="relative w-48 rounded-full border border-white/5 bg-white/5 px-4 py-1.5 text-xs text-white placeholder-gray-500 transition-all focus:w-64 focus:border-blue-500/30 focus:bg-white/10 focus:outline-none sm:w-64"
                                     />
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="absolute top-1/2 right-2 -translate-y-1/2 transform text-gray-400 hover:text-white"
+                                        className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-500 transition-colors hover:text-white"
                                     >
-                                        🔍
+                                        <Search className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </form>
@@ -196,121 +195,179 @@ export default function DashboardIndex({
                     </div>
                 </div>
 
-                {/* Performance Stats */}
-                <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-                    <div className="rounded-lg border border-white/10 bg-black/20 p-4 backdrop-blur-md">
-                        <div className="flex items-center justify-between text-sm text-gray-300">
-                            <span>{meta.total_rows} carousel rows loaded</span>
-                            <span>
-                                Query time:{' '}
-                                {(meta.query_time * 1000).toFixed(2)}ms
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <main className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
-                    {/* Search Results */}
-                    {search && searchResults.length > 0 && (
-                        <div className="mb-12">
-                            <h2 className="mb-6 text-2xl font-semibold text-white">
-                                Search Results for "{search}"
-                            </h2>
-                            <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7">
-                                {searchResults.map((game) => (
-                                    <div
-                                        key={game.id}
-                                        onClick={() => trackGameView(game.id)}
-                                    >
-                                        <GameCard
-                                            game={game}
-                                            className="aspect-[2/3]"
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Search state message */}
-                    {search && searchResults.length === 0 && (
-                        <div className="py-12 text-center">
-                            <div className="text-lg text-gray-400">
-                                No games found for "{search}"
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Carousel Rows */}
+                <main className="relative z-10">
+                    {/* Spotlight Section */}
                     {!search && (
-                        <div className="space-y-16">
-                            {validRows.map((row) => {
-                                // Convert games to the format expected by EndlessCarousel
-                                const carouselGames = row.games.map((game) => ({
-                                    ...game,
-                                    media: {
-                                        ...game.media,
-                                        cover_url:
-                                            game.media.cover_url_thumb ||
-                                            game.media.cover_url,
-                                        cover_url_thumb:
-                                            game.media.cover_url_thumb ||
-                                            game.media.cover_url,
-                                        cover: {
-                                            url:
-                                                game.media.cover_url_thumb ||
-                                                game.media.cover_url,
-                                            width: 0,
-                                            height: 0,
-                                        },
-                                    },
-                                })) as any[];
+                        <div className="relative -mt-16 mb-8 overflow-hidden">
+                            <SpotlightCarousel
+                                spotlight={spotlightGames}
+                                hero={hero}
+                            />
+                            <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-64 bg-gradient-to-t from-[#050505] to-transparent" />
+                        </div>
+                    )}
 
-                                return (
-                                    <div
-                                        key={row.id}
-                                        onClick={(e) => {
-                                            // Track clicks on games in carousels
-                                            const target =
-                                                e.target as HTMLElement;
-                                            const gameLink =
-                                                target.closest('a');
-                                            if (gameLink) {
-                                                const href =
-                                                    gameLink.getAttribute(
-                                                        'href',
-                                                    );
-                                                const match =
-                                                    href?.match(
-                                                        /\/dashboard\/(\d+)/,
-                                                    );
-                                                if (match) {
-                                                    trackGameView(
-                                                        parseInt(match[1]),
-                                                    );
-                                                }
+                    <div className="mx-auto max-w-[100rem] px-4 pb-24 sm:px-6 lg:px-12">
+                        {/* Search Results */}
+                        {search && searchResults.length > 0 && (
+                            <div className="mb-12 pt-8">
+                                <h2 className="mb-8 text-2xl font-bold tracking-tight text-white">
+                                    Signals detected for{' '}
+                                    <span className="text-blue-400">
+                                        "{search}"
+                                    </span>
+                                </h2>
+                                <div className="grid grid-cols-2 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5">
+                                    {searchResults.map((game, i) => (
+                                        <motion.div
+                                            key={game.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05 }}
+                                            onClick={() =>
+                                                preferences.addToRecentlyViewed(
+                                                    game.id,
+                                                )
                                             }
-                                        }}
-                                    >
-                                        <EndlessCarousel
-                                            title={row.title}
-                                            games={carouselGames}
-                                            className="mb-8"
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    {/* Empty state for no rows */}
-                    {!search && validRows.length === 0 && (
-                        <div className="py-12 text-center">
-                            <div className="text-lg text-gray-400">
-                                No games available in any category
+                                        >
+                                            <GameCard
+                                                game={game}
+                                                className="aspect-[3/4]"
+                                            />
+                                        </motion.div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Search state message */}
+                        {search && searchResults.length === 0 && (
+                            <div className="py-48 text-center">
+                                <div className="text-2xl font-black tracking-widest text-gray-700 uppercase">
+                                    Zero Results Detected
+                                </div>
+                                <p className="mt-4 font-medium text-gray-500">
+                                    Try refining your search parameters or
+                                    provider IDs.
+                                </p>
+                                <button
+                                    onClick={() => window.history.back()}
+                                    className="mt-8 rounded-full border border-white/10 bg-white/5 px-6 py-2 text-xs font-bold tracking-widest text-white uppercase hover:bg-white/10"
+                                >
+                                    Return to Nexus
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Carousel Rows */}
+                        {!search && (
+                            <div className="space-y-12">
+                                {validRows.map((row, i) => {
+                                    const carouselGames = row.games.map(
+                                        (game) => ({
+                                            ...game,
+                                            media: {
+                                                ...game.media,
+                                                cover_url:
+                                                    game.media
+                                                        .cover_url_thumb ||
+                                                    game.media.cover_url,
+                                                cover_url_thumb:
+                                                    game.media
+                                                        .cover_url_thumb ||
+                                                    game.media.cover_url,
+                                                cover: {
+                                                    url:
+                                                        game.media
+                                                            .cover_url_thumb ||
+                                                        game.media.cover_url,
+                                                    width: 0,
+                                                    height: 0,
+                                                },
+                                            },
+                                        }),
+                                    ) as any[];
+
+                                    return (
+                                        <motion.div
+                                            key={row.id}
+                                            initial={{ opacity: 0, x: -20 }}
+                                            whileInView={{ opacity: 1, x: 0 }}
+                                            viewport={{
+                                                once: true,
+                                                margin: '-100px',
+                                            }}
+                                            transition={{
+                                                duration: 0.8,
+                                                delay: i * 0.1,
+                                            }}
+                                            onClick={(e) => {
+                                                const target =
+                                                    e.target as HTMLElement;
+                                                const gameLink =
+                                                    target.closest('a');
+                                                if (gameLink) {
+                                                    const href =
+                                                        gameLink.getAttribute(
+                                                            'href',
+                                                        );
+                                                    const match =
+                                                        href?.match(
+                                                            /\/dashboard\/(\d+)/,
+                                                        );
+                                                    if (match) {
+                                                        preferences.addToRecentlyViewed(
+                                                            parseInt(match[1]),
+                                                        );
+                                                    }
+                                                }
+                                            }}
+                                            className="group relative"
+                                        >
+                                            <div className="absolute top-0 bottom-0 -left-6 hidden w-1 rounded-full bg-gradient-to-b from-blue-500/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100 lg:block" />
+                                            <EndlessCarousel
+                                                title={row.title}
+                                                games={carouselGames}
+                                                className="mb-4"
+                                            />
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Performance & Meta */}
+                        {!search && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                whileInView={{ opacity: 1 }}
+                                viewport={{ once: true }}
+                                className="mt-32 rounded-3xl border border-white/5 bg-white/[0.01] p-8 backdrop-blur-2xl"
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-8 text-[10px] font-black tracking-[0.2em] text-gray-500 uppercase">
+                                    <div className="flex items-center gap-6">
+                                        <span className="flex items-center gap-2">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                                            {meta.total_rows} Datastreams
+                                            Synthesized
+                                        </span>
+                                        <span className="h-4 w-px bg-white/10" />
+                                        <span>Version 2.4.9 Omega</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                                        <span>
+                                            System Latency:{' '}
+                                            {(meta.query_time * 1000).toFixed(
+                                                2,
+                                            )}
+                                            ms
+                                        </span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
                 </main>
             </div>
         </>

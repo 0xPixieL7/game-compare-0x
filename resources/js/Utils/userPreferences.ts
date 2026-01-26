@@ -1,4 +1,5 @@
 import Cookies from 'js-cookie';
+import { useEffect, useState } from 'react';
 
 export interface UserGameList {
     id: string;
@@ -59,7 +60,6 @@ class UserPreferencesManager {
             if (stored) {
                 const parsed = JSON.parse(stored);
 
-                // Check if guest session is expired (30 minutes)
                 if (this.isGuest && parsed.lastActivity) {
                     const lastActivity = new Date(parsed.lastActivity);
                     const now = new Date();
@@ -67,7 +67,6 @@ class UserPreferencesManager {
                         (now.getTime() - lastActivity.getTime()) / (1000 * 60);
 
                     if (diffMinutes > GUEST_SESSION_DURATION) {
-                        // Session expired, return default preferences
                         return defaultPreferences;
                     }
                 }
@@ -88,7 +87,7 @@ class UserPreferencesManager {
             const cookieOptions: Cookies.CookieAttributes = {
                 expires: this.isGuest
                     ? GUEST_SESSION_DURATION / (60 * 24)
-                    : PERMANENT_DURATION, // Convert minutes to days for guests
+                    : PERMANENT_DURATION,
                 secure: window.location.protocol === 'https:',
                 sameSite: 'lax',
             };
@@ -98,12 +97,18 @@ class UserPreferencesManager {
                 JSON.stringify(this.preferences),
                 cookieOptions,
             );
+
+            // Dispatch custom event for cross-component reactivity
+            window.dispatchEvent(new CustomEvent('preferences-updated'));
         } catch (error) {
             console.error('Failed to save user preferences:', error);
         }
     }
 
-    // List Management
+    getPreferences(): GamePreferences {
+        return { ...this.preferences };
+    }
+
     createList(name: string): UserGameList {
         const newList: UserGameList = {
             id: `list_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -160,7 +165,6 @@ class UserPreferencesManager {
     }
 
     deleteList(listId: string): boolean {
-        // Don't allow deletion of default lists
         if (listId === 'favorites' || listId === 'wishlist') return false;
 
         const index = this.preferences.lists.findIndex(
@@ -184,16 +188,11 @@ class UserPreferencesManager {
         return true;
     }
 
-    // Recently Viewed Games
     addToRecentlyViewed(gameId: number): void {
-        // Remove if already exists
         this.preferences.recentlyViewed =
             this.preferences.recentlyViewed.filter((id) => id !== gameId);
 
-        // Add to beginning
         this.preferences.recentlyViewed.unshift(gameId);
-
-        // Keep only last 50 games
         this.preferences.recentlyViewed = this.preferences.recentlyViewed.slice(
             0,
             50,
@@ -206,7 +205,6 @@ class UserPreferencesManager {
         return this.preferences.recentlyViewed;
     }
 
-    // Favorite Genres
     addFavoriteGenre(genre: string): void {
         if (!this.preferences.favoriteGenres.includes(genre)) {
             this.preferences.favoriteGenres.push(genre);
@@ -226,7 +224,6 @@ class UserPreferencesManager {
         return this.preferences.favoriteGenres;
     }
 
-    // Utilities
     clearAllData(): void {
         Cookies.remove(PREFERENCES_COOKIE_KEY);
         this.preferences = this.loadPreferences();
@@ -272,7 +269,6 @@ class UserPreferencesManager {
     }
 }
 
-// Export singleton instances
 let guestPreferences: UserPreferencesManager | null = null;
 let userPreferences: UserPreferencesManager | null = null;
 
@@ -292,37 +288,51 @@ export const getPreferencesManager = (
     }
 };
 
-// React Hook for easier usage in components
 export const useUserPreferences = (isAuthenticated: boolean = false) => {
     const manager = getPreferencesManager(isAuthenticated);
+    const [prefs, setPrefs] = useState<GamePreferences>(
+        manager.getPreferences(),
+    );
+
+    useEffect(() => {
+        const handleUpdate = () => {
+            setPrefs(manager.getPreferences());
+        };
+
+        window.addEventListener('preferences-updated', handleUpdate);
+        return () =>
+            window.removeEventListener('preferences-updated', handleUpdate);
+    }, [manager]);
 
     return {
-        // List operations
+        lists: prefs.lists,
+        recentlyViewed: prefs.recentlyViewed,
+        favoriteGenres: prefs.favoriteGenres,
+
         createList: (name: string) => manager.createList(name),
-        getLists: () => manager.getLists(),
-        getList: (listId: string) => manager.getList(listId),
+        getLists: () => prefs.lists,
+        getList: (listId: string) => prefs.lists.find((l) => l.id === listId),
         addGameToList: (listId: string, gameId: number) =>
             manager.addGameToList(listId, gameId),
         removeGameFromList: (listId: string, gameId: number) =>
             manager.removeGameFromList(listId, gameId),
-        isGameInList: (listId: string, gameId: number) =>
-            manager.isGameInList(listId, gameId),
+        isGameInList: (listId: string, gameId: number) => {
+            const list = prefs.lists.find((l) => l.id === listId);
+            return list ? list.games.includes(gameId) : false;
+        },
         deleteList: (listId: string) => manager.deleteList(listId),
         renameList: (listId: string, newName: string) =>
             manager.renameList(listId, newName),
 
-        // Recently viewed
         addToRecentlyViewed: (gameId: number) =>
             manager.addToRecentlyViewed(gameId),
-        getRecentlyViewed: () => manager.getRecentlyViewed(),
+        getRecentlyViewed: () => prefs.recentlyViewed,
 
-        // Favorite genres
         addFavoriteGenre: (genre: string) => manager.addFavoriteGenre(genre),
         removeFavoriteGenre: (genre: string) =>
             manager.removeFavoriteGenre(genre),
-        getFavoriteGenres: () => manager.getFavoriteGenres(),
+        getFavoriteGenres: () => prefs.favoriteGenres,
 
-        // Utilities
         clearAllData: () => manager.clearAllData(),
         exportPreferences: () => manager.exportPreferences(),
         importPreferences: (data: string) => manager.importPreferences(data),

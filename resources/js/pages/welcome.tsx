@@ -1,8 +1,8 @@
 import { SpotlightCarousel } from '@/components/compare/spotlight-carousel';
 import EndlessCarousel from '@/components/EndlessCarousel';
+import Header from '@/components/Header';
 import IgdbAttribution from '@/components/igdb-attribution';
 import IntroSplash from '@/components/landing/IntroSplash';
-import { dashboard, login, register } from '@/routes';
 import { type GameRowData, type SharedData } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
@@ -22,7 +22,7 @@ export default function Welcome({
     rows,
 }: WelcomeProps) {
     const { auth } = usePage<SharedData>().props;
-    const [introComplete, setIntroComplete] = useState(false);
+    const [introComplete, setIntroComplete] = useState(true);
 
     return (
         <>
@@ -57,47 +57,7 @@ export default function Welcome({
             <div className="landing-shell relative min-h-screen text-white selection:bg-blue-500 selection:text-white">
                 <div className="landing-scanlines pointer-events-none absolute inset-0 z-0" />
                 <div className="relative z-10 flex min-h-screen flex-col">
-                    <header className="w-full px-6 py-6 lg:px-12">
-                        <nav className="mx-auto flex w-full items-center justify-between rounded-full border border-white/10 bg-black/60 px-5 py-3 backdrop-blur">
-                            <div className="flex items-center gap-2">
-                                <img
-                                    src="/gc.svg"
-                                    alt="Game Compare"
-                                    className="h-8 w-auto lg:h-10"
-                                />
-                                <span className="text-xs font-semibold tracking-[0.3em] text-gray-300 uppercase">
-                                    GAME COMPARE
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                {auth.user ? (
-                                    <Link
-                                        href={dashboard().url}
-                                        className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-all hover:bg-blue-400"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <>
-                                        <Link
-                                            href={login().url}
-                                            className="rounded-full px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-colors hover:text-gray-300"
-                                        >
-                                            Log in
-                                        </Link>
-                                        {canRegister && (
-                                            <Link
-                                                href={register().url}
-                                                className="rounded-full bg-blue-500 px-4 py-1.5 text-xs font-semibold tracking-[0.2em] text-white uppercase transition-all hover:bg-blue-400"
-                                            >
-                                                Sign up
-                                            </Link>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </nav>
-                    </header>
+                    <Header />
 
                     <SpotlightCarousel spotlight={spotlightGames} hero={hero} />
 

@@ -88,7 +88,13 @@ export interface GameShowMedia {
     background: string | null;
     cover: string | null;
     screenshots: string[];
-    trailers: string[];
+    artworks: string[];
+    trailers: Array<{
+        url: string;
+        embed_url: string | null;
+        name: string;
+        video_id: string | null;
+    }>;
 }
 
 export interface GameShowPrice {
@@ -97,6 +103,8 @@ export interface GameShowPrice {
     country_code: string;
     currency: string;
     amount: number;
+    btc_amount: number | null;
+    btc_rate: number | null;
     url: string | null;
     discount_percent: number;
     initial_amount: number | null;
@@ -159,14 +167,34 @@ export interface GameModel {
     rating: number | null;
     release_date: string | null;
     summary?: string;
+    storyline?: string | null;
     developer?: string | string[];
     publisher?: string | string[];
+    genres?: string[];
+    platforms?: string[];
     theme?: GameTheme | null;
+    url?: string | null;
+    slug?: string | null;
     attributes?: {
         summary?: string;
         [key: string]: unknown;
     };
     [key: string]: unknown;
+}
+
+export interface GameStatistics {
+    unique_countries: number;
+    total_prices: number;
+    total_screenshots: number;
+    total_videos: number;
+    total_artworks: number;
+}
+
+export interface GameRatings {
+    igdb: number;
+    rating_count: number;
+    hypes: number;
+    follows: number;
 }
 
 // The transformed item used in Index.tsx

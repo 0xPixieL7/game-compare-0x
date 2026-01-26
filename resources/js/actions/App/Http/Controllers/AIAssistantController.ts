@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateModel
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-model'
+* @route '//127.0.0.1:8000/api/ai/generate-model'
 */
 export const generateModel = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateModel.url(options),
@@ -11,13 +11,13 @@ export const generateModel = (options?: RouteQueryOptions): RouteDefinition<'pos
 
 generateModel.definition = {
     methods: ["post"],
-    url: '/api/ai/generate-model',
+    url: '//127.0.0.1:8000/api/ai/generate-model',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateModel
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-model'
+* @route '//127.0.0.1:8000/api/ai/generate-model'
 */
 generateModel.url = (options?: RouteQueryOptions) => {
     return generateModel.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ generateModel.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateModel
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-model'
+* @route '//127.0.0.1:8000/api/ai/generate-model'
 */
 generateModel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateModel.url(options),
@@ -36,7 +36,7 @@ generateModel.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateModel
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-model'
+* @route '//127.0.0.1:8000/api/ai/generate-model'
 */
 const generateModelForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateModel.url(options),
@@ -46,7 +46,7 @@ const generateModelForm = (options?: RouteQueryOptions): RouteFormDefinition<'po
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateModel
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-model'
+* @route '//127.0.0.1:8000/api/ai/generate-model'
 */
 generateModelForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateModel.url(options),
@@ -58,7 +58,7 @@ generateModel.form = generateModelForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateMigration
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-migration'
+* @route '//127.0.0.1:8000/api/ai/generate-migration'
 */
 export const generateMigration = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateMigration.url(options),
@@ -67,13 +67,13 @@ export const generateMigration = (options?: RouteQueryOptions): RouteDefinition<
 
 generateMigration.definition = {
     methods: ["post"],
-    url: '/api/ai/generate-migration',
+    url: '//127.0.0.1:8000/api/ai/generate-migration',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateMigration
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-migration'
+* @route '//127.0.0.1:8000/api/ai/generate-migration'
 */
 generateMigration.url = (options?: RouteQueryOptions) => {
     return generateMigration.definition.url + queryParams(options)
@@ -82,7 +82,7 @@ generateMigration.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateMigration
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-migration'
+* @route '//127.0.0.1:8000/api/ai/generate-migration'
 */
 generateMigration.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateMigration.url(options),
@@ -92,7 +92,7 @@ generateMigration.post = (options?: RouteQueryOptions): RouteDefinition<'post'> 
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateMigration
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-migration'
+* @route '//127.0.0.1:8000/api/ai/generate-migration'
 */
 const generateMigrationForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateMigration.url(options),
@@ -102,7 +102,7 @@ const generateMigrationForm = (options?: RouteQueryOptions): RouteFormDefinition
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateMigration
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-migration'
+* @route '//127.0.0.1:8000/api/ai/generate-migration'
 */
 generateMigrationForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateMigration.url(options),
@@ -114,7 +114,7 @@ generateMigration.form = generateMigrationForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateTests
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-tests'
+* @route '//127.0.0.1:8000/api/ai/generate-tests'
 */
 export const generateTests = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateTests.url(options),
@@ -123,13 +123,13 @@ export const generateTests = (options?: RouteQueryOptions): RouteDefinition<'pos
 
 generateTests.definition = {
     methods: ["post"],
-    url: '/api/ai/generate-tests',
+    url: '//127.0.0.1:8000/api/ai/generate-tests',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateTests
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-tests'
+* @route '//127.0.0.1:8000/api/ai/generate-tests'
 */
 generateTests.url = (options?: RouteQueryOptions) => {
     return generateTests.definition.url + queryParams(options)
@@ -138,7 +138,7 @@ generateTests.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateTests
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-tests'
+* @route '//127.0.0.1:8000/api/ai/generate-tests'
 */
 generateTests.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateTests.url(options),
@@ -148,7 +148,7 @@ generateTests.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateTests
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-tests'
+* @route '//127.0.0.1:8000/api/ai/generate-tests'
 */
 const generateTestsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateTests.url(options),
@@ -158,7 +158,7 @@ const generateTestsForm = (options?: RouteQueryOptions): RouteFormDefinition<'po
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateTests
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-tests'
+* @route '//127.0.0.1:8000/api/ai/generate-tests'
 */
 generateTestsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateTests.url(options),
@@ -170,7 +170,7 @@ generateTests.form = generateTestsForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::validateSchema
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/validate-schema'
+* @route '//127.0.0.1:8000/api/ai/validate-schema'
 */
 export const validateSchema = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: validateSchema.url(options),
@@ -179,13 +179,13 @@ export const validateSchema = (options?: RouteQueryOptions): RouteDefinition<'po
 
 validateSchema.definition = {
     methods: ["post"],
-    url: '/api/ai/validate-schema',
+    url: '//127.0.0.1:8000/api/ai/validate-schema',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::validateSchema
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/validate-schema'
+* @route '//127.0.0.1:8000/api/ai/validate-schema'
 */
 validateSchema.url = (options?: RouteQueryOptions) => {
     return validateSchema.definition.url + queryParams(options)
@@ -194,7 +194,7 @@ validateSchema.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::validateSchema
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/validate-schema'
+* @route '//127.0.0.1:8000/api/ai/validate-schema'
 */
 validateSchema.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: validateSchema.url(options),
@@ -204,7 +204,7 @@ validateSchema.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => 
 /**
 * @see \App\Http\Controllers\AIAssistantController::validateSchema
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/validate-schema'
+* @route '//127.0.0.1:8000/api/ai/validate-schema'
 */
 const validateSchemaForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: validateSchema.url(options),
@@ -214,7 +214,7 @@ const validateSchemaForm = (options?: RouteQueryOptions): RouteFormDefinition<'p
 /**
 * @see \App\Http\Controllers\AIAssistantController::validateSchema
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/validate-schema'
+* @route '//127.0.0.1:8000/api/ai/validate-schema'
 */
 validateSchemaForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: validateSchema.url(options),
@@ -226,7 +226,7 @@ validateSchema.form = validateSchemaForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::optimizeQuery
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/optimize-query'
+* @route '//127.0.0.1:8000/api/ai/optimize-query'
 */
 export const optimizeQuery = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: optimizeQuery.url(options),
@@ -235,13 +235,13 @@ export const optimizeQuery = (options?: RouteQueryOptions): RouteDefinition<'pos
 
 optimizeQuery.definition = {
     methods: ["post"],
-    url: '/api/ai/optimize-query',
+    url: '//127.0.0.1:8000/api/ai/optimize-query',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::optimizeQuery
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/optimize-query'
+* @route '//127.0.0.1:8000/api/ai/optimize-query'
 */
 optimizeQuery.url = (options?: RouteQueryOptions) => {
     return optimizeQuery.definition.url + queryParams(options)
@@ -250,7 +250,7 @@ optimizeQuery.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::optimizeQuery
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/optimize-query'
+* @route '//127.0.0.1:8000/api/ai/optimize-query'
 */
 optimizeQuery.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: optimizeQuery.url(options),
@@ -260,7 +260,7 @@ optimizeQuery.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => (
 /**
 * @see \App\Http\Controllers\AIAssistantController::optimizeQuery
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/optimize-query'
+* @route '//127.0.0.1:8000/api/ai/optimize-query'
 */
 const optimizeQueryForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: optimizeQuery.url(options),
@@ -270,7 +270,7 @@ const optimizeQueryForm = (options?: RouteQueryOptions): RouteFormDefinition<'po
 /**
 * @see \App\Http\Controllers\AIAssistantController::optimizeQuery
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/optimize-query'
+* @route '//127.0.0.1:8000/api/ai/optimize-query'
 */
 optimizeQueryForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: optimizeQuery.url(options),
@@ -282,7 +282,7 @@ optimizeQuery.form = optimizeQueryForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::autoFixTypes
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/auto-fix-types'
+* @route '//127.0.0.1:8000/api/ai/auto-fix-types'
 */
 export const autoFixTypes = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: autoFixTypes.url(options),
@@ -291,13 +291,13 @@ export const autoFixTypes = (options?: RouteQueryOptions): RouteDefinition<'post
 
 autoFixTypes.definition = {
     methods: ["post"],
-    url: '/api/ai/auto-fix-types',
+    url: '//127.0.0.1:8000/api/ai/auto-fix-types',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::autoFixTypes
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/auto-fix-types'
+* @route '//127.0.0.1:8000/api/ai/auto-fix-types'
 */
 autoFixTypes.url = (options?: RouteQueryOptions) => {
     return autoFixTypes.definition.url + queryParams(options)
@@ -306,7 +306,7 @@ autoFixTypes.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::autoFixTypes
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/auto-fix-types'
+* @route '//127.0.0.1:8000/api/ai/auto-fix-types'
 */
 autoFixTypes.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: autoFixTypes.url(options),
@@ -316,7 +316,7 @@ autoFixTypes.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
 /**
 * @see \App\Http\Controllers\AIAssistantController::autoFixTypes
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/auto-fix-types'
+* @route '//127.0.0.1:8000/api/ai/auto-fix-types'
 */
 const autoFixTypesForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: autoFixTypes.url(options),
@@ -326,7 +326,7 @@ const autoFixTypesForm = (options?: RouteQueryOptions): RouteFormDefinition<'pos
 /**
 * @see \App\Http\Controllers\AIAssistantController::autoFixTypes
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/auto-fix-types'
+* @route '//127.0.0.1:8000/api/ai/auto-fix-types'
 */
 autoFixTypesForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: autoFixTypes.url(options),
@@ -338,7 +338,7 @@ autoFixTypes.form = autoFixTypesForm
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateApiDocs
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-api-docs'
+* @route '//127.0.0.1:8000/api/ai/generate-api-docs'
 */
 export const generateApiDocs = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateApiDocs.url(options),
@@ -347,13 +347,13 @@ export const generateApiDocs = (options?: RouteQueryOptions): RouteDefinition<'p
 
 generateApiDocs.definition = {
     methods: ["post"],
-    url: '/api/ai/generate-api-docs',
+    url: '//127.0.0.1:8000/api/ai/generate-api-docs',
 } satisfies RouteDefinition<["post"]>
 
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateApiDocs
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-api-docs'
+* @route '//127.0.0.1:8000/api/ai/generate-api-docs'
 */
 generateApiDocs.url = (options?: RouteQueryOptions) => {
     return generateApiDocs.definition.url + queryParams(options)
@@ -362,7 +362,7 @@ generateApiDocs.url = (options?: RouteQueryOptions) => {
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateApiDocs
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-api-docs'
+* @route '//127.0.0.1:8000/api/ai/generate-api-docs'
 */
 generateApiDocs.post = (options?: RouteQueryOptions): RouteDefinition<'post'> => ({
     url: generateApiDocs.url(options),
@@ -372,7 +372,7 @@ generateApiDocs.post = (options?: RouteQueryOptions): RouteDefinition<'post'> =>
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateApiDocs
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-api-docs'
+* @route '//127.0.0.1:8000/api/ai/generate-api-docs'
 */
 const generateApiDocsForm = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateApiDocs.url(options),
@@ -382,7 +382,7 @@ const generateApiDocsForm = (options?: RouteQueryOptions): RouteFormDefinition<'
 /**
 * @see \App\Http\Controllers\AIAssistantController::generateApiDocs
 * @see app/Http/Controllers/AIAssistantController.php:0
-* @route '/api/ai/generate-api-docs'
+* @route '//127.0.0.1:8000/api/ai/generate-api-docs'
 */
 generateApiDocsForm.post = (options?: RouteQueryOptions): RouteFormDefinition<'post'> => ({
     action: generateApiDocs.url(options),

@@ -1,7 +1,7 @@
 import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFormDefinition } from './../../../wayfinder'
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 export const stats = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: stats.url(options),
@@ -10,12 +10,12 @@ export const stats = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 stats.definition = {
     methods: ["get","head"],
-    url: '/api/compare/stats',
+    url: '//127.0.0.1:8000/api/compare/stats',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 stats.url = (options?: RouteQueryOptions) => {
     return stats.definition.url + queryParams(options)
@@ -23,7 +23,7 @@ stats.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 stats.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: stats.url(options),
@@ -32,7 +32,7 @@ stats.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 stats.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: stats.url(options),
@@ -41,7 +41,7 @@ stats.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 const statsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: stats.url(options),
@@ -50,7 +50,7 @@ const statsForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 statsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: stats.url(options),
@@ -59,7 +59,7 @@ statsForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 
 /**
 * @see routes/api.php:21
-* @route '/api/compare/stats'
+* @route '//127.0.0.1:8000/api/compare/stats'
 */
 statsForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: stats.url({
@@ -75,7 +75,7 @@ stats.form = statsForm
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 export const entries = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: entries.url(options),
@@ -84,12 +84,12 @@ export const entries = (options?: RouteQueryOptions): RouteDefinition<'get'> => 
 
 entries.definition = {
     methods: ["get","head"],
-    url: '/api/compare/entries',
+    url: '//127.0.0.1:8000/api/compare/entries',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 entries.url = (options?: RouteQueryOptions) => {
     return entries.definition.url + queryParams(options)
@@ -97,7 +97,7 @@ entries.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 entries.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: entries.url(options),
@@ -106,7 +106,7 @@ entries.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 entries.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: entries.url(options),
@@ -115,7 +115,7 @@ entries.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 const entriesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: entries.url(options),
@@ -124,7 +124,7 @@ const entriesForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =>
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 entriesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: entries.url(options),
@@ -133,7 +133,7 @@ entriesForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => (
 
 /**
 * @see routes/api.php:29
-* @route '/api/compare/entries'
+* @route '//127.0.0.1:8000/api/compare/entries'
 */
 entriesForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: entries.url({
@@ -149,7 +149,7 @@ entries.form = entriesForm
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 export const spotlight = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: spotlight.url(options),
@@ -158,12 +158,12 @@ export const spotlight = (options?: RouteQueryOptions): RouteDefinition<'get'> =
 
 spotlight.definition = {
     methods: ["get","head"],
-    url: '/api/compare/spotlight',
+    url: '//127.0.0.1:8000/api/compare/spotlight',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 spotlight.url = (options?: RouteQueryOptions) => {
     return spotlight.definition.url + queryParams(options)
@@ -171,7 +171,7 @@ spotlight.url = (options?: RouteQueryOptions) => {
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 spotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: spotlight.url(options),
@@ -180,7 +180,7 @@ spotlight.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 spotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: spotlight.url(options),
@@ -189,7 +189,7 @@ spotlight.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 const spotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: spotlight.url(options),
@@ -198,7 +198,7 @@ const spotlightForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> 
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 spotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: spotlight.url(options),
@@ -207,7 +207,7 @@ spotlightForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> =>
 
 /**
 * @see routes/api.php:38
-* @route '/api/compare/spotlight'
+* @route '//127.0.0.1:8000/api/compare/spotlight'
 */
 spotlightForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: spotlight.url({

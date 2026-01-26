@@ -28,7 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS in production (critical for Inertia to avoid mixed content errors)
+        // Force URL from config (ensures port 8000 is included in email links)
+        if (config('app.url')) {
+            URL::forceRootUrl(config('app.url'));
+        }
+
+        // Force HTTPS in production
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }
@@ -74,12 +79,11 @@ class AppServiceProvider extends ServiceProvider
                     '--class' => 'ComprehensiveCountrySeeder',
                     '--force' => true,
                 ]);
-                
+
                 // Trigger initial sync to ensure data availability
                 \App\Jobs\SynchronizeGlobalMarketDataJob::dispatchSync(true);
             }
         );
 
     }
-
 }

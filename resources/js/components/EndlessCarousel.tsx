@@ -34,8 +34,9 @@ export default function EndlessCarousel({
     useEffect(() => {
         const handleResize = () => {
             if (window.innerWidth < 768) setVisibleCount(2);
-            else if (window.innerWidth < 1024) setVisibleCount(4);
-            else setVisibleCount(6);
+            else if (window.innerWidth < 1280)
+                setVisibleCount(3); // Larger cards on medium/large
+            else setVisibleCount(4); // Larger cards on XL (was 5)
 
             // Update container width for transform calculation
             if (containerRef.current) {
@@ -165,7 +166,7 @@ export default function EndlessCarousel({
                 </button>
 
                 {/* Games Track */}
-                <div className="px-4 lg:px-12" ref={containerRef}>
+                <div className="w-full" ref={containerRef}>
                     <div
                         className="flex will-change-transform"
                         style={{
@@ -184,7 +185,7 @@ export default function EndlessCarousel({
                             >
                                 <GameCard
                                     game={game}
-                                    className="aspect-[2/3]"
+                                    className="aspect-[3/4]"
                                 />
                             </div>
                         ))}

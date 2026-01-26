@@ -2,7 +2,7 @@ import { queryParams, type RouteQueryOptions, type RouteDefinition, type RouteFo
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 export const show = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(options),
@@ -11,13 +11,13 @@ export const show = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 
 show.definition = {
     methods: ["get","head"],
-    url: '/sanctum/csrf-cookie',
+    url: '//127.0.0.1:8000/sanctum/csrf-cookie',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 show.url = (options?: RouteQueryOptions) => {
     return show.definition.url + queryParams(options)
@@ -26,7 +26,7 @@ show.url = (options?: RouteQueryOptions) => {
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: show.url(options),
@@ -36,7 +36,7 @@ show.get = (options?: RouteQueryOptions): RouteDefinition<'get'> => ({
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: show.url(options),
@@ -46,7 +46,7 @@ show.head = (options?: RouteQueryOptions): RouteDefinition<'head'> => ({
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(options),
@@ -56,7 +56,7 @@ const showForm = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url(options),
@@ -66,7 +66,7 @@ showForm.get = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
 /**
 * @see \Laravel\Sanctum\Http\Controllers\CsrfCookieController::show
 * @see vendor/laravel/sanctum/src/Http/Controllers/CsrfCookieController.php:17
-* @route '/sanctum/csrf-cookie'
+* @route '//127.0.0.1:8000/sanctum/csrf-cookie'
 */
 showForm.head = (options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: show.url({

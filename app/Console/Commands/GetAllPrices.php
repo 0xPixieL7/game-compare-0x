@@ -2,7 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Price\PriceAggregatorService;
+use App\Models\VideoGame;
+use App\Services\Price\GameDataAggregatorService;
 use Illuminate\Console\Command;
 
 class GetAllPrices extends Command
@@ -24,20 +25,86 @@ class GetAllPrices extends Command
     /**
      * Execute the console command.
      */
-    public function handle(PriceAggregatorService $aggregator)
+    public function handle(GameDataAggregatorService $aggregator)
     {
         $gameId = (int) $this->argument('game_id');
         $forceRefresh = $this->option('force');
 
         $this->info("Fetching all prices for game ID: {$gameId}");
         if ($forceRefresh) {
-            $this->warn("Force refresh enabled - fetching all prices regardless of update status");
+            $this->warn('Force refresh enabled - fetching all prices regardless of update status');
         }
 
-        $results = $aggregator->getAllPrices($gameId, $forceRefresh);
+        $game = VideoGame::find($gameId);
+        if (! $game) {
+            $this->error('Game not found.');
+
+            return 1;
+        }
+
+        // 1. Sync Scraped Providers (Discovery & Update)
+        $this->info('Syncing scraped providers...');
+
+        // Defined output callback
+        $onProgress = function ($message) {
+            $this->output->write("  - $message\r");
+        };
+
+        $this->info('Starting Amazon sync...');
+        $amazon = $aggregator->syncAmazonPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($amazon['prices'] ?? 0) > 0) {
+            $this->info('✓ Amazon synced');
+        }
+
+        $this->info('Starting GOG sync...');
+        $gog = $aggregator->syncGogPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($gog['prices'] ?? 0) > 0) {
+            $this->info('✓ GOG synced');
+        }
+
+        $this->info('Starting Epic Games sync...');
+        $epic = $aggregator->syncEpicPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($epic['prices'] ?? 0) > 0) {
+            $this->info('✓ Epic Games synced');
+        }
+
+        $this->info('Starting Steam sync...');
+        $steam = $aggregator->syncSteamPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($steam['prices'] ?? 0) > 0) {
+            $this->info('✓ Steam synced');
+        }
+
+        $this->info('Starting Xbox sync...');
+        $xbox = $aggregator->syncXboxPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($xbox['prices'] ?? 0) > 0) {
+            $this->info('✓ Xbox synced');
+        }
+
+        $this->info('Starting PlayStation sync...');
+        $ps = $aggregator->syncPlayStationPrice($game, function ($msg) {
+            $this->line("   $msg");
+        });
+        if (($ps['prices'] ?? 0) > 0) {
+            $this->info('✓ PlayStation synced');
+        }
+
+        // 2. Fetch All Data (API Providers + Aggregation from DB)
+        $this->info('Fetching aggregated data (Prices + Media)...');
+        $results = $aggregator->getAllData($gameId, $forceRefresh, true);
 
         if (isset($results['error'])) {
             $this->error($results['error']);
+
             return 1;
         }
 
@@ -47,29 +114,47 @@ class GetAllPrices extends Command
         $this->newLine();
 
         // Display prices in a table
-        if (!empty($results['prices'])) {
-            $this->info("✓ Successfully fetched " . count($results['prices']) . " prices:");
+        if (! empty($results['prices'])) {
+            $this->info('✓ Successfully fetched '.count($results['prices']).' prices:');
             $this->table(
-                ['Retailer', 'Country', 'Price', 'Currency', 'Amount (minor)'],
-                collect($results['prices'])->map(fn($p) => [
-                    $p['retailer'],
-                    $p['country'],
-                    $p['amount_formatted'],
-                    $p['currency'],
-                    $p['amount_minor'],
-                ])->toArray()
+                ['Retailer', 'Country', 'Price', 'Currency', 'Amount (minor)', 'Media'],
+                collect($results['prices'])->map(function ($p) use ($results) {
+                    // Check if this retailer found any media
+                    $retailer = $p['retailer'];
+                    $mediaCount = 0;
+                    if (isset($results['media'][$retailer])) {
+                        $m = $results['media'][$retailer];
+                        $mediaCount += count($m['screenshots'] ?? []);
+                        $mediaCount += count($m['movies'] ?? []);
+                        if (isset($m['header_image'])) {
+                            $mediaCount++;
+                        }
+                        if (isset($m['background'])) {
+                            $mediaCount++;
+                        }
+                    }
+
+                    return [
+                        $p['retailer'],
+                        $p['country'],
+                        $p['amount_formatted'],
+                        $p['currency'],
+                        $p['amount_minor'],
+                        $mediaCount > 0 ? "✓ ({$mediaCount})" : '-',
+                    ];
+                })->toArray()
             );
         } else {
-            $this->warn("No prices fetched.");
+            $this->warn('No prices fetched.');
         }
 
         // Display errors
-        if (!empty($results['errors'])) {
+        if (! empty($results['errors'])) {
             $this->newLine();
-            $this->error("✗ " . count($results['errors']) . " errors occurred:");
+            $this->error('✗ '.count($results['errors']).' errors occurred:');
             $this->table(
                 ['Retailer', 'Country', 'Error'],
-                collect($results['errors'])->map(fn($e) => [
+                collect($results['errors'])->map(fn ($e) => [
                     $e['retailer'],
                     $e['country'],
                     $e['message'],
@@ -78,7 +163,7 @@ class GetAllPrices extends Command
         }
 
         $this->newLine();
-        $this->info("Done!");
+        $this->info('Done!');
 
         return 0;
     }

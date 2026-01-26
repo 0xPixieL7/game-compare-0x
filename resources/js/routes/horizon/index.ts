@@ -16,7 +16,7 @@ import jobs from './jobs'
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 export const index = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(args, options),
@@ -25,13 +25,13 @@ export const index = (args?: { view?: string | number } | [view: string | number
 
 index.definition = {
     methods: ["get","head"],
-    url: '/horizon/{view?}',
+    url: '//127.0.0.1:8000/horizon/{view?}',
 } satisfies RouteDefinition<["get","head"]>
 
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 index.url = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions) => {
     if (typeof args === 'string' || typeof args === 'number') {
@@ -62,7 +62,7 @@ index.url = (args?: { view?: string | number } | [view: string | number ] | stri
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 index.get = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'get'> => ({
     url: index.url(args, options),
@@ -72,7 +72,7 @@ index.get = (args?: { view?: string | number } | [view: string | number ] | stri
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 index.head = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteDefinition<'head'> => ({
     url: index.url(args, options),
@@ -82,7 +82,7 @@ index.head = (args?: { view?: string | number } | [view: string | number ] | str
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 const indexForm = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(args, options),
@@ -92,7 +92,7 @@ const indexForm = (args?: { view?: string | number } | [view: string | number ] 
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 indexForm.get = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(args, options),
@@ -102,7 +102,7 @@ indexForm.get = (args?: { view?: string | number } | [view: string | number ] | 
 /**
 * @see \Laravel\Horizon\Http\Controllers\HomeController::index
 * @see vendor/laravel/horizon/src/Http/Controllers/HomeController.php:14
-* @route '/horizon/{view?}'
+* @route '//127.0.0.1:8000/horizon/{view?}'
 */
 indexForm.head = (args?: { view?: string | number } | [view: string | number ] | string | number, options?: RouteQueryOptions): RouteFormDefinition<'get'> => ({
     action: index.url(args, {

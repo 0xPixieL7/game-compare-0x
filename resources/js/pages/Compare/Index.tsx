@@ -320,7 +320,7 @@ export default function Compare({
                                                                         alt={
                                                                             game.name
                                                                         }
-                                                                        className="h-full w-full object-cover transition-transform duration-700 group-hover/atv:scale-110"
+                                                                        className="h-full w-full object-contain transition-transform duration-700 group-hover/atv:scale-105"
                                                                         loading="lazy"
                                                                     />
 

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 /**
  * TheGamesDB (TGDB) API Service
  * API Docs: https://thegamesdb.net/
- * 
+ *
  * Provides:
  * - Game metadata
  * - Box art (front/back)
@@ -22,13 +22,13 @@ use Illuminate\Support\Facades\Log;
 final class TGDBService
 {
     private const BASE_URL = 'https://api.thegamesdb.net/v1';
-    
+
     private string $apiKey;
 
     public function __construct()
     {
         $this->apiKey = config('services.tgdb.api_key', '');
-        
+
         if (empty($this->apiKey)) {
             Log::warning('TGDBService: API key not configured');
         }
@@ -46,8 +46,8 @@ final class TGDBService
         try {
             // Get game details with images
             $gameData = $this->getGameById($gameId);
-            
-            if (!$gameData) {
+
+            if (! $gameData) {
                 return null;
             }
 
@@ -79,8 +79,8 @@ final class TGDBService
      */
     private function getGameById(int $gameId): ?array
     {
-        $url = self::BASE_URL . '/Games/ByGameID';
-        
+        $url = self::BASE_URL.'/Games/ByGameID';
+
         $response = Http::get($url, [
             'apikey' => $this->apiKey,
             'id' => $gameId,
@@ -92,7 +92,7 @@ final class TGDBService
         }
 
         $data = $response->json();
-        
+
         if (isset($data['data']['games'][0])) {
             return $data['data']['games'][0];
         }
@@ -105,8 +105,8 @@ final class TGDBService
      */
     private function getGameImages(int $gameId): array
     {
-        $url = self::BASE_URL . '/Games/Images';
-        
+        $url = self::BASE_URL.'/Games/Images';
+
         $response = Http::get($url, [
             'apikey' => $this->apiKey,
             'games_id' => $gameId,
@@ -143,7 +143,7 @@ final class TGDBService
                 'side' => $image['side'] ?? null, // For boxart: "front", "back"
                 'filename' => $image['filename'] ?? null,
                 'resolution' => $image['resolution'] ?? null,
-                'url' => $baseUrl . $type . '/' . ($image['filename'] ?? ''),
+                'url' => $baseUrl.$type.'/'.($image['filename'] ?? ''),
             ];
         }
 
@@ -175,6 +175,8 @@ final class TGDBService
             'developers' => $gameData['developers'] ?? [],
             'publishers' => $gameData['publishers'] ?? [],
             'genres' => $gameData['genres'] ?? [],
+            'steam_id' => $gameData['steam_id'] ?? null, // TGDB often provides this directly
+            'alternates' => $gameData['alternates'] ?? [], // Alternate titles
         ];
     }
 
@@ -187,8 +189,8 @@ final class TGDBService
             return [];
         }
 
-        $url = self::BASE_URL . '/Games/ByGameName';
-        
+        $url = self::BASE_URL.'/Games/ByGameName';
+
         $params = [
             'apikey' => $this->apiKey,
             'name' => $name,
@@ -229,8 +231,8 @@ final class TGDBService
             return [];
         }
 
-        $url = self::BASE_URL . '/Platforms';
-        
+        $url = self::BASE_URL.'/Platforms';
+
         $response = Http::get($url, [
             'apikey' => $this->apiKey,
         ]);
@@ -264,11 +266,40 @@ final class TGDBService
     public function getYouTubeUrl(array $metadata): ?string
     {
         $youtubeId = $metadata['youtube'] ?? null;
-        
+
         if ($youtubeId) {
             return "https://www.youtube.com/watch?v={$youtubeId}";
         }
 
         return null;
+    }
+
+    /**
+     * Get recently updated games.
+     * Useful for discovery.
+     *
+     * @param  int  $time  Timestamp (seconds) to check for updates since. Default: 24 hours ago.
+     */
+    public function getRecentlyUpdatedGames(?int $time = null): array
+    {
+        if (empty($this->apiKey)) {
+            return [];
+        }
+
+        $url = self::BASE_URL.'/Games/Updates';
+        $time = $time ?? (time() - 86400); // Default 24h
+
+        $response = Http::get($url, [
+            'apikey' => $this->apiKey,
+            'time' => $time,
+        ]);
+
+        if ($response->failed()) {
+            return [];
+        }
+
+        $data = $response->json();
+
+        return $data['data']['updates'] ?? [];
     }
 }

@@ -3,7 +3,7 @@
 namespace App\Listeners;
 
 use App\Events\VideoGameViewed;
-use App\Jobs\EnrichVideoGameMediaJob;
+use App\Jobs\Enrichment\EnrichVideoGameJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Cache;
@@ -32,14 +32,15 @@ class EnrichVideoGameMedia implements ShouldQueue
         $cacheKey = "video_game_enriched_{$videoGame->id}";
 
         // Skip if recently enriched (within last 24 hours) unless force refresh
-        if (!$event->forceRefresh && Cache::has($cacheKey)) {
+        if (! $event->forceRefresh && Cache::has($cacheKey)) {
             Log::info("Skipping enrichment for video game {$videoGame->id} - recently enriched");
+
             return;
         }
 
         // Dispatch enrichment job to queue
-        EnrichVideoGameMediaJob::dispatch($videoGame)
-            ->onQueue('media-enrichment');
+        EnrichVideoGameJob::dispatch($videoGame->id, $event->forceRefresh)
+            ->onQueue('enrichment');
 
         // Mark as enriched for 24 hours
         Cache::put($cacheKey, true, now()->addDay());

@@ -13,16 +13,16 @@ Route::get('/up', function () {
     return response()->json(['status' => 'ok'], 200);
 });
 
-
-
 // IGDB Webhooks (no CSRF protection needed - verified via X-Secret header)
 Route::post('/webhooks/igdb/{eventType}', [IgdbWebhookController::class, 'handle'])
     ->where('eventType', 'create|update|delete');
 
 Route::get('/', [LandingController::class, 'index'])->name('home');
 
-Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-Route::get('/dashboard/{gameId}', [DashboardController::class, 'show'])->name('dashboard.show')->whereNumber('gameId');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/{gameId}', [DashboardController::class, 'show'])->name('dashboard.show')->whereNumber('gameId');
+});
 
 // Debug route
 Route::get('/debug/{gameId}', function ($gameId) {
