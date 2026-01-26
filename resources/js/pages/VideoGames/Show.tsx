@@ -217,7 +217,7 @@ export default function Show({
                                     </div>
 
                                     {/* Quick Stats */}
-                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/40 p-6 ring-1 ring-[var(--game-primary)]/10 backdrop-blur-md">
+                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/80 p-6 ring-1 ring-[var(--game-primary)]/10">
                                         <h3 className="mb-4 text-xs font-bold tracking-widest text-[var(--game-accent)]/80 uppercase">
                                             Game Info
                                         </h3>
@@ -334,7 +334,7 @@ export default function Show({
                                     </div>
 
                                     {/* Ratings & Engagement */}
-                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/40 p-6 ring-1 ring-[var(--game-primary)]/10 backdrop-blur-md [animation-delay:100ms]">
+                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/80 p-6 ring-1 ring-[var(--game-primary)]/10 [animation-delay:100ms]">
                                         <h3 className="mb-4 text-xs font-bold tracking-widest text-[var(--game-accent)]/80 uppercase">
                                             Community Metrics
                                         </h3>
@@ -388,7 +388,7 @@ export default function Show({
                                     </div>
 
                                     {/* Statistics */}
-                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/40 p-6 ring-1 ring-[var(--game-primary)]/10 backdrop-blur-md [animation-delay:200ms]">
+                                    <div className="animate-fade-in-up rounded-xl border border-white/10 bg-[var(--game-surface)]/80 p-6 ring-1 ring-[var(--game-primary)]/10 [animation-delay:200ms]">
                                         <h3 className="mb-4 text-xs font-bold tracking-widest text-[var(--game-accent)]/80 uppercase">
                                             Data Coverage
                                         </h3>
@@ -513,7 +513,7 @@ export default function Show({
                                         </div>
                                     </div>
 
-                                    <div className="overflow-hidden rounded-xl border border-white/5 bg-[var(--game-surface)]/60 shadow-xl backdrop-blur-sm">
+                                    <div className="overflow-hidden rounded-xl border border-white/5 bg-[var(--game-surface)]/90 shadow-xl">
                                         <div
                                             className={`grid grid-cols-1 divide-y divide-white/5 transition-all duration-500 sm:grid-cols-2 lg:grid-cols-3 lg:divide-x lg:divide-y-0 ${
                                                 showAllPrices
@@ -620,7 +620,7 @@ export default function Show({
                                     <h2 className="mb-6 text-2xl font-bold text-white">
                                         Price Disparity Analysis
                                     </h2>
-                                    <div className="rounded-xl border border-white/10 bg-[var(--game-background)]/60 p-6 shadow-2xl backdrop-blur-md">
+                                    <div className="rounded-xl border border-white/10 bg-[var(--game-background)]/90 p-6 shadow-2xl">
                                         <PriceDisparityChart prices={prices} />
                                     </div>
                                 </div>
