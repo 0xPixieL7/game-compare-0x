@@ -123,7 +123,19 @@ class ExchangeRateService
     {
         $normalized = strtoupper($currency);
 
+        // 1. Try database cache first (fastest)
+        $stored = ExchangeRate::getLatestRate('BTC', $normalized);
+
+        // Optimization: Always return stored rate if available, even if stale.
+        // We rely on background jobs (ExchangeRateScheduler) to keep rates fresh.
+        // This prevents page load timeouts when multiple rates are stale.
+        if ($stored) {
+            return (float) $stored->rate;
+        }
+
         try {
+            // 2. Fetch from TradingView (slow, external API)
+            // Only do this if we have absolutely no data for this currency
             $rates = $this->tradingView->getBtcRates($normalized, true);
             $primary = $rates['rates'][0]['close'] ?? null;
 
@@ -137,6 +149,7 @@ class ExchangeRateService
             ]);
         }
 
+        // 3. Fallback to derivation
         return $this->deriveBtcRate($normalized);
     }
 
