@@ -97,22 +97,8 @@ class EnrichAllGamesCommand extends Command
         $cursor = DB::table('command_cursors')->where('command_name', $commandName)->first();
         $startPosition = 0;
 
-        // If queue mode, dispatch jobs and return
-        if ($useQueue) {
-            // Apply resume filter if needed
-            if ($this->option('resume') && $cursor) {
-                $startPosition = $cursor->current_position;
-                $query->where('id', '>', $startPosition);
-                $this->info("↻ Resuming dispatch from Game ID > {$startPosition}");
-            }
-
-            return $this->dispatchQueuedJobs($query, $chunkSize, $skipPrices, $skipMedia, $totalGames, $commandName);
-        }
-
-        if ($this->option('resume') && $cursor) {
-            $startPosition = $cursor->current_position;
-            $this->info("↻ Resuming from position {$startPosition} of {$totalGames}");
-        } else {
+        // Initialize cursor if starting fresh or not exists
+        if (! ($this->option('resume') && $cursor)) {
             DB::table('command_cursors')->updateOrInsert(
                 ['command_name' => $commandName],
                 [
@@ -125,10 +111,30 @@ class EnrichAllGamesCommand extends Command
                         'skip_prices' => $skipPrices,
                         'skip_media' => $skipMedia,
                         'min_rating' => $minRating,
+                        'queue_mode' => $useQueue,
                     ]),
                     'updated_at' => now(),
                 ]
             );
+            // Refresh cursor
+            $cursor = DB::table('command_cursors')->where('command_name', $commandName)->first();
+        }
+
+        // If queue mode, dispatch jobs and return
+        if ($useQueue) {
+            // Apply resume filter if needed
+            if ($this->option('resume') && $cursor) {
+                $startPosition = $cursor->current_position;
+                $query->where('id', '>', $startPosition);
+                $this->info("↻ Resuming dispatch from Game ID > {$startPosition} (Total: {$totalGames})");
+            }
+
+            return $this->dispatchQueuedJobs($query, $chunkSize, $skipPrices, $skipMedia, $totalGames, $commandName);
+        }
+
+        if ($this->option('resume') && $cursor) {
+            $startPosition = $cursor->current_position;
+            $this->info("↻ Resuming from position {$startPosition} of {$totalGames}");
         }
 
         // Progress bar
