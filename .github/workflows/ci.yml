@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
-
+    
     steps:
     - uses: actions/checkout@v4
 
@@ -17,25 +17,25 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.3'
-        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
         coverage: none
 
-    - name: Setup Node
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: '20'
         cache: 'npm'
 
     - name: Copy .env
-      run: |
-        cp .env.example .env
-        sed -i 's/DB_CONNECTION=pgsql/DB_CONNECTION=sqlite/g' .env
-        sed -i 's/DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/g' .env
+      run: cp .env.example .env
 
-    - name: Install Composer dependencies
+    - name: Install Composer Dependencies
       run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Generate key
+    - name: Install NPM Dependencies
+      run: npm ci
+
+    - name: Generate Key
       run: php artisan key:generate
 
     - name: Directory Permissions
@@ -47,27 +47,65 @@ jobs:
         touch database/database.sqlite
 
     - name: Run Migrations
-      run: php artisan migrate --force
       env:
         DB_CONNECTION: sqlite
         DB_DATABASE: database/database.sqlite
+      run: php artisan migrate --force
 
-    - name: Install NPM dependencies
+    - name: Execute Tests (Pest)
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/database.sqlite
+      run: php artisan test
+
+  code-style:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
+        coverage: none
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Composer Dependencies
+      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+    - name: Install NPM Dependencies
       run: npm ci
 
-    - name: Build assets
-      run: npm run build
-
-    - name: Execute Pint (PHP Code Style)
+    - name: Run Pint (PHP Style)
       run: ./vendor/bin/pint --test
 
-    - name: Execute ESLint & Prettier (JS Code Style)
-      run: |
-        npm run lint
-        npm run format:check
+    - name: Run Prettier (JS/TS Style)
+      run: npm run format:check
 
-    - name: Execute tests (Unit and Feature)
-      run: php artisan test
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: database/database.sqlite
+    - name: Run ESLint
+      run: npm run lint
+
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install NPM Dependencies
+      run: npm ci
+
+    - name: Build Frontend Assets
+      run: npm run build

@@ -1,127 +1,86 @@
-# Game Compare: Global Pricing & Discovery Engine
+# Game Compare 🎮
 
-![CI Status](https://github.com/lowkey/game-compare/actions/workflows/ci.yml/badge.svg)
-![PHP Version](https://img.shields.io/badge/PHP-8.3-777BB4.svg)
-![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20.svg)
-![React](https://img.shields.io/badge/React-19-61DAFB.svg)
-![Inertia.js](https://img.shields.io/badge/Inertia.js-2.0-9553E9.svg)
+[![CI](https://github.com/lowkey/game-compare/actions/workflows/ci.yml/badge.svg)](https://github.com/lowkey/game-compare/actions/workflows/ci.yml)
 
-**Game Compare** is a high-performance, full-stack application designed to aggregate, normalize, and compare video game pricing data across global markets.
+**Game Compare** is a premium game discovery and comparison platform that leverages real-time data to help gamers find the best prices, compare cross-platform availability, and discover new titles through a curated, high-performance interface.
 
-Unlike standard game databases, this project focuses on **financial transparency** in the gaming market, offering real-time price disparity analysis (Arbitrage) and Bitcoin-based value comparisons. It ingests massive datasets from providers like Steam, PlayStation, and IGDB, processing them through a resilient background queuing system.
+## 🚀 Features
 
----
+- **Real-Time Price Comparison**: Compare game prices across major retailers (Steam, PlayStation Store, Xbox Store, etc.) to ensure you get the best deal.
+- **Dynamic Spotlight**: Discover trending and top-rated games through our algorithmic spotlight feature, powered by real-time metrics.
+- **Cross-Platform Availability**: Easily check which platforms a game is available on.
+- **Premium UI/UX**: Experience a fluid, responsive, and visually stunning interface built with React, Tailwind CSS, and Framer Motion.
+- **Bitcoin Price Tracking**: Compare game value against Bitcoin prices for a unique economic perspective.
+- **Automated Transition Effects**: Enjoy seamless navigation with custom transition animations (like the "Pokemon" battle transition).
 
-## 🚀 Key Features
+## 🛠️ Tech Stack
 
-- **Multi-Source Data Ingestion**: Robust pipelines to fetch and normalize data from **Steam**, **PlayStation Store**, **Xbox**, and **IGDB**.
-- **Global Price Analysis**:
-    - Real-time conversion of regional prices to **Bitcoin (BTC)** and Fiat.
-    - **Arbitrage Detection**: Visualizing price disparities between regions (e.g., Turkey vs. US vs. Japan).
-    - Interactive `PriceDisparityChart` for analyzing market spread.
-- **Cinematic UI/UX**:
-    - Built with **React 19** & **Inertia.js 2.0** for a seamless SPA experience.
-    - Dynamic theming that adapts to the dominant colors of game artwork.
-    - Rich media galleries with lightbox support and video playback.
-- **High-Performance Architecture**:
-    - Uses **Materialized Views** for sub-millisecond sorting and filtering of millions of records.
-    - **Redis-powered Queues** (Laravel Horizon) for background data processing and logic enrichment.
-    - **Service-Oriented Design** decoupling business logic from controllers.
+- **Backend**: Laravel 11, PHP 8.3
+- **Frontend**: React, Inertia.js, TypeScript
+- **Styling**: Tailwind CSS 4.0
+- **Database**: PostgreSQL
+- **Testing**: Pest (PHP), ESLint, Prettier
 
----
+## 📦 Installation & Setup
 
-## 🛠️ Technical Stack
-
-### Backend (Laravel)
-
-- **Architecture**: Service-Layer Pattern, Command Bus for ingestion.
-- **Database**: PostgreSQL (Production) / SQLite (Testing).
-    - _Highlights_: JSONB columns for flexible attribute storage, Materialized Views for reporting.
-- **Caching**: Redis & Octane (Swoole/FrankenPHP ready).
-- **Testing**: PestPHP for Unit/Feature testing with strict type coverage.
-
-### Frontend (React & Inertia)
-
-- **State Management**: Inertia.js (Server-driven state).
-- **Styling**: Tailwind CSS v4, Lucide React Icons.
-- **Visuals**: Framer Motion for entrance animations, ApexCharts for data visualization.
-- **Tooling**: Vite, TypeScript, Prettier/ESLint.
-
-### DevOps & Infrastructure
-
-- **CI/CD**: GitHub Actions pipeline for automated testing and linting.
-- **Containerization**: Docker (Laravel Sail) for consistent dev environments.
-
----
-
-## 🏗️ System Architecture
-
-This project follows a strict **ETL (Extract, Transform, Load)** pattern for game data:
-
-1.  **Ingestion**: Scheduled commands (`steam:import-apps`, `psn:ingest`) fetch raw JSON payloads.
-2.  **Normalization**: The `GameDataAggregatorService` normalizes diverse schemas into a unified `VideoGame` model.
-3.  **Enrichment**: Background jobs enrich base records with metadata, media (Spatie Media Library), and Hype/Popscores.
-4.  **Presentation**: Data is served via Inertia props, minimizing API round-trips and ensuring SEO capabilities.
-
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-
-- Docker & Docker Compose (Recommended)
-- _Or:_ PHP 8.3+, Node.js 20+, PostgreSQL
-
-### Installation
-
-1.  **Clone the repository**
+1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/yourusername/game-compare.git
+    git clone https://github.com/lowkey/game-compare.git
     cd game-compare
     ```
 
-2.  **Install Backend Dependencies**
+2.  **Install dependencies:**
 
     ```bash
     composer install
+    npm install
     ```
 
-3.  **Setup Environment**
+3.  **Environment Setup:**
 
     ```bash
     cp .env.example .env
     php artisan key:generate
     ```
 
-4.  **Start with Sail (Docker)**
+4.  **Database Setup:**
+    Configure your database credentials in `.env`, then run:
 
     ```bash
-    ./vendor/bin/sail up -d
-    ./vendor/bin/sail artisan migrate --seed
+    php artisan migrate
     ```
 
-5.  **Install Frontend Dependencies**
+5.  **Build Assets:**
+
     ```bash
-    npm install
+    npm run build
+    ```
+
+6.  **Run the Application:**
+    ```bash
     npm run dev
+    php artisan serve
     ```
 
-### Running Tests
+## ✅ Continuous Integration
 
-The project uses a complete CI pipeline. You can run the test suite locally using:
+This project uses **GitHub Actions** for Continuous Integration to ensure code quality and stability.
 
-```bash
-# Run PHP Tests (Pest)
-php artisan test
+- **Tests**: Automated PHPUnit/Pest tests run on every push.
+- **Linting**: Code style is enforced using Laravel Pint (PHP) and ESLint/Prettier (JS/TS).
+- **Builds**: Frontend assets are compiled to verify build integrity.
 
-# Run Code Style Checks
-./vendor/bin/pint --test
-npm run lint
-```
+## 🤝 Contributing
 
----
+Contributions are welcome! Please follow these steps:
 
-## 📸 Screenshots
+1.  Fork the repository.
+2.  Create a new feature branch (`git checkout -b feature/amazing-feature`).
+3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
+4.  Push to the branch (`git push origin feature/amazing-feature`).
+5.  Open a Pull Request.
 
-_(Add screenshots of your Dashboard, Game Detail Page, and Price Chart here)_
+## 📝 License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
