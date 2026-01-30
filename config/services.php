@@ -51,6 +51,12 @@ return [
         'base_url' => 'https://api.thegamesdb.net/v1',
     ],
 
+    'giantbomb' => [
+        'api_key' => env('GIANTBOMB_API_KEY'),
+        'base_url' => env('GIANTBOMB_BASE_URL', 'https://www.giantbomb.com/api'),
+        'user_agent' => env('GIANTBOMB_USER_AGENT'),
+    ],
+
     'bybit' => [
         'base_url' => env('BYBIT_API_URL', 'https://api.bybit.com'),
         'timeout' => env('BYBIT_TIMEOUT', 10),
@@ -90,6 +96,14 @@ return [
         'timeout' => env('GGDEALS_TIMEOUT', 10),
     ],
 
+    'gog' => [
+        'regions' => env('GOG_REGIONS', ''),
+    ],
+
+    'amazon' => [
+        'regions' => env('AMAZON_REGIONS', ''),
+    ],
+
     'itad' => [
         'enabled' => env('ITAD_ENABLED', true),
         'api_key' => env('ITAD_API_KEY'),
@@ -114,6 +128,12 @@ return [
         // Accepts either country codes (US,GB,...) OR locales (en-us,en-gb,...).
         // Default is EMPTY -> derived from `countries.code` ISO2 list at runtime.
         'regions' => env('STEAM_REGIONS', ''),
+    ],
+
+    'epic' => [
+        'bearer_token' => env('EPIC_BEARER_TOKEN'),
+        'device_id' => env('EPIC_DEVICE_ID'),
+        'regions' => env('EPIC_REGIONS', ''),
     ],
 
     'xbox' => [

@@ -8,7 +8,7 @@ import {
     GameShowPrice,
     GameStatistics,
 } from '@/types';
-import { Head } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import {
     ChevronDown,
     ChevronUp,
@@ -39,12 +39,15 @@ export default function Show({
     statistics: GameStatistics;
     ratings: GameRatings;
 }) {
+    const { auth } = usePage<{ auth: { user: any } }>().props;
     const [showAllPrices, setShowAllPrices] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
         null,
     );
     const [currentBgIndex, setCurrentBgIndex] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
+    const [liked, setLiked] = useState(game.isLiked || false);
+    const [isLiking, setIsLiking] = useState(false);
 
     // Helper to format currency
     const formatPrice = (amount: number, currency: string) => {
@@ -52,6 +55,32 @@ export default function Show({
             style: 'currency',
             currency: currency,
         }).format(amount);
+    };
+
+    // Toggle like handler
+    const toggleLike = () => {
+        if (!auth?.user || isLiking) return;
+
+        setIsLiking(true);
+        const previousLiked = liked;
+
+        // Optimistic update
+        setLiked(!liked);
+
+        router.post(
+            `/games/${game.id}/like`,
+            {},
+            {
+                preserveScroll: true,
+                onError: () => {
+                    // Revert on error
+                    setLiked(previousLiked);
+                },
+                onFinish: () => {
+                    setIsLiking(false);
+                },
+            },
+        );
     };
 
     // Collect all available background candidates (High-res preferred)
@@ -373,17 +402,50 @@ export default function Show({
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 transition-transform hover:scale-105">
-                                                <Heart className="h-4 w-4 text-red-500" />
-                                                <div>
-                                                    <div className="text-xs text-gray-500">
-                                                        Follows
+                                            {auth?.user ? (
+                                                <button
+                                                    onClick={toggleLike}
+                                                    disabled={isLiking}
+                                                    className="flex items-center gap-2 transition-all hover:scale-110 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    title={
+                                                        liked
+                                                            ? 'Remove from My Likes'
+                                                            : 'Add to My Likes'
+                                                    }
+                                                >
+                                                    <Heart
+                                                        className={`h-4 w-4 transition-all ${
+                                                            liked
+                                                                ? 'fill-red-500 text-red-500'
+                                                                : 'text-red-500 hover:fill-red-500'
+                                                        }`}
+                                                    />
+                                                    <div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {liked
+                                                                ? 'Liked'
+                                                                : 'Like'}
+                                                        </div>
+                                                        <div className="font-bold text-white">
+                                                            {liked
+                                                                ? 'Added'
+                                                                : 'Add'}
+                                                        </div>
                                                     </div>
-                                                    <div className="font-bold text-white">
-                                                        {ratings.follows.toLocaleString()}
+                                                </button>
+                                            ) : (
+                                                <div className="flex items-center gap-2 transition-transform hover:scale-105">
+                                                    <Heart className="h-4 w-4 text-red-500" />
+                                                    <div>
+                                                        <div className="text-xs text-gray-500">
+                                                            Follows
+                                                        </div>
+                                                        <div className="font-bold text-white">
+                                                            {ratings.follows.toLocaleString()}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -653,9 +715,12 @@ export default function Show({
                                                                 url={
                                                                     trailer.url
                                                                 }
+                                                                video_id={
+                                                                    trailer.video_id
+                                                                }
                                                                 thumbnail={
-                                                                    media.background ||
-                                                                    media.cover ||
+                                                                    media.background ??
+                                                                    media.cover ??
                                                                     undefined
                                                                 }
                                                                 title={

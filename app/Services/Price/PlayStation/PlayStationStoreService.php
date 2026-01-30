@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Price\PlayStation;
 
 use GuzzleHttp\Client as GuzzleClient;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PlaystationStoreApi\Client;
 use PlaystationStoreApi\Enum\RegionEnum;
@@ -212,6 +213,41 @@ final class PlayStationStoreService
             return $this->searchViaDuckDuckGo($title, $country);
         } catch (\Exception $e) {
             Log::warning("PlayStationStoreService: Search failed for '{$title}'", ['error' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    public function resolveProductIdFromConcept(string $conceptId, string $country = 'US', string $language = 'en'): ?string
+    {
+        $country = strtoupper($country);
+        $language = strtolower($language);
+        $locale = "{$language}-{$country}";
+        $url = "https://store.playstation.com/{$locale}/concept/{$conceptId}";
+
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml',
+            ])
+                ->timeout(10)
+                ->get($url);
+
+            if ($response->failed()) {
+                return null;
+            }
+
+            $html = $response->body();
+            if (preg_match('/\/product\/([A-Za-z0-9_\-]+)/', $html, $matches)) {
+                return $matches[1];
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::debug('PlayStationStoreService: concept resolve failed', [
+                'concept_id' => $conceptId,
+                'error' => $e->getMessage(),
+            ]);
 
             return null;
         }

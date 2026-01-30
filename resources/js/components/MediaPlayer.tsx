@@ -2,7 +2,8 @@ import { Play } from 'lucide-react';
 import { useState } from 'react';
 
 interface MediaPlayerProps {
-    url: string;
+    url?: string;
+    video_id?: string;
     thumbnail?: string;
     title?: string;
     className?: string;
@@ -18,13 +19,15 @@ const getYoutubeId = (url: string) => {
 
 export default function MediaPlayer({
     url,
+    video_id,
     thumbnail,
     title = 'Video player',
     className = '',
     autoPlay = false,
 }: MediaPlayerProps) {
     const [isPlaying, setIsPlaying] = useState(autoPlay);
-    const youtubeId = getYoutubeId(url);
+    // Support both direct video_id and URL extraction
+    const youtubeId = video_id || (url ? getYoutubeId(url) : null);
 
     if (youtubeId) {
         return (

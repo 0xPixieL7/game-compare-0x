@@ -49,4 +49,12 @@ class User extends Authenticatable implements MustVerifyEmail
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    /**
+     * Get the games liked by the user.
+     */
+    public function likes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(VideoGame::class, 'likes', 'user_id', 'video_game_id')->withTimestamps();
+    }
 }

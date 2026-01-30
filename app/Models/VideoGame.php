@@ -97,6 +97,14 @@ class VideoGame extends Model implements HasMedia
     }
 
     /**
+     * Get the users who liked this game.
+     */
+    public function likes(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'likes', 'video_game_id', 'user_id')->withTimestamps();
+    }
+
+    /**
      * Get the latest price record for efficient display.
      */
     public function latestPrice(): HasOne

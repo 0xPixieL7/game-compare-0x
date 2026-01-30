@@ -36,11 +36,12 @@ class DashboardController extends Controller
         $availabilityData = [];
 
         if ($request->user() !== null) {
-            $priceData = Cache::remember("price_analysis_{$gameId}", 600, function () use ($gameId) {
+            // PERFORMANCE: Increased cache from 600s (10min) to 3600s (1hr) for better hit rate
+            $priceData = Cache::remember("price_analysis_{$gameId}", 3600, function () use ($gameId) {
                 return $this->getPriceAnalysis($gameId);
             });
 
-            $availabilityData = Cache::remember("availability_data_{$gameId}", 600, function () use ($gameId) {
+            $availabilityData = Cache::remember("availability_data_{$gameId}", 3600, function () use ($gameId) {
                 return $this->getAvailabilityData($gameId);
             });
         }
@@ -62,7 +63,8 @@ class DashboardController extends Controller
 
     private function getGameWithMedia(int $gameId): ?array
     {
-        return Cache::remember("game_with_media_{$gameId}", 300, function () use ($gameId) {
+        // PERFORMANCE: Increased cache from 300s (5min) to 3600s (1hr) for better hit rate
+        return Cache::remember("game_with_media_{$gameId}", 3600, function () use ($gameId) {
             // Get basic game info with optimized join
             $game = DB::table('video_games')
                 ->select([
@@ -392,13 +394,30 @@ class DashboardController extends Controller
     public function index(Request $request): Response
     {
         $searchQuery = $request->get('search', '');
+        $user = $request->user();
 
         // Get spotlight and hero data for a premium feel
         $spotlightGames = $this->fetchSpotlightGamesForDashboard(12);
+
+        // Personalize spotlight if user is logged in
+        if ($user) {
+            $likedGamesForSpotlight = $this->getUserLikedGamesForSpotlight($user);
+            if (! empty($likedGamesForSpotlight)) {
+                // Prepend liked games to spotlight, removing duplicates
+                $spotlightIds = array_column($spotlightGames, 'id');
+                $likedGamesForSpotlight = array_filter($likedGamesForSpotlight, function ($game) use ($spotlightIds) {
+                    return ! in_array($game['id'], $spotlightIds);
+                });
+                $spotlightGames = array_merge($likedGamesForSpotlight, $spotlightGames);
+                // Limit to 12 again
+                $spotlightGames = array_slice($spotlightGames, 0, 12);
+            }
+        }
+
         $hero = $spotlightGames[0] ?? null;
 
         // Get genre-based carousel rows and user preferences
-        $carouselRows = $this->getGenreBasedCarouselRows();
+        $carouselRows = $this->getGenreBasedCarouselRows($user);
 
         // For search functionality, get filtered games
         $searchResults = [];
@@ -421,8 +440,33 @@ class DashboardController extends Controller
 
     private function fetchSpotlightGamesForDashboard(int $limit = 12): array
     {
-        return Cache::remember('dashboard:spotlight-games-v2', 3600, function () use ($limit) {
-            // Priority games (marquee)
+        return Cache::remember('dashboard:spotlight-games-v3', 3600, function () use ($limit) {
+            // Pull top games from materialized view top lists
+            // Priority: trending (3), upcoming (2), popular (4), top_rated (3)
+            $topListGames = DB::table('video_games_toplists_mv')
+                ->whereIn('list_key', ['trending', 'upcoming', 'popular', 'top_rated'])
+                ->whereNotNull('cover_url')
+                ->where('rating', '>=', 80)
+                ->orderByRaw("
+                    CASE 
+                        WHEN list_key = 'trending' THEN 0 
+                        WHEN list_key = 'popular' THEN 1 
+                        WHEN list_key = 'top_rated' THEN 2
+                        WHEN list_key = 'upcoming' THEN 3
+                    END
+                ")
+                ->orderBy('rank')
+                ->limit($limit)
+                ->get();
+
+            // If we have enough games from top lists, use them
+            if ($topListGames->count() >= $limit) {
+                return $topListGames->map(function ($game) {
+                    return $this->mapTopListGameToSpotlight($game);
+                })->toArray();
+            }
+
+            // Otherwise, fallback to marquee games
             $marqueeIds = [
                 12026, 199224, 117836, 221441, 174739, 221545, 233062,
                 220587, 235660, 260502, 92989, 142457, 220450, 274649, 257269,
@@ -505,7 +549,35 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getGenreBasedCarouselRows(): array
+    private function mapTopListGameToSpotlight(object $game): array
+    {
+        $reviewScore = (float) ($game->rating ?? 85);
+        $coverUrl = $this->upscaleIgdbImage($game->cover_url, 't_1080p');
+        $backgroundUrl = $this->upscaleIgdbImage($game->background_url, 't_1080p');
+
+        $gallery = [];
+        if ($backgroundUrl) {
+            $gallery[] = ['id' => uniqid(), 'type' => 'image', 'url' => $backgroundUrl, 'source' => 'IGDB'];
+        }
+
+        return [
+            'id' => $game->id,
+            'name' => $game->name,
+            'image' => $coverUrl,
+            'background' => $backgroundUrl ?? $coverUrl,
+            'spotlight_score' => [
+                'total' => round($reviewScore / 10, 1),
+                'grade' => $reviewScore >= 90 ? 'S' : ($reviewScore >= 80 ? 'A' : 'B'),
+                'verdict' => $reviewScore >= 90 ? 'Masterpiece' : 'Essential',
+                'breakdown' => [
+                    ['label' => 'Critical Reception', 'score' => (int) $reviewScore, 'summary' => 'Aggregated rating.', 'weight_percentage' => 100],
+                ],
+            ],
+            'spotlight_gallery' => $gallery,
+        ];
+    }
+
+    private function getGenreBasedCarouselRows(?\App\Models\User $user = null): array
     {
         // Define genre priority order starting with sports
         $genrePriority = [
@@ -525,14 +597,19 @@ class DashboardController extends Controller
 
         $rows = [];
 
-        // Add "Your List" row for user preferences (will be populated by frontend)
-        $rows[] = [
-            'id' => 'user_preferences',
-            'title' => 'Your List',
-            'type' => 'user_list',
-            'games' => [], // Will be populated by frontend based on user preferences
-            'description' => 'Your personalized game list based on favorites and wishlist',
-        ];
+        // Add "My Likes" row if user is logged in
+        if ($user) {
+            $likedGames = $this->getUserLikedGames($user);
+            if (count($likedGames) > 0) {
+                $rows[] = [
+                    'id' => 'my_likes',
+                    'title' => 'My Likes',
+                    'type' => 'user_list',
+                    'games' => $likedGames,
+                    'description' => 'Games you have liked',
+                ];
+            }
+        }
 
         // Add "Recently Viewed" row
         $rows[] = [
@@ -543,20 +620,10 @@ class DashboardController extends Controller
             'description' => 'Games you\'ve recently looked at',
         ];
 
-        // Add genre-based rows
-        foreach ($genrePriority as $genreKey => $displayTitle) {
-            $games = $this->getGamesByGenre($genreKey, 20); // Get more games for carousel
-
-            if (count($games) > 0) {
-                $rows[] = [
-                    'id' => 'genre_'.strtolower(str_replace([' ', '-', '(', ')'], '_', $genreKey)),
-                    'title' => $displayTitle,
-                    'type' => 'genre',
-                    'genre' => $genreKey,
-                    'games' => $games,
-                    'description' => "Top rated games in {$displayTitle}",
-                ];
-            }
+        // Add top lists from materialized view (includes trending, upcoming, popular, top_rated, and all genre lists)
+        $topLists = $this->getTopListsFromMaterializedView();
+        foreach ($topLists as $list) {
+            $rows[] = $list;
         }
 
         // Add "Highest Rated" row for all games
@@ -584,6 +651,63 @@ class DashboardController extends Controller
         }
 
         return $rows;
+    }
+
+    private function getUserLikedGames(\App\Models\User $user, int $limit = 20): array
+    {
+        return $user->likes()
+            ->with(['title', 'title.sources' => function ($q) {
+                $q->where('provider', 'igdb');
+            }])
+            ->orderByPivot('created_at', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($game) {
+                $primarySource = $game->title?->sources->first();
+                $rawPayload = $primarySource?->raw_payload ?? [];
+                if (is_string($rawPayload)) {
+                    $rawPayload = json_decode($rawPayload, true) ?? [];
+                }
+                if (! is_array($rawPayload)) {
+                    $rawPayload = [];
+                }
+
+                $cover = $this->getCoverFromPayload($rawPayload);
+
+                return [
+                    'id' => $game->id,
+                    'name' => $game->name,
+                    'canonical_name' => $game->title?->name ?? $game->name,
+                    'rating' => $primarySource->rating ?? $game->rating,
+                    'release_date' => $game->release_date?->format('Y-m-d'),
+                    'media' => [
+                        'cover_url' => $cover['cover_url'] ?? null,
+                        'cover_url_thumb' => $cover['cover_url_thumb'] ?? null,
+                        'screenshots' => [],
+                        'trailers' => [],
+                    ],
+                ];
+            })
+            ->toArray();
+    }
+
+    private function getUserLikedGamesForSpotlight(\App\Models\User $user, int $limit = 5): array
+    {
+        return $user->likes()
+            ->with(['title', 'title.sources' => function ($q) {
+                $q->where('provider', 'igdb');
+            }])
+            ->orderByPivot('created_at', 'desc')
+            ->limit($limit)
+            ->get()
+            ->map(function ($game) {
+                $primarySource = $game->title?->sources->first();
+                $game->raw_payload = $primarySource?->raw_payload;
+                $game->canonical_name = $game->title?->name ?? $game->name;
+
+                return $this->mapDashboardSpotlightGame($game);
+            })
+            ->toArray();
     }
 
     private function getGamesByGenre(string $genre, int $limit = 20): array
@@ -960,5 +1084,89 @@ class DashboardController extends Controller
         }
 
         return array_slice($mockGames, 0, $limit);
+    }
+
+    /**
+     * Get all top lists from the materialized view.
+     * Includes main lists (trending, upcoming, popular, top_rated) and all genre-specific lists.
+     */
+    private function getTopListsFromMaterializedView(): array
+    {
+        $rows = DB::table('public.video_games_toplists_mv')
+            ->orderByRaw("
+                CASE 
+                    WHEN list_key = 'trending' THEN 0 
+                    WHEN list_key = 'upcoming' THEN 1 
+                    WHEN list_key = 'popular' THEN 2
+                    WHEN list_key = 'top_rated' THEN 3
+                    ELSE 4 
+                END
+            ")
+            ->orderBy('list_name')
+            ->orderBy('rank')
+            ->get();
+
+        $grouped = $rows->groupBy('list_key');
+
+        return $grouped->map(function ($items, $key) {
+            return [
+                'id' => $key,
+                'title' => $items->first()->list_name,
+                'type' => 'top_list',
+                'provider' => $items->first()->provider_key,
+                'games' => $items->map(function ($item) {
+                    $prices = $item->prices ? json_decode($item->prices, true) : [];
+
+                    return [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                        'slug' => $item->slug,
+                        'rank' => $item->rank,
+                        'rating' => $item->rating,
+                        'release_date' => $item->release_date,
+                        'year' => $item->release_date ? date('Y', strtotime($item->release_date)) : null,
+                        'platform' => $item->platform ? json_decode($item->platform, true) : [],
+                        'media' => [
+                            'cover' => $this->upscaleIgdbImage($item->cover_url),
+                            'cover_url' => $this->upscaleIgdbImage($item->image_url),
+                            'cover_url_thumb' => $this->upscaleIgdbImage($item->image_url, 't_thumb'),
+                            'background' => $this->upscaleIgdbImage($item->background_url, 't_720p'),
+                            'screenshots' => [],
+                            'trailers' => $item->primary_video_id ? [[
+                                'url' => $item->primary_video_id,
+                                'name' => $item->primary_video_name,
+                            ]] : [],
+                        ],
+                        'review_score' => round((float) $item->review_score, 1),
+                        'popularity_score' => $item->popularity_score,
+                        'provider' => $item->provider_key,
+                        'pricing' => [
+                            'amount_major' => isset($prices['USD']) ? $prices['USD'] / 100 : null,
+                            'currency' => 'USD',
+                        ],
+                    ];
+                })->toArray(),
+                'description' => $items->first()->list_name,
+            ];
+        })->values()->toArray();
+    }
+
+    /**
+     * Upscale IGDB image URLs to higher quality versions.
+     */
+    private function upscaleIgdbImage(?string $url, string $target = 't_cover_big'): ?string
+    {
+        if (! $url) {
+            return null;
+        }
+
+        if (str_contains($url, 'igdb.com')) {
+            $url = str_replace(['t_thumb', 't_cover_small', 't_logo_med'], $target, $url);
+            if (str_starts_with($url, '//')) {
+                $url = 'https:'.$url;
+            }
+        }
+
+        return $url;
     }
 }

@@ -10,4 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('rates:sync')->hourly()->withoutOverlapping();
 Schedule::command('prices:rebase-btc')->hourlyAt(10)->withoutOverlapping();
-
+Schedule::command('epic:token-check')->hourly()->withoutOverlapping();

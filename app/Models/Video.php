@@ -344,9 +344,18 @@ class Video extends Model
     {
         $videoIds = $this->urls ?? [];
         $metadata = $this->metadata ?? [];
+        $details = is_array($metadata['videos'] ?? null)
+            ? $metadata['videos']
+            : (is_array($metadata) ? $metadata : []);
 
-        return collect($videoIds)->map(function ($videoId, $index) use ($metadata) {
-            $detail = $metadata[$index] ?? [];
+        return collect($videoIds)->map(function ($videoId, $index) use ($details) {
+            $detail = $details[$index] ?? [];
+            if (! is_array($detail)) {
+                $detail = [];
+            }
+
+            $url = $detail['url'] ?? $videoId;
+            $name = $detail['name'] ?? $detail['title'] ?? null;
 
             return [
                 'id' => $this->id,
@@ -357,8 +366,13 @@ class Video extends Model
                 'video_id' => $videoId,
                 'external_id' => $videoId,
                 'provider' => $this->provider ?? 'youtube',
-                'name' => $detail['name'] ?? null,
-                'title' => $detail['name'] ?? null,
+                'name' => $name,
+                'title' => $name,
+                'type' => $detail['type'] ?? $detail['video_type'] ?? null,
+                'url' => $url,
+                'thumbnail_url' => $detail['preview']
+                    ?? $detail['thumbnail']
+                    ?? $this->thumbnail_url,
                 'youtube_embed_url' => $this->provider === 'youtube'
                     ? "https://www.youtube.com/embed/{$videoId}"
                     : null,

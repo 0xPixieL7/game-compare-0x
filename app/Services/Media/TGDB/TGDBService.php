@@ -27,7 +27,11 @@ final class TGDBService
 
     public function __construct()
     {
-        $this->apiKey = config('services.tgdb.api_key', '');
+        $this->apiKey = (string) (
+            config('services.tgdb.public_key')
+            ?? config('services.tgdb.api_key')
+            ?? ''
+        );
 
         if (empty($this->apiKey)) {
             Log::warning('TGDBService: API key not configured');

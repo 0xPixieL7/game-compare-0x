@@ -630,13 +630,17 @@ export default function DashboardShow({
                                         )}
 
                                         {/* Rating */}
-                                        {game.rating && (
+                                        {Number.isFinite(
+                                            Number(game.rating),
+                                        ) && (
                                             <div className="mb-4 flex items-center">
                                                 <span className="mr-2 text-xl text-yellow-400">
                                                     ⭐
                                                 </span>
                                                 <span className="text-lg font-semibold text-white">
-                                                    {game.rating.toFixed(1)}
+                                                    {Number(
+                                                        game.rating,
+                                                    ).toFixed(1)}
                                                 </span>
                                                 <span className="ml-2 text-sm text-gray-400">
                                                     /10
@@ -708,9 +712,15 @@ export default function DashboardShow({
                                                                         )}
                                                                     </span>
                                                                 </div>
-                                                                {source.rating && (
+                                                                {Number.isFinite(
+                                                                    Number(
+                                                                        source.rating,
+                                                                    ),
+                                                                ) && (
                                                                     <span className="text-xs font-bold text-blue-400">
-                                                                        {source.rating.toFixed(
+                                                                        {Number(
+                                                                            source.rating,
+                                                                        ).toFixed(
                                                                             0,
                                                                         )}
                                                                         %

@@ -22,6 +22,7 @@ Route::get('/', [LandingController::class, 'index'])->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/{gameId}', [DashboardController::class, 'show'])->name('dashboard.show')->whereNumber('gameId');
+    Route::post('/games/{game}/like', [\App\Http\Controllers\LikeController::class, 'toggle'])->name('games.like');
 });
 
 // Debug route

@@ -3,7 +3,7 @@ import { AppleTvCard } from '@/components/apple-tv-card';
 import { useTransitionNav } from '@/components/transition/TransitionProvider';
 import Image from '@/components/ui/image';
 import { useUserPreferences } from '@/Utils/userPreferences';
-import { usePage } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { Heart, Sparkles, Star } from 'lucide-react';
 import React, { type FC } from 'react';
 
@@ -137,11 +137,20 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
 
     return (
         <div className={`relative ${className}`}>
-            <button
-                disabled={isRunning}
-                onClick={() => navigateCardToDetail(href, coverUrl)}
+            <Link
+                href={href}
+                aria-disabled={isRunning}
+                onClick={(event) => {
+                    if (isRunning) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    event.preventDefault();
+                    navigateCardToDetail(href, coverUrl);
+                }}
                 onMouseEnter={handleMouseEnter}
-                className="group/card block h-full w-full text-left transition-all duration-500 disabled:opacity-50"
+                className="group/card block h-full w-full text-left transition-all duration-500"
             >
                 <AppleTvCard className="h-full w-full overflow-hidden rounded-2xl border border-white/5 bg-[#050505] shadow-2xl transition-all duration-500 group-hover/card:border-white/20 group-hover/card:shadow-blue-500/10">
                     {/* Background Artwork */}
@@ -150,7 +159,7 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
                             src={coverUrl}
                             alt={name}
                             fill
-                            className="object-cover transition-transform duration-700 group-hover/card:scale-105"
+                            className="object-contain transition-transform duration-700 group-hover/card:scale-105"
                             style={{ viewTransitionName: vtName }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-opacity duration-500 group-hover/card:opacity-90" />
@@ -219,7 +228,7 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
                         </div>
                     </div>
                 </AppleTvCard>
-            </button>
+            </Link>
 
             {/* Favorite Button - Separate from main button to prevent navigation */}
             <button

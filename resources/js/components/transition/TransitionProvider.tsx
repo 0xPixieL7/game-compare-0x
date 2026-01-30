@@ -150,6 +150,7 @@ export function TransitionProvider({
     const coverImageRef = useRef<HTMLImageElement | null>(null);
     const coverUrlRef = useRef<string>('');
     const dominantColorRef = useRef<string>('rgba(255,180,40,1)');
+    const fallbackTimeoutRef = useRef<number | null>(null);
 
     const particlesRef = useRef<Particle[]>([]);
     const explosionSpawnedRef = useRef<boolean>(false);
@@ -176,6 +177,11 @@ export function TransitionProvider({
     const stop = useCallback(() => {
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
+
+        if (fallbackTimeoutRef.current !== null) {
+            window.clearTimeout(fallbackTimeoutRef.current);
+            fallbackTimeoutRef.current = null;
+        }
 
         setVisible(false);
         setIsRunning(false);
@@ -303,8 +309,13 @@ export function TransitionProvider({
             roundRect(ctx, baseX, baseY, bw, bh, 20);
             ctx.clip();
 
+            const coverReady =
+                coverImageRef.current !== null &&
+                coverImageRef.current.complete &&
+                coverImageRef.current.naturalWidth > 0;
+
             // Draw cover image if loaded, otherwise fallback to gradient with loading state
-            if (coverImageRef.current && coverImageRef.current.complete) {
+            if (coverReady && coverImageRef.current) {
                 const img = coverImageRef.current;
 
                 // Calculate scaling to cover the box while maintaining aspect ratio
@@ -359,7 +370,7 @@ export function TransitionProvider({
                 ctx.fillRect(baseX, baseY, bw, bh);
 
                 // Show loading spinner if image is still loading
-                if (coverImageRef.current && !coverImageRef.current.complete) {
+                if (coverImageRef.current && !coverReady) {
                     ctx.save();
                     ctx.translate(cx, boxY);
                     const spinnerT = (elapsed % 1000) / 1000;
@@ -420,7 +431,7 @@ export function TransitionProvider({
             const lidH = 36;
 
             // Draw lid with cover image if available
-            if (coverImageRef.current && coverImageRef.current.complete) {
+            if (coverReady && coverImageRef.current) {
                 const img = coverImageRef.current;
 
                 // Clip to rounded rectangle
@@ -579,6 +590,13 @@ export function TransitionProvider({
             navigatedRef.current = false;
             explosionSpawnedRef.current = false;
             particlesRef.current = [];
+
+            fallbackTimeoutRef.current = window.setTimeout(() => {
+                if (!navigatedRef.current) {
+                    navigatedRef.current = true;
+                    router.visit(targetHrefRef.current);
+                }
+            }, impactMs + 200);
 
             rafRef.current = requestAnimationFrame(drawFrame);
         },

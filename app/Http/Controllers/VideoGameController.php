@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExchangeRate;
 use App\Models\VideoGame;
 use App\Models\VideoGamePrice;
 use App\Services\ExchangeRates\ExchangeRateService;
@@ -75,15 +76,17 @@ class VideoGameController extends Controller
         ]);
     }
 
-    public function show(VideoGame $game)
+    public function show(Request $request, VideoGame $game)
     {
         $game->load(['images', 'videos']);
 
         // Fetch prices sorted by amount (cheapest first)
+        // PERFORMANCE: Limit to 50 cheapest prices (users don't need to see all 100+)
         $prices = VideoGamePrice::query()
             ->where('video_game_id', $game->id)
             ->where('is_active', true)
             ->orderBy('amount_minor', 'asc')
+            ->limit(50)
             ->get();
 
         $prices = $this->mapPricesWithBtc($prices);
@@ -93,6 +96,10 @@ class VideoGameController extends Controller
         $allTrailers = $game->getTrailers();
         $allArtworks = $game->getArtworks();
 
+        $screenshots = $allScreenshots->take(24);
+        $artworks = $allArtworks->take(12);
+        $trailers = $allTrailers->take(4);
+
         // Organize media for the frontend
         $media = [
             'hero' => $game->getHeroImageUrl(),
@@ -100,12 +107,15 @@ class VideoGameController extends Controller
             'poster' => $game->getFirstMediaUrl('posters'),
             'background' => $game->getFirstMediaUrl('backgrounds'),
             'cover' => $game->getCoverUrl('t_1080p'),
-            'screenshots' => $allScreenshots->pluck('url')->values()->all(),
-            'artworks' => $allArtworks->pluck('url')->values()->all(),
-            'trailers' => $allTrailers->map(fn ($t) => [
-                'url' => $t['youtube_watch_url'] ?? $t['youtube_embed_url'] ?? null,
+            'screenshots' => $screenshots->pluck('url')->values()->all(),
+            'artworks' => $artworks->pluck('url')->values()->all(),
+            'trailers' => $trailers->map(fn ($t) => [
+                'url' => $t['url']
+                    ?? $t['youtube_watch_url']
+                    ?? $t['youtube_embed_url']
+                    ?? null,
                 'embed_url' => $t['youtube_embed_url'] ?? null,
-                'name' => $t['name'] ?? 'Trailer',
+                'name' => $t['name'] ?? $t['title'] ?? 'Video',
                 'video_id' => $t['video_id'] ?? null,
             ])->filter(fn ($t) => $t['url'] !== null)->values()->all(),
         ];
@@ -120,6 +130,11 @@ class VideoGameController extends Controller
             'hypes' => $game->hypes ?? 0,
             'follows' => $game->follows ?? 0,
         ];
+
+        $isLiked = false;
+        if ($request->user()) {
+            $isLiked = $request->user()->likes()->where('video_game_id', $game->id)->exists();
+        }
 
         return Inertia::render('VideoGames/Show', [
             'game' => [
@@ -148,6 +163,7 @@ class VideoGameController extends Controller
                 'total_artworks' => $allArtworks->count(),
             ],
             'ratings' => $ratings,
+            'isLiked' => $isLiked,
         ]);
     }
 
@@ -157,7 +173,26 @@ class VideoGameController extends Controller
      */
     private function mapPricesWithBtc(Collection $prices): array
     {
-        $rates = [];
+        $currencies = $prices
+            ->map(fn (VideoGamePrice $price) => strtoupper($price->currency))
+            ->unique()
+            ->values()
+            ->all();
+
+        $storedRates = ExchangeRate::query()
+            ->select(['quote_currency', 'rate'])
+            ->where('base_currency', 'BTC')
+            ->whereIn('quote_currency', $currencies)
+            ->orderBy('quote_currency')
+            ->orderByDesc('fetched_at')
+            ->get()
+            ->unique('quote_currency')
+            ->mapWithKeys(fn (ExchangeRate $rate) => [
+                $rate->quote_currency => (float) $rate->rate,
+            ])
+            ->all();
+
+        $rates = $storedRates;
 
         return $prices->map(function (VideoGamePrice $price) use (&$rates) {
             $meta = $price->metadata ?? [];

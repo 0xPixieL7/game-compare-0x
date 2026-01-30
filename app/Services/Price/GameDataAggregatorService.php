@@ -353,8 +353,14 @@ class GameDataAggregatorService
             }
 
             // 3. Store videos/trailers
-            if (! empty($media['movies'] ?? $media['videos'])) {
-                $videos = $media['movies'] ?? $media['videos'];
+            $videos = null;
+            if (isset($media['movies']) && is_array($media['movies']) && $media['movies'] !== []) {
+                $videos = $media['movies'];
+            } elseif (isset($media['videos']) && is_array($media['videos']) && $media['videos'] !== []) {
+                $videos = $media['videos'];
+            }
+
+            if ($videos !== null) {
                 foreach ($videos as $index => $video) {
                     $videoUrl = $video['url'] ?? $video['webm_max'] ?? $video['mp4_max'] ?? $video['hls_max'] ?? null;
                     if (! $videoUrl) {
@@ -625,7 +631,39 @@ class GameDataAggregatorService
             return ['prices' => 0];
         }
 
-        $countries = Country::with('currency')->get();
+        $regions = [];
+        if ($retailer === 'GOG') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.gog.regions'))));
+        }
+
+        if ($retailer === 'Amazon') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.amazon.regions'))));
+            if ($regions === []) {
+                $regions = $this->resolveAmazonRegionsFromUrl($url);
+            }
+        }
+
+        if ($retailer === 'Steam') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.steam.regions'))));
+        }
+
+        if ($retailer === 'Xbox Store') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.xbox.markets'))));
+        }
+
+        if ($retailer === 'PlayStation Store') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.playstation.regions'))));
+        }
+
+        if ($retailer === 'Epic Games Store') {
+            $regions = array_filter(array_map('trim', explode(',', (string) config('services.epic.regions'))));
+        }
+
+        $countries = Country::with('currency')
+            ->when($regions !== [], function ($query) use ($regions) {
+                $query->whereIn('code', $regions);
+            })
+            ->get();
         $syncedCount = 0;
 
         foreach ($countries as $country) {
@@ -648,6 +686,48 @@ class GameDataAggregatorService
         }
 
         return ['prices' => $syncedCount];
+    }
+
+    /**
+     * Derive Amazon regions from the URL TLD.
+     * Falls back to empty array (all countries) when unknown.
+     */
+    private function resolveAmazonRegionsFromUrl(string $url): array
+    {
+        $host = parse_url($url, PHP_URL_HOST) ?? '';
+        if (! is_string($host) || $host === '') {
+            return [];
+        }
+
+        $map = [
+            'amazon.com' => ['US'],
+            'amazon.co.uk' => ['GB'],
+            'amazon.ca' => ['CA'],
+            'amazon.de' => ['DE'],
+            'amazon.fr' => ['FR'],
+            'amazon.it' => ['IT'],
+            'amazon.es' => ['ES'],
+            'amazon.nl' => ['NL'],
+            'amazon.se' => ['SE'],
+            'amazon.pl' => ['PL'],
+            'amazon.co.jp' => ['JP'],
+            'amazon.com.au' => ['AU'],
+            'amazon.com.br' => ['BR'],
+            'amazon.com.mx' => ['MX'],
+            'amazon.com.tr' => ['TR'],
+            'amazon.sg' => ['SG'],
+            'amazon.ae' => ['AE'],
+            'amazon.sa' => ['SA'],
+            'amazon.in' => ['IN'],
+        ];
+
+        foreach ($map as $domain => $codes) {
+            if (str_ends_with($host, $domain)) {
+                return $codes;
+            }
+        }
+
+        return [];
     }
 
     /**
@@ -742,7 +822,14 @@ class GameDataAggregatorService
         }
         $attributes = $attributes ?? [];
 
+        if (! empty($attributes['amazon_url']) && is_string($attributes['amazon_url'])) {
+            return $attributes['amazon_url'];
+        }
+
         $websites = $attributes['websites'] ?? $attributes['original_metadata']['websites'] ?? [];
+        if (! is_array($websites)) {
+            $websites = [];
+        }
 
         foreach ($websites as $site) {
             if (isset($site['url']) && str_contains($site['url'], 'amazon.')) {
@@ -892,7 +979,14 @@ class GameDataAggregatorService
         }
         $attributes = $attributes ?? [];
 
+        if (! empty($attributes['gog_slug']) && is_string($attributes['gog_slug'])) {
+            return 'https://www.gog.com/game/'.$attributes['gog_slug'];
+        }
+
         $websites = $attributes['websites'] ?? $attributes['original_metadata']['websites'] ?? [];
+        if (! is_array($websites)) {
+            $websites = [];
+        }
 
         foreach ($websites as $site) {
             if (isset($site['url']) && str_contains($site['url'], 'gog.com')) {
@@ -911,7 +1005,14 @@ class GameDataAggregatorService
         }
         $attributes = $attributes ?? [];
 
+        if (! empty($attributes['epic_slug']) && is_string($attributes['epic_slug'])) {
+            return 'https://store.epicgames.com/en-US/p/'.$attributes['epic_slug'];
+        }
+
         $websites = $attributes['websites'] ?? $attributes['original_metadata']['websites'] ?? [];
+        if (! is_array($websites)) {
+            $websites = [];
+        }
 
         foreach ($websites as $site) {
             if (isset($site['url']) && (str_contains($site['url'], 'epicgames.com') || str_contains($site['url'], 'store.epicgames.com'))) {
@@ -957,7 +1058,67 @@ class GameDataAggregatorService
             $attributes = json_decode($attributes, true);
         }
         $attributes = $attributes ?? [];
+
+        if ($retailer === 'GOG') {
+            $gogSlug = $attributes['gog_slug'] ?? null;
+            if (is_string($gogSlug) && $gogSlug !== '') {
+                return 'https://www.gog.com/game/'.$gogSlug;
+            }
+        }
+
+        if ($retailer === 'Epic Games') {
+            $epicSlug = $attributes['epic_slug'] ?? null;
+            if (is_string($epicSlug) && $epicSlug !== '') {
+                return 'https://store.epicgames.com/en-US/p/'.$epicSlug;
+            }
+        }
+
+        if ($retailer === 'Steam') {
+            $steamId = $attributes['steam_id'] ?? null;
+            if (is_numeric($steamId) && (int) $steamId > 0) {
+                return 'https://store.steampowered.com/app/'.$steamId;
+            }
+        }
+
+        if ($retailer === 'Xbox Store') {
+            $xboxBigId = $attributes['xbox_bigid'] ?? null;
+            if (is_string($xboxBigId) && $xboxBigId !== '') {
+                return 'https://www.microsoft.com/store/apps/'.$xboxBigId;
+            }
+        }
+
+        if ($retailer === 'PlayStation Store') {
+            $psProductId = $attributes['ps_product_id'] ?? null;
+            if (is_string($psProductId) && $psProductId !== '') {
+                return 'https://store.playstation.com/product/'.$psProductId;
+            }
+        }
+
+        if ($retailer === 'Amazon') {
+            $amazonUrl = $attributes['amazon_url'] ?? null;
+            if (is_string($amazonUrl) && $amazonUrl !== '') {
+                return $amazonUrl;
+            }
+        }
+
+        if ($retailer === 'Nintendo Store') {
+            $nintendoUrl = $attributes['nintendo_url'] ?? null;
+            if (is_string($nintendoUrl) && $nintendoUrl !== '') {
+                return $nintendoUrl;
+            }
+        }
+
+        if ($retailer === 'itch.io') {
+            $itchUrl = $attributes['itchio_url'] ?? null;
+            if (is_string($itchUrl) && $itchUrl !== '') {
+                return $itchUrl;
+            }
+        }
+
         $websites = $attributes['websites'] ?? $attributes['original_metadata']['websites'] ?? [];
+        if (! is_array($websites)) {
+            $websites = [];
+        }
 
         if ($domain) {
             foreach ($websites as $site) {
@@ -970,7 +1131,9 @@ class GameDataAggregatorService
         // 4. Try raw Source Payload (e.g. RAWG Stores)
         // RAWG stores structure: stores[].url or stores[].store.domain
         if ($game->source_payload && $domain) {
-            $sourceData = json_decode($game->source_payload, true);
+            $sourceData = is_string($game->source_payload)
+                ? json_decode($game->source_payload, true)
+                : $game->source_payload;
             if (isset($sourceData['stores']) && is_array($sourceData['stores'])) {
                 foreach ($sourceData['stores'] as $storeData) {
                     $storeUrl = $storeData['url'] ?? null;

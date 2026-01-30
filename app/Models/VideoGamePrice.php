@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,6 +13,17 @@ class VideoGamePrice extends Model
 {
     /** @use HasFactory<\Database\Factories\VideoGamePriceFactory> */
     use HasFactory;
+
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        // Automatically exclude prices with zero amount
+        static::addGlobalScope('nonZero', function (Builder $builder) {
+            $builder->where('amount_minor', '>', 0);
+        });
+    }
 
     protected $fillable = [
         'video_game_id',

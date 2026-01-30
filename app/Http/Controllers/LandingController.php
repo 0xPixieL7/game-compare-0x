@@ -20,9 +20,19 @@ use Inertia\Response;
 
 class LandingController extends Controller
 {
-    private const ROW_LIMIT = 20;
+    private const ROW_LIMIT = 40;
 
     private const GENRE_POOL_LIMIT = 100;
+
+    private const LANDING_FEATURED_YEAR_MIN = 2015;
+
+    private const LANDING_FEATURED_YEAR_MAX = 2025;
+
+    private const LANDING_FEATURED_MIN_RATING = 85;
+
+    private const LANDING_FEATURED_FALLBACK_MIN_RATING = 80;
+
+    private const LANDING_FEATURED_MIN_RATING_COUNT = 5;
 
     private const COUNTRY_CURRENCY_CACHE_TTL = 3600;
 
@@ -42,8 +52,8 @@ class LandingController extends Controller
 
         $isAuthenticated = $request->user() !== null;
 
-        // Fetch curated top lists from provider data
-        $topLists = $this->fetchProviderTopLists();
+        // Featured: highly-rated 2015-2025 picks with price data, by genre
+        $genreRows = $this->fetchGenreRows(self::ROW_LIMIT);
 
         // Also fetch some of the original rows for variety
         $bestDealsData = $this->fetchBestDeals(self::ROW_LIMIT);
@@ -52,16 +62,16 @@ class LandingController extends Controller
         $rows = [];
         $allGameIds = [];
 
-        // Add top lists first
-        foreach ($topLists as $list) {
-            if (! empty($list['games'])) {
-                $gameIds = $list['games']->pluck('id')->toArray();
+        // Add genre spotlight rows next
+        foreach ($genreRows as $row) {
+            if (! empty($row['games'])) {
+                $gameIds = $row['games']->pluck('id')->toArray();
                 $allGameIds = array_merge($allGameIds, $gameIds);
 
                 $rows[] = [
-                    'id' => $list['key'],
-                    'title' => $list['title'],
-                    'games' => $list['games'],
+                    'id' => $row['key'],
+                    'title' => $row['title'],
+                    'games' => $row['games'],
                 ];
             }
         }
@@ -103,7 +113,7 @@ class LandingController extends Controller
         $hero = $spotlightGames[0] ?? null;
 
         Log::info('Homepage data fetched', [
-            'topLists' => count($topLists),
+            'genreRows' => count($genreRows),
             'totalRows' => count($rows),
             'heroLinked' => $hero !== null,
             'spotlightCount' => count($spotlightGames),
@@ -133,6 +143,10 @@ class LandingController extends Controller
                 12026, 199224, 117836, 221441, 174739, 221545, 233062,
                 220587, 235660, 260502, 92989, 142457, 220450, 274649, 257269,
                 37470, 53320,
+                181474, // Madden NFL 26
+                122588, // Pax Dei
+                53981,  // Everspace 2
+                175409, // Clair Obscur: Expedition 33
             ];
 
             // 1. Fetch Marquee Games first
@@ -439,8 +453,8 @@ class LandingController extends Controller
 
     private function fetchZeldaHero(): ?array
     {
-        return $this->cacheStore()->remember('landing:hero-zelda-v2', self::ROW_CACHE_TTL, function () {
-            $zeldaGame = DB::table('video_games')
+        return $this->cacheStore()->remember('landing:hero-ac-shadows-v1', self::ROW_CACHE_TTL, function () {
+            $acGame = DB::table('video_games')
                 ->join('video_games_ranked_mv', 'video_games.id', '=', 'video_games_ranked_mv.id')
                 ->leftJoin('video_game_titles', 'video_games.video_game_title_id', '=', 'video_game_titles.id')
                 ->leftJoin('video_game_title_sources', function ($join) {
@@ -465,19 +479,19 @@ class LandingController extends Controller
                 ])
                 ->whereNotNull('video_game_title_sources.raw_payload')
                 ->where('video_games.rating', '>=', 60)
-                ->whereRaw("lower(video_games.name) like '%zelda%'")
+                ->whereRaw("lower(video_games.name) like '%assassin%creed%shadows%'")
                 ->orderByRaw("case
-                    when lower(video_games.name) like '%tears of the kingdom%' then 1
-                    when lower(video_games.name) like '%breath of the wild%' then 2
-                    when lower(video_games.name) like '%legend of zelda%' then 3
-                    else 4
+                    when lower(video_games.name) = 'assassin''s creed shadows' then 0
+                    when lower(video_games.name) like '%assassin%creed%shadows%deluxe%' then 1
+                    when lower(video_games.name) like '%assassin%creed%shadows%gold%' then 2
+                    else 3
                 end asc")
                 ->orderByRaw('video_games.release_date desc nulls last')
                 ->orderByDesc('video_games.rating')
                 ->limit(1)
                 ->first();
 
-            return $zeldaGame ? $this->mapSpotlightGame($zeldaGame) : null;
+            return $acGame ? $this->mapSpotlightGame($acGame) : null;
         });
     }
 
@@ -519,40 +533,113 @@ class LandingController extends Controller
      */
     private function fetchGenreRows(int $limit): array
     {
-        return $this->cacheStore()->remember('landing:genre-rows-v4', self::ROW_CACHE_TTL, function () use ($limit) {
+        return $this->cacheStore()->remember('landing:genre-rows-v7', self::ROW_CACHE_TTL, function () use ($limit) {
             $targetGenres = [
-                'Action' => 'Action & Adventure',
-                'Role-playing (RPG)' => 'Top RPGs',
-                'Shooter' => 'FPS & Shooters',
-                'Strategy' => 'Strategy Games',
-                'Adventure' => 'Story & Adventure',
-                'Racing' => 'Racing & Speed',
-                'Sport' => 'Sports',
-                'Simulator' => 'Simulators',
-                'Fighting' => 'Fighting Games',
-                'Puzzle' => 'Puzzle & Brain',
-                'Indie' => 'Indie Gems',
-                'Arcade' => 'Arcade Classics',
+                ['genre' => "Hack and slash/Beat 'em up", 'key' => 'action-adventure', 'title' => 'Action & Adventure'],
+                ['genre' => 'Role-playing (RPG)', 'key' => Str::slug('Role-playing (RPG)'), 'title' => 'Top RPGs'],
+                ['genre' => 'Shooter', 'key' => Str::slug('Shooter'), 'title' => 'FPS & Shooters'],
+                ['genre' => 'Strategy', 'key' => Str::slug('Strategy'), 'title' => 'Strategy Games'],
+                ['genre' => 'Adventure', 'key' => Str::slug('Adventure'), 'title' => 'Story & Adventure'],
+                ['genre' => 'Racing', 'key' => Str::slug('Racing'), 'title' => 'Racing & Speed'],
+                ['genre' => 'Sport', 'key' => Str::slug('Sport'), 'title' => 'Sports'],
+                ['genre' => 'Simulator', 'key' => Str::slug('Simulator'), 'title' => 'Simulators'],
+                ['genre' => 'Fighting', 'key' => Str::slug('Fighting'), 'title' => 'Fighting Games'],
+                ['genre' => 'Puzzle', 'key' => Str::slug('Puzzle'), 'title' => 'Puzzle & Brain'],
+                ['genre' => 'Indie', 'key' => Str::slug('Indie'), 'title' => 'Indie Gems'],
+                ['genre' => 'Arcade', 'key' => Str::slug('Arcade'), 'title' => 'Arcade Classics'],
             ];
 
             $rows = [];
-            foreach ($targetGenres as $genreName => $displayTitle) {
+            foreach ($targetGenres as $rowSpec) {
+                $genreName = $rowSpec['genre'];
+                $rowKey = $rowSpec['key'];
+                $displayTitle = $rowSpec['title'];
                 $query = $this->applyPremiumFilter(
                     DB::table('video_games_genre_ranked_mv')
                         ->select($this->mvColumns())
                         ->where('genre_name', $genreName)
                 );
 
-                $games = $this->applyLandingRanking($query)
+                $query
+                    ->whereBetween('release_date', [
+                        self::LANDING_FEATURED_YEAR_MIN.'-01-01',
+                        self::LANDING_FEATURED_YEAR_MAX.'-12-31',
+                    ])
+                    // Prefer cover art. Some sources (e.g. RAWG) store covers only inside `media`.
+                    ->where(function (Builder $q): void {
+                        $q->where('image_url', 'like', '%/co%')
+                            ->orWhere('image_urls', 'like', '%/co%')
+                            ->orWhere('media', 'like', '%"role":"cover"%');
+                    })
+                    ->whereNotNull('rating')
+                    ->where('rating', '>=', self::LANDING_FEATURED_MIN_RATING)
+                    ->where('rating_count', '>=', self::LANDING_FEATURED_MIN_RATING_COUNT)
+                    ->whereExists(function (Builder $sub) {
+                        $sub->selectRaw('1')
+                            ->from('video_game_prices as p')
+                            ->whereColumn('p.video_game_id', 'video_games_genre_ranked_mv.id')
+                            ->where('p.is_active', true)
+                            ->whereNotNull('p.currency')
+                            ->where('p.amount_minor', '>=', 0);
+                    });
+
+                // For landing rows: recency-first within genre.
+                $games = $query
+                    ->orderByDesc('release_date')
+                    ->orderByDesc('rating')
+                    ->orderByDesc('rating_count')
+                    ->orderByDesc('popularity_score')
                     ->limit($limit)
                     ->get();
+
+                // If the strict threshold is too sparse for a genre, widen slightly to fill the row.
+                if ($games->count() < $limit && self::LANDING_FEATURED_FALLBACK_MIN_RATING < self::LANDING_FEATURED_MIN_RATING) {
+                    $existingIds = $games->pluck('id')->all();
+
+                    $fallback = $this->applyPremiumFilter(
+                        DB::table('video_games_genre_ranked_mv')
+                            ->select($this->mvColumns())
+                            ->where('genre_name', $genreName)
+                            ->whereBetween('release_date', [
+                                self::LANDING_FEATURED_YEAR_MIN.'-01-01',
+                                self::LANDING_FEATURED_YEAR_MAX.'-12-31',
+                            ])
+                            ->where(function (Builder $q): void {
+                                $q->where('image_url', 'like', '%/co%')
+                                    ->orWhere('image_urls', 'like', '%/co%')
+                                    ->orWhere('media', 'like', '%"role":"cover"%');
+                            })
+                            ->whereNotNull('rating')
+                            ->where('rating', '>=', self::LANDING_FEATURED_FALLBACK_MIN_RATING)
+                            ->where('rating_count', '>=', self::LANDING_FEATURED_MIN_RATING_COUNT)
+                            ->whereExists(function (Builder $sub) {
+                                $sub->selectRaw('1')
+                                    ->from('video_game_prices as p')
+                                    ->whereColumn('p.video_game_id', 'video_games_genre_ranked_mv.id')
+                                    ->where('p.is_active', true)
+                                    ->whereNotNull('p.currency')
+                                    ->where('p.amount_minor', '>=', 0);
+                            })
+                    )
+                        ->when($existingIds !== [], fn (Builder $q) => $q->whereNotIn('id', $existingIds))
+                        ->orderByDesc('release_date')
+                        ->orderByDesc('rating')
+                        ->orderByDesc('rating_count')
+                        ->orderByDesc('popularity_score')
+                        ->limit($limit - $games->count())
+                        ->get();
+
+                    if ($fallback->isNotEmpty()) {
+                        $games = $games->concat($fallback);
+                    }
+                }
 
                 if ($games->isEmpty()) {
                     continue;
                 }
 
                 $rows[] = [
-                    'key' => Str::slug($genreName),
+                    'key' => $rowKey,
                     'title' => $displayTitle,
                     'games' => $games,
                 ];
@@ -692,15 +779,14 @@ class LandingController extends Controller
             // Get the most recent top lists
             $topLists = DB::table('provider_toplists')
                 ->select('id', 'provider_key', 'list_key', 'name')
-                ->whereIn('list_key', ['trending', 'popular', 'top_rated', 'top-rated', 'new_releases', 'new-releases', 'upcoming'])
+                ->whereIn('list_key', ['popular', 'top_rated', 'top-rated', 'new_releases', 'new-releases', 'upcoming'])
                 ->orderByRaw("
                     CASE 
-                        WHEN list_key = 'trending' THEN 0 
-                        WHEN list_key = 'popular' THEN 1 
-                        WHEN list_key IN ('top-rated', 'top_rated') THEN 2
-                        WHEN list_key IN ('new-releases', 'new_releases') THEN 3
-                        WHEN list_key = 'upcoming' THEN 4
-                        ELSE 5 
+                        WHEN list_key = 'popular' THEN 0 
+                        WHEN list_key IN ('top-rated', 'top_rated') THEN 1
+                        WHEN list_key IN ('new-releases', 'new_releases') THEN 2
+                        WHEN list_key = 'upcoming' THEN 3
+                        ELSE 4 
                     END
                 ")
                 ->orderByDesc('snapshot_at')
@@ -754,7 +840,6 @@ class LandingController extends Controller
 
         // Use friendly names for common keys
         return match ($key) {
-            'trending' => '🔥 Trending Now',
             'popular' => '⭐ Most Popular',
             'top-rated', 'top_rated' => '🏆 Top Rated',
             'new-releases', 'new_releases' => '🆕 New Releases',
@@ -920,9 +1005,21 @@ class LandingController extends Controller
         $imageUrls = $imageUrlsJson ? json_decode($imageUrlsJson, true) : [];
         $imageUrls = is_array($imageUrls) ? $imageUrls : [];
 
-        $coverUrl = $this->findImageVariant($imageUrls, 't_1080p')
+        // Prefer true cover images (co*) over screenshots/artworks.
+        $coverUrl = $this->findCoverVariant($imageUrls, 't_1080p')
+            ?? $this->findCoverVariant($imageUrls, 't_720p')
+            ?? $this->findCoverVariant($imageUrls, 't_cover_big')
+            ?? $this->findImageVariant($imageUrls, 't_1080p')
             ?? $this->findImageVariant($imageUrls, 't_720p')
             ?? $imageUrl;
+
+        // RAWG/MV sometimes provides screenshots as primary image_url; prefer cover from media JSON if available.
+        if (is_string($coverUrl) && str_contains($coverUrl, 'media.rawg.io/media/screenshots')) {
+            $mediaCover = $this->coverFromMedia($media);
+            if ($mediaCover) {
+                $coverUrl = $mediaCover;
+            }
+        }
 
         $coverThumb = $this->findImageVariant($imageUrls, 't_cover_big')
             ?? $this->findImageVariant($imageUrls, 't_thumb')
@@ -955,6 +1052,26 @@ class LandingController extends Controller
             'artworks' => $artworks,
             'trailers' => $trailers,
         ];
+    }
+
+    private function findCoverVariant(array $urls, string $size): ?string
+    {
+        foreach ($urls as $url) {
+            if (! is_string($url)) {
+                continue;
+            }
+
+            if (! str_contains($url, "/{$size}/")) {
+                continue;
+            }
+
+            // IGDB covers use co* ids; screenshots use sc*; artworks use ar*.
+            if (str_contains($url, '/co')) {
+                return $url;
+            }
+        }
+
+        return null;
     }
 
     /**

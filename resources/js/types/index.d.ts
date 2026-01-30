@@ -175,6 +175,7 @@ export interface GameModel {
     theme?: GameTheme | null;
     url?: string | null;
     slug?: string | null;
+    isLiked?: boolean;
     attributes?: {
         summary?: string;
         [key: string]: unknown;
