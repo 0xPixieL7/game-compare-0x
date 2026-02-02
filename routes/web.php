@@ -18,6 +18,12 @@ Route::post('/webhooks/igdb/{eventType}', [IgdbWebhookController::class, 'handle
     ->where('eventType', 'create|update|delete');
 
 Route::get('/', [LandingController::class, 'index'])->name('home');
+Route::get('/calculator', function () {
+    return Inertia::render('Calculator');
+})->name('arc-raiders.calculator');
+Route::get('/resume-service', function () {
+    return Inertia::render('resume-service');
+})->name('resume-service');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -57,6 +63,7 @@ if (! Route::has('compare')) {
 
 Route::get('/games', [VideoGameController::class, 'index'])->name('games.index');
 Route::get('/games/{game}', [VideoGameController::class, 'show'])->name('games.show');
+Route::get('/api/games/{game}/transition-media', [VideoGameController::class, 'transitionMedia'])->name('games.transition-media');
 
 // AI Assistant API Routes
 Route::prefix('api/ai')->group(function () {
