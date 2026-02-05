@@ -7,7 +7,9 @@ import {
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { cn, toUrl } from '@/lib/utils';
-import { compare, dashboard, home, login, register } from '@/routes';
+import { arcRaiders, dashboard, home, login, register } from '@/routes';
+import compare from '@/routes/compare/index';
+
 import { type SharedData } from '@/types';
 import { Link, router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
@@ -40,9 +42,9 @@ export default function Header() {
 
     const navigation: NavLink[] = [
         { name: 'Dashboard', href: toUrl(dashboard()) },
-        { name: 'Compare', href: toUrl(compare()) },
+        { name: 'Compare', href: toUrl(compare.index()) },
         { name: 'Games', href: '/games' },
-        { name: 'ARC Raiders', href: '/arc-raiders' },
+        { name: 'ARC Raiders', href: toUrl(arcRaiders()) },
     ];
 
     const isActive = (href: string) => {

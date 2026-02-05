@@ -1,7 +1,7 @@
 import { AppleTvCard } from '@/components/apple-tv-card';
 import { SpotlightCarousel } from '@/components/compare/spotlight-carousel';
 import AppLayout from '@/layouts/app-layout';
-import { compare } from '@/routes';
+import compare from '@/routes/compare/index';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
