@@ -1,6 +1,7 @@
-import { AppleTvCard } from '@/components/apple-tv-card';
-import { useTransitionNav } from '@/components/transition/TransitionProvider';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useGameCard } from '@/components/game-detail-modal';
+import { SpatialImage } from '@/components/ui/SpatialImage';
+import { type GameMedia, type GameTheme } from '@/types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface SpotlightScore {
     total: number;
@@ -41,7 +42,8 @@ export interface SpotlightProduct {
     platform?: string; // Fallback
     release_date?: string; // Fallback
     background?: string;
-    media?: any;
+    media?: GameMedia;
+    theme?: GameTheme | null;
 }
 
 interface SpotlightCarouselProps {
@@ -53,16 +55,8 @@ export function SpotlightCarousel({
     spotlight = [],
     hero,
 }: SpotlightCarouselProps) {
-    const { navigateCardToDetail, isRunning } = useTransitionNav();
-
-    if (!spotlight || spotlight.length === 0) {
-        return (
-            <div className="p-8 text-center text-gray-500">
-                Spotlight warming up...
-            </div>
-        );
-    }
-
+    const { openGameCard, phase } = useGameCard();
+    const isRunning = phase !== 'idle';
     const [gameIndex, setGameIndex] = useState(0);
     const [mediaIndex, setMediaIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
@@ -72,13 +66,22 @@ export function SpotlightCarousel({
     const autoplayRef = useRef<NodeJS.Timeout | null>(null);
     const sidebarItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-    const effectiveList = hero
-        ? [hero, ...spotlight.filter((s) => s.id !== hero.id)]
-        : spotlight;
-    const currentGame = effectiveList[gameIndex] || {};
+    const effectiveList = useMemo(() => {
+        if (!spotlight || spotlight.length === 0) return [];
+        return hero
+            ? [hero, ...spotlight.filter((s) => s.id !== hero.id)]
+            : spotlight;
+    }, [spotlight, hero]);
+
+    const currentGame = useMemo(
+        () => effectiveList[gameIndex] || ({} as SpotlightProduct),
+        [effectiveList, gameIndex],
+    );
 
     // Flatten and clean the gallery for the current game
     const currentGallery = useMemo(() => {
+        if (!currentGame || !currentGame.id) return [];
+
         // Fallback for real API structure
         if (!currentGame.spotlight_gallery && currentGame.media) {
             const media = currentGame.media;
@@ -86,7 +89,7 @@ export function SpotlightCarousel({
 
             // Add Trailers first (priority)
             if (media.trailers && media.trailers.length > 0) {
-                media.trailers.forEach((t: any) => {
+                media.trailers.forEach((t) => {
                     if (t.video_id) {
                         gallery.push({
                             id: `trailer-${t.video_id}`,
@@ -101,7 +104,7 @@ export function SpotlightCarousel({
 
             // Add Screenshots
             if (media.screenshots && media.screenshots.length > 0) {
-                media.screenshots.forEach((s: any, idx: number) => {
+                media.screenshots.forEach((s, idx) => {
                     gallery.push({
                         id: `screen-${idx}`,
                         type: 'image',
@@ -149,8 +152,41 @@ export function SpotlightCarousel({
 
     const activeMedia = currentGallery[mediaIndex] || currentGallery[0];
 
-    // Smart timing based on media type: images 10s, videos duration + 5s
-    const getMediaDuration = (media: SpotlightGalleryItem) => {
+    const backgroundImage = useMemo(() => {
+        if (!currentGame || !currentGame.id) return '/placeholder.jpg';
+
+        // 1. If active media is an image, use it
+        if (activeMedia?.type === 'image') return activeMedia.url;
+
+        // 2. Fallback: Find first image in gallery
+        const firstImage = (currentGallery as SpotlightGalleryItem[]).find(
+            (item) => item.type === 'image',
+        );
+        if (firstImage) {
+            if (firstImage.url.includes('igdb.com')) {
+                return firstImage.url.replace('t_thumb', 't_720p');
+            }
+            return firstImage.url;
+        }
+
+        // 3. Fallback: Props or Cover
+        const bg =
+            currentGame.background ||
+            currentGame.image ||
+            currentGame.media?.cover_url ||
+            currentGame.media?.cover?.url;
+
+        if (bg && bg.includes('igdb.com')) {
+            return bg
+                .replace('t_thumb', 't_720p')
+                .replace('t_cover_big', 't_720p');
+        }
+
+        return bg || '/placeholder.jpg';
+    }, [activeMedia, currentGallery, currentGame]);
+
+    const getMediaDuration = useCallback((media: SpotlightGalleryItem) => {
+        if (!media) return 10000;
         if (media.type === 'video') {
             const seconds =
                 typeof media.duration === 'number' ? media.duration : null;
@@ -162,25 +198,17 @@ export function SpotlightCarousel({
         }
 
         return 10000;
-    };
+    }, []);
 
-    const nextMedia = () => {
+    const nextMedia = useCallback(() => {
         if (mediaIndex < currentGallery.length - 1) {
-            // More media items in current game, advance to next media
             setMediaIndex((prev) => prev + 1);
         } else {
-            // End of media cycle for THIS game, move to next game
-            const nextGameIdx = (gameIndex + 1) % effectiveList.length;
+            const nextGameIdx = (gameIndex + 1) % (effectiveList.length || 1);
             setGameIndex(nextGameIdx);
             setMediaIndex(0);
         }
-    };
-
-    const goToGame = (index: number) => {
-        setGameIndex(index);
-        setMediaIndex(0);
-        setIsImageLoading(true);
-    };
+    }, [mediaIndex, currentGallery.length, gameIndex, effectiveList.length]);
 
     // Auto-scroll sidebar to keep active game in view
     useEffect(() => {
@@ -196,7 +224,7 @@ export function SpotlightCarousel({
 
     // Autoplay logic with smart timing
     useEffect(() => {
-        if (!isPaused) {
+        if (!isPaused && activeMedia) {
             const duration = getMediaDuration(activeMedia);
             if (!duration) {
                 return;
@@ -211,7 +239,7 @@ export function SpotlightCarousel({
                 autoplayRef.current = null;
             }
         };
-    }, [gameIndex, mediaIndex, isPaused, currentGallery, activeMedia]);
+    }, [isPaused, activeMedia, getMediaDuration, nextMedia]);
 
     // YouTube Event Listener for Video End
     useEffect(() => {
@@ -220,23 +248,37 @@ export function SpotlightCarousel({
 
             try {
                 const data = JSON.parse(event.data);
-                // info.playerState: 0 = Ended
                 if (
                     data.event === 'infoDelivery' &&
                     data.info &&
                     data.info.playerState === 0
                 ) {
-                    // Video ended, go to next slide
                     nextMedia();
                 }
-            } catch (e) {
+            } catch {
                 // Ignore parse errors
             }
         };
 
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [mediaIndex, gameIndex, currentGallery.length]); // Dependencies to ensure nextMedia captures correct state
+    }, [nextMedia]);
+
+    // Initial loading handled by key remounting and onLoad event
+
+    if (!spotlight || spotlight.length === 0) {
+        return (
+            <div className="p-8 text-center text-gray-500">
+                Spotlight warming up...
+            </div>
+        );
+    }
+
+    const goToGame = (index: number) => {
+        setGameIndex(index);
+        setMediaIndex(0);
+        setIsImageLoading(true);
+    };
 
     const toggleMute = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -274,11 +316,6 @@ export function SpotlightCarousel({
         }
     };
 
-    // Helper to format score
-    const formatScore = (score: any) => {
-        return score && score.total ? parseFloat(score.total).toFixed(1) : '—';
-    };
-
     // Helper to build subtitle
     const buildSubtitle = (item: SpotlightProduct) => {
         const platforms =
@@ -299,45 +336,6 @@ export function SpotlightCarousel({
 
         return parts.join(' · ') || 'Spotlight metrics warming up';
     };
-
-    const currentScore = currentGame.spotlight_score || {};
-    const metrics = currentScore.breakdown || [];
-
-    const backgroundImage = useMemo(() => {
-        // 1. If active media is an image, use it (sync with card)
-        if (activeMedia?.type === 'image') return activeMedia.url;
-
-        // 2. Fallback: Find first image in gallery
-        const firstImage = currentGallery.find((item) => item.type === 'image');
-        if (firstImage) {
-            // Handle raw IGDB URLs if needed
-            if (firstImage.url.includes('igdb.com')) {
-                return firstImage.url.replace('t_thumb', 't_720p');
-            }
-            return firstImage.url;
-        }
-
-        // 3. Fallback: Props or Cover (Standardize size)
-        const bg =
-            currentGame.background ||
-            currentGame.image ||
-            currentGame.media?.cover_url ||
-            currentGame.media?.cover?.url;
-
-        if (bg && bg.includes('igdb.com')) {
-            return bg
-                .replace('t_thumb', 't_720p')
-                .replace('t_cover_big', 't_720p');
-        }
-
-        return bg;
-    }, [activeMedia, currentGallery, currentGame]);
-
-    useEffect(() => {
-        if (backgroundImage) {
-            setIsImageLoading(true);
-        }
-    }, [backgroundImage]);
 
     return (
         <section className="relative isolate min-h-screen w-full overflow-hidden pt-32 pb-16">
@@ -414,10 +412,17 @@ export function SpotlightCarousel({
                         <button
                             className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-400 disabled:opacity-50"
                             onClick={() =>
-                                navigateCardToDetail(
-                                    `/games/${currentGame.id}`,
-                                    backgroundImage,
-                                )
+                                openGameCard({
+                                    id: currentGame.id,
+                                    name: currentGame.name,
+                                    coverUrl: currentGame.image,
+                                    heroUrl:
+                                        currentGame.background ||
+                                        currentGame.media?.cover_url_high_res ||
+                                        currentGame.media?.cover_url,
+                                    rating: null,
+                                    theme: currentGame.theme ?? undefined,
+                                })
                             }
                             disabled={isRunning}
                         >
@@ -565,7 +570,7 @@ export function SpotlightCarousel({
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {currentGallery.map((_, i) => (
+                            {currentGallery.map((_, i: number) => (
                                 <button
                                     key={i}
                                     className={`h-1.5 rounded-full transition-all duration-500 ${i === mediaIndex ? 'w-8 bg-blue-500' : 'w-2 bg-white/20 hover:bg-white/40'}`}
@@ -631,212 +636,31 @@ export function SpotlightCarousel({
                         </svg>
                     </button>
 
-                    {/* Apple TV Card (Billboard Style) */}
-                    <button
-                        onClick={() =>
-                            navigateCardToDetail(
-                                `/games/${currentGame.id}`,
-                                backgroundImage,
-                            )
-                        }
-                        disabled={isRunning}
-                        className="inline-block w-full cursor-pointer text-left disabled:opacity-50 lg:w-full"
-                    >
-                        <AppleTvCard
-                            className="group/atv aspect-video !h-auto !min-h-0 w-full overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl"
-                            enableTilt={activeMedia.type === 'image'}
-                        >
-                            <div className="relative z-20 flex h-full flex-col justify-between p-8">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 text-[10px] font-bold tracking-[0.3em] text-blue-400 uppercase">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            width="24"
-                                            height="24"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            className="lucide lucide-sparkles h-3 w-3"
-                                        >
-                                            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-                                            <path d="M20 3v4" />
-                                            <path d="M22 5h-4" />
-                                            <path d="M4 17v2" />
-                                            <path d="M5 18H3" />
-                                        </svg>
-                                        Featured Spotlight
-                                    </div>
+                    {/* New Spatial Image Card (Replaces Three.js implementation) */}
+                    <div className="relative h-[500px] w-full max-w-[600px]">
+                        <SpatialImage
+                            src={activeMedia?.type === 'image' ? activeMedia.url : currentGame.image}
+                            alt={currentGame.name}
+                            videoUrl={activeMedia?.type === 'video' ? activeMedia.url : null}
+                            className="h-full w-full"
+                        />
+                        
+                        {/* Overlay Badges */}
+                        <div className="pointer-events-none absolute inset-0">
+                            <div className="absolute top-6 left-6 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1 text-[10px] font-bold tracking-[0.3em] text-blue-300 uppercase backdrop-blur">
+                                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                                {activeMedia?.type === 'video' ? 'Live Trailer' : 'Featured Spotlight'}
+                            </div>
+                            <div className="absolute bottom-8 left-8">
+                                <div className="max-w-[80%] text-3xl font-black tracking-tight text-white uppercase drop-shadow-lg">
+                                    {currentGame.name}
                                 </div>
-
-                                {/* Title Overlay */}
-                                <div className="pointer-events-none absolute bottom-24 left-8 z-40 max-w-[80%]">
-                                    <h3 className="line-clamp-2 text-3xl leading-none font-black tracking-tighter text-white uppercase shadow-black drop-shadow-lg">
-                                        {currentGame.name}
-                                    </h3>
-                                </div>
-
-                                {/* Combined Bottom Controls */}
-                                <div className="absolute bottom-8 left-8 z-30 flex items-center gap-4">
-                                    <span className="rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm font-bold text-white backdrop-blur-md transition-all hover:bg-white/20">
-                                        View Analysis
-                                    </span>
-
-                                    {activeMedia.type === 'video' && (
-                                        <>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    togglePlay(e);
-                                                }}
-                                                className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/70 active:scale-95"
-                                                aria-label={
-                                                    isPaused
-                                                        ? 'Play video'
-                                                        : 'Pause video'
-                                                }
-                                            >
-                                                {isPaused ? (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        width="18"
-                                                        height="18"
-                                                        viewBox="0 0 24 24"
-                                                        fill="currentColor"
-                                                        stroke="none"
-                                                        className="ml-0.5"
-                                                    >
-                                                        <path d="m5 3 14 9-14 9V3z" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        width="18"
-                                                        height="18"
-                                                        viewBox="0 0 24 24"
-                                                        fill="currentColor"
-                                                        stroke="none"
-                                                    >
-                                                        <rect
-                                                            x="6"
-                                                            y="4"
-                                                            width="4"
-                                                            height="16"
-                                                        />
-                                                        <rect
-                                                            x="14"
-                                                            y="4"
-                                                            width="4"
-                                                            height="16"
-                                                        />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    toggleMute(e);
-                                                }}
-                                                className="group flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-all hover:scale-105 hover:bg-black/70 active:scale-95"
-                                                aria-label={
-                                                    isMuted
-                                                        ? 'Unmute video'
-                                                        : 'Mute video'
-                                                }
-                                            >
-                                                {isMuted ? (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        width="18"
-                                                        height="18"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    >
-                                                        <path d="m11 5-7 7 7 7" />
-                                                        <path d="M22 9l-6 6" />
-                                                        <path d="M16 9l6 6" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        width="18"
-                                                        height="18"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    >
-                                                        <path d="M11 5L6 9H2v6h4l5 4V5z" />
-                                                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                                                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        </>
-                                    )}
+                                <div className="mt-3 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white backdrop-blur">
+                                    Explore Analysis
                                 </div>
                             </div>
-
-                            <div className="absolute inset-0 z-0">
-                                {/* Always render background image/cover */}
-                                <div className="absolute inset-0 h-full w-full">
-                                    {(isImageLoading ||
-                                        activeMedia?.type === 'video') && (
-                                        <div className="absolute inset-0 z-10 animate-pulse bg-slate-900/20" />
-                                    )}
-                                    <img
-                                        src={
-                                            backgroundImage ||
-                                            '/placeholder.jpg'
-                                        }
-                                        alt=""
-                                        loading="lazy"
-                                        onLoad={() => setIsImageLoading(false)}
-                                        className={`h-full w-full object-cover object-center transition-all duration-700 ${isImageLoading ? 'opacity-0' : 'opacity-100'}`}
-                                        onError={(e) => {
-                                            setIsImageLoading(false);
-                                            e.currentTarget.src =
-                                                '/placeholder.jpg';
-                                            e.currentTarget.onerror = null;
-                                        }}
-                                    />
-                                    {/* Dark gradient overlay for text readability */}
-                                    <div className="absolute inset-0 bg-black/10" />
-                                </div>
-
-                                {activeMedia &&
-                                    activeMedia.type === 'video' && (
-                                        <div className="absolute inset-0 z-20 h-full w-full overflow-hidden">
-                                            <iframe
-                                                ref={iframeRef}
-                                                src={`https://www.youtube.com/embed/${String(activeMedia.url).includes('v=') ? String(activeMedia.url).split('v=')[1] : activeMedia.url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}&iv_load_policy=3&disablekb=1&fs=0`}
-                                                className="absolute top-1/2 left-1/2 h-full w-full -translate-x-1/2 -translate-y-1/2 object-cover transition-opacity duration-1000"
-                                                allow="autoplay; encrypted-media"
-                                                style={{
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    aspectRatio: '16/9',
-                                                    pointerEvents: 'none',
-                                                }}
-                                                title={
-                                                    activeMedia.title ||
-                                                    'Game Video'
-                                                }
-                                            />
-                                        </div>
-                                    )}
-                                <div className="pointer-events-none absolute inset-0 z-30 bg-gradient-to-t from-black via-transparent to-transparent" />
-                            </div>
-                        </AppleTvCard>
-                    </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

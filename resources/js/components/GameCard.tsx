@@ -1,11 +1,11 @@
-import { show as gameShow } from '@/actions/App/Http/Controllers/VideoGameController';
 import { AppleTvCard } from '@/components/apple-tv-card';
-import { useTransitionNav } from '@/components/transition/TransitionProvider';
+import { SelectedGameData, useGameCard } from '@/components/game-detail-modal';
 import Image from '@/components/ui/image';
 import { useUserPreferences } from '@/Utils/userPreferences';
-import { Link, usePage } from '@inertiajs/react';
+import { usePage, router } from '@inertiajs/react';
+import { motion } from 'framer-motion';
 import { Heart, Sparkles, Star } from 'lucide-react';
-import React, { type FC } from 'react';
+import React, { type FC, useRef } from 'react';
 
 // Discriminated union supporting both Game and GameListItem types
 type GameCardData = {
@@ -14,6 +14,12 @@ type GameCardData = {
     canonical_name?: string | null;
     rating?: number | null;
     slug?: string;
+    theme?: {
+        primary: string;
+        accent?: string;
+        background?: string;
+        surface?: string;
+    } | null;
 } & (
     | {
           cover_url: string;
@@ -41,52 +47,14 @@ interface GameCardProps {
 }
 
 export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
-    const { navigateCardToDetail, isRunning } = useTransitionNav();
+    const cardRef = useRef<HTMLDivElement>(null);
+    const { openGameCard, isOpen } = useGameCard();
     const { props } = usePage();
     const isAuthenticated = !!(props.auth as any)?.user;
     const { isGameInList, addGameToList, removeGameFromList } =
         useUserPreferences(isAuthenticated);
 
     const isFavorite = isGameInList('favorites', game.id);
-
-    // Preload cover image on hover for instant transitions
-    const handleMouseEnter = React.useCallback(() => {
-        // Handle different data shapes from different routes
-        const isListItem = 'cover_url' in game;
-        const rawCoverUrl = isListItem
-            ? game.cover_url_high_res || game.cover_url
-            : game.media?.cover_url_high_res ||
-              game.media?.cover_url ||
-              game.media?.hero_url ||
-              game.media?.cover_url_thumb ||
-              '/placeholder-game.jpg';
-
-        const coverUrl = rawCoverUrl.includes('igdb.com')
-            ? rawCoverUrl
-                  .replace('t_thumb', 't_1080p')
-                  .replace('t_cover_big', 't_1080p')
-            : rawCoverUrl;
-
-        // Preload image into browser cache
-        if (typeof window !== 'undefined') {
-            const link = document.createElement('link');
-            link.rel = 'prefetch';
-            link.as = 'image';
-            link.href = coverUrl;
-            document.head.appendChild(link);
-        }
-    }, [game]);
-
-    const toggleFavorite = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isFavorite) {
-            removeGameFromList('favorites', game.id);
-        } else {
-            addGameToList('favorites', game.id);
-        }
-        // Force re-render if needed, but the hook usage should handle it if prefs change
-    };
 
     // Handle different data shapes from different routes
     const isListItem = 'cover_url' in game;
@@ -112,8 +80,6 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
     const price = isListItem ? game.latest_price : game.pricing?.amount_major;
     const currency = isListItem ? game.currency : game.pricing?.currency;
 
-    const href = gameShow(game.id)?.url || `/games/${game.id}`;
-
     // Dynamic Label Strategy
     let label = 'NEW';
     let labelColor = 'text-blue-400 border-blue-500/30 bg-blue-500/10';
@@ -133,40 +99,72 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
         }
     }
 
-    const vtName = `game-cover-${game.id}`;
+    const toggleFavorite = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isFavorite) {
+            removeGameFromList('favorites', game.id);
+        } else {
+            addGameToList('favorites', game.id);
+        }
+    };
+
+    const handleCardClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+
+        // Prepare the game data for the modal
+        const gameData: SelectedGameData = {
+            id: game.id,
+            name,
+            coverUrl,
+            rating: game.rating,
+            theme: game.theme ?? undefined,
+        };
+
+        router.visit(`/games/${game.id}`);
+    };
+
+    // Preload cover image on hover for instant transitions
+    const handleMouseEnter = React.useCallback(() => {
+        if (typeof window !== 'undefined') {
+            const link = document.createElement('link');
+            link.rel = 'prefetch';
+            link.as = 'image';
+            link.href = coverUrl;
+            document.head.appendChild(link);
+        }
+    }, [coverUrl]);
 
     return (
-        <div className={`relative ${className}`}>
-            <Link
-                href={href}
-                aria-disabled={isRunning}
-                onClick={(event) => {
-                    if (isRunning) {
-                        event.preventDefault();
-                        return;
-                    }
-
-                    event.preventDefault();
-                    navigateCardToDetail(href, coverUrl);
-                }}
+        <div ref={cardRef} className={`relative ${className}`}>
+            <motion.button
+                layoutId={`game-card-${game.id}`}
+                onClick={handleCardClick}
                 onMouseEnter={handleMouseEnter}
                 className="group/card block h-full w-full text-left transition-all duration-500"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
             >
-                <AppleTvCard className="h-full w-full overflow-hidden rounded-2xl border border-white/5 bg-[#050505] shadow-2xl transition-all duration-500 group-hover/card:border-white/20 group-hover/card:shadow-blue-500/10">
+                <AppleTvCard className="h-full w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-2xl transition-all duration-500 group-hover/card:border-white/30 group-hover/card:shadow-blue-500/20 group-hover/card:bg-white/10">
                     {/* Background Artwork */}
                     <div className="absolute inset-0 z-0">
-                        <Image
-                            src={coverUrl}
-                            alt={name}
-                            fill
-                            className="object-contain transition-transform duration-700 group-hover/card:scale-105"
-                            style={{ viewTransitionName: vtName }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent transition-opacity duration-500 group-hover/card:opacity-90" />
+                        <motion.div
+                            layoutId={`game-cover-${game.id}`}
+                            className="absolute inset-0"
+                        >
+                            <Image
+                                src={coverUrl}
+                                alt={name}
+                                fill
+                                className="object-contain transition-transform duration-700 group-hover/card:scale-105"
+                            />
+                        </motion.div>
+                        {/* Spatial Gradient Overlay (Glass Effect) */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 group-hover/card:opacity-80" />
 
-                        {/* Interactive Shine */}
+                        {/* Interactive Spatial Shine */}
                         <div className="pointer-events-none absolute inset-0 z-20 opacity-0 transition-opacity duration-500 group-hover/card:opacity-100">
-                            <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 via-transparent to-purple-500/10" />
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-white/5" />
                         </div>
                     </div>
 
@@ -182,21 +180,27 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
                             </div>
 
                             {rating && (
-                                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md transition-all duration-300 group-hover/card:border-white/20">
+                                <motion.div
+                                    layoutId={`game-rating-${game.id}`}
+                                    className="flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-black text-white backdrop-blur-md transition-all duration-300 group-hover/card:border-white/20"
+                                >
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                                     <span>{Math.round(rating)}</span>
-                                </div>
+                                </motion.div>
                             )}
                         </div>
 
                         {/* Bottom Section */}
                         <div className="relative space-y-3">
                             {/* Game Name Badge (Normal) */}
-                            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 py-1.5 backdrop-blur-md transition-opacity duration-300 group-hover/card:opacity-0">
+                            <motion.div
+                                layoutId={`game-title-${game.id}`}
+                                className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/80 px-3 py-1.5 backdrop-blur-md transition-opacity duration-300 group-hover/card:opacity-0"
+                            >
                                 <h3 className="line-clamp-1 text-xs font-bold tracking-tight text-white">
                                     {name}
                                 </h3>
-                            </div>
+                            </motion.div>
 
                             {/* Full Name Hover Label (Swapped in) */}
                             <div className="pointer-events-none absolute inset-x-0 bottom-[3.25rem] z-50 flex translate-y-2 justify-center opacity-0 transition-all duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100">
@@ -228,7 +232,7 @@ export const GameCard: FC<GameCardProps> = ({ game, className = '' }) => {
                         </div>
                     </div>
                 </AppleTvCard>
-            </Link>
+            </motion.button>
 
             {/* Favorite Button - Separate from main button to prevent navigation */}
             <button

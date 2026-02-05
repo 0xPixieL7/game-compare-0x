@@ -6,9 +6,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
+import { cn, toUrl } from '@/lib/utils';
 import { compare, dashboard, home, login, register } from '@/routes';
 import { type SharedData } from '@/types';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 
 interface NavLink {
@@ -17,15 +18,31 @@ interface NavLink {
     icon?: string;
 }
 
+type NavTopListGame = {
+    id: number;
+    name: string;
+    image: string | null;
+};
+
+type NavTopLists = {
+    providers: Array<{
+        provider_key: string;
+        top: { title: string | null; games: NavTopListGame[] };
+        upcoming: { title: string | null; games: NavTopListGame[] };
+    }>;
+};
+
 export default function Header() {
     const { url, props } = usePage<SharedData>();
     const { auth } = props;
     const getInitials = useInitials();
+    const navTopLists = props.navTopLists as NavTopLists | undefined;
 
     const navigation: NavLink[] = [
-        { name: 'Dashboard', href: dashboard.url() },
-        { name: 'Compare', href: compare.url() },
-        { name: 'Catalogue', href: '/games' },
+        { name: 'Dashboard', href: toUrl(dashboard()) },
+        { name: 'Compare', href: toUrl(compare()) },
+        { name: 'Games', href: '/games' },
+        { name: 'ARC Raiders', href: '/arc-raiders' },
     ];
 
     const isActive = (href: string) => {
@@ -34,12 +51,25 @@ export default function Header() {
         return false;
     };
 
+    const ensureNavTopLists = () => {
+        if (navTopLists) {
+            return;
+        }
+
+        router.reload({
+            only: ['navTopLists'],
+        });
+    };
+
+    const providerLabel = (providerKey: string) =>
+        providerKey.toUpperCase().replace(/_/g, ' ');
+
     return (
         <header className="fixed top-0 z-50 w-full px-4 py-4 sm:px-6 lg:px-12">
             <nav className="mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/5 bg-[#050505]/60 px-5 py-2.5 shadow-2xl backdrop-blur-2xl transition-all hover:bg-[#050505]/80">
                 {/* Logo */}
                 <Link
-                    href={home.url()}
+                    href={toUrl(home())}
                     className="flex items-center space-x-3 transition-transform hover:scale-105"
                 >
                     <img
@@ -68,12 +98,128 @@ export default function Header() {
                                 {item.name}
                             </Link>
                         ))}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    onMouseEnter={ensureNavTopLists}
+                                    className="rounded-full px-4 py-1.5 text-[10px] font-bold tracking-[0.2em] text-white/60 uppercase transition-all hover:bg-white/5 hover:text-white"
+                                >
+                                    Top
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                className="w-[340px] border-white/10 bg-[#0c0c0c]/95 text-white backdrop-blur-xl"
+                                align="end"
+                                onMouseEnter={ensureNavTopLists}
+                            >
+                                {!navTopLists ? (
+                                    <div className="p-3 text-xs text-white/60">
+                                        Loading…
+                                    </div>
+                                ) : (
+                                    <div className="max-h-[70vh] space-y-3 overflow-auto p-3">
+                                        {navTopLists.providers.map(
+                                            (provider) => (
+                                                <div
+                                                    key={provider.provider_key}
+                                                    className="space-y-2 rounded-lg border border-white/10 bg-white/5 p-3"
+                                                >
+                                                    <div className="text-[10px] font-black tracking-[0.2em] text-white/70 uppercase">
+                                                        {providerLabel(
+                                                            provider.provider_key,
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div>
+                                                            <div className="mb-1 text-[10px] font-bold tracking-widest text-white/60 uppercase">
+                                                                {provider.top
+                                                                    .title ||
+                                                                    'Top'}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {provider.top.games
+                                                                    .slice(0, 4)
+                                                                    .map(
+                                                                        (g) => (
+                                                                            <Link
+                                                                                key={
+                                                                                    g.id
+                                                                                }
+                                                                                href={`/games/${g.id}`}
+                                                                                className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/5 hover:text-white"
+                                                                            >
+                                                                                <img
+                                                                                    src={
+                                                                                        g.image ||
+                                                                                        '/placeholder-game.png'
+                                                                                    }
+                                                                                    alt=""
+                                                                                    className="h-6 w-6 rounded object-cover"
+                                                                                    loading="lazy"
+                                                                                />
+                                                                                <span className="line-clamp-1">
+                                                                                    {
+                                                                                        g.name
+                                                                                    }
+                                                                                </span>
+                                                                            </Link>
+                                                                        ),
+                                                                    )}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div className="mb-1 text-[10px] font-bold tracking-widest text-white/60 uppercase">
+                                                                {provider
+                                                                    .upcoming
+                                                                    .title ||
+                                                                    'Upcoming'}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                {provider.upcoming.games
+                                                                    .slice(0, 4)
+                                                                    .map(
+                                                                        (g) => (
+                                                                            <Link
+                                                                                key={
+                                                                                    g.id
+                                                                                }
+                                                                                href={`/games/${g.id}`}
+                                                                                className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/5 hover:text-white"
+                                                                            >
+                                                                                <img
+                                                                                    src={
+                                                                                        g.image ||
+                                                                                        '/placeholder-game.png'
+                                                                                    }
+                                                                                    alt=""
+                                                                                    className="h-6 w-6 rounded object-cover"
+                                                                                    loading="lazy"
+                                                                                />
+                                                                                <span className="line-clamp-1">
+                                                                                    {
+                                                                                        g.name
+                                                                                    }
+                                                                                </span>
+                                                                            </Link>
+                                                                        ),
+                                                                    )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </nav>
 
                     <div className="mx-2 ml-2 hidden h-4 w-px bg-white/10 sm:block" />
 
                     <Link
-                        href={home.url()}
+                        href={toUrl(home())}
                         className="hidden rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-[10px] font-bold tracking-[0.2em] text-white uppercase transition-all hover:bg-white/10 sm:block"
                     >
                         Home
@@ -125,13 +271,13 @@ export default function Header() {
                         ) : (
                             <div className="flex items-center gap-3">
                                 <Link
-                                    href={login().url}
+                                    href={toUrl(login())}
                                     className="text-[10px] font-bold tracking-[0.2em] text-white/60 uppercase transition-all hover:text-white"
                                 >
                                     Log in
                                 </Link>
                                 <Link
-                                    href={register().url}
+                                    href={toUrl(register())}
                                     className="rounded-full bg-blue-500 px-4 py-1.5 text-[10px] font-bold tracking-[0.2em] text-white uppercase shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-400"
                                 >
                                     Join
