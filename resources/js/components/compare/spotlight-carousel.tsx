@@ -344,7 +344,7 @@ export function SpotlightCarousel({
                 <div className="absolute inset-0 bg-gradient-to-b from-black via-black/40 to-black" />
                 <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
                 <div className="relative h-full w-full overflow-hidden">
-                    <div className="h-full w-full">
+                    <div className="h-full w-full spotlight-apple-card">
                         {backgroundImage && (
                             <img
                                 alt={currentGame.name || ''}
@@ -637,12 +637,12 @@ export function SpotlightCarousel({
                     </button>
 
                     {/* New Spatial Image Card (Replaces Three.js implementation) */}
-                    <div className="relative h-[500px] w-full max-w-[600px]">
-                        <SpatialImage
+                    <div className="relative w-full max-w-[480px] mx-auto">
+                        <SpatialImage aspectRatio="portrait"
                             src={activeMedia?.type === 'image' ? activeMedia.url : currentGame.image}
                             alt={currentGame.name}
                             videoUrl={activeMedia?.type === 'video' ? activeMedia.url : null}
-                            className="h-full w-full"
+                            className="h-full w-full spotlight-apple-card"
                         />
                         
                         {/* Overlay Badges */}
