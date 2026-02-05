@@ -1,8 +1,9 @@
 import { index as compareIndex } from '@/actions/App/Http/Controllers/CompareController';
+import { toUrl } from '@/lib/utils';
 import { type Game } from '@/types';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Link } from '@inertiajs/react';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { GameCard } from './GameCard';
 
@@ -17,6 +18,8 @@ export default function EndlessCarousel({
     games,
     className = '',
 }: EndlessCarouselProps) {
+    const sectionRef = useRef<HTMLDivElement>(null);
+    const isInView = useInView(sectionRef, { once: false, margin: "200px" });
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
     const [visibleCount, setVisibleCount] = useState(6);
@@ -35,60 +38,53 @@ export default function EndlessCarousel({
         const handleResize = () => {
             if (window.innerWidth < 768) setVisibleCount(2);
             else if (window.innerWidth < 1280)
-                setVisibleCount(3); // Larger cards on medium/large
-            else setVisibleCount(4); // Larger cards on XL (was 5)
+                setVisibleCount(3);
+            else setVisibleCount(4);
 
-            // Update container width for transform calculation
             if (containerRef.current) {
                 setContainerWidth(containerRef.current.offsetWidth);
             }
         };
 
-        handleResize(); // Initial call
+        handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Triple the games to ensure smooth infinite looping
-    // [games (buffer), games (active), games (buffer)]
-    const displayGames = [...games, ...games, ...games];
     const totalItems = games.length;
+    // For large lists, we only double the set to save memory
+    const displayGames = totalItems > 10 ? [...games, ...games] : [...games, ...games, ...games];
+    const multiplier = totalItems > 10 ? 2 : 3;
 
-    // Initial position: Start at the second set
     useEffect(() => {
         setCurrentIndex(totalItems);
     }, [totalItems]);
 
     // Auto-advance
     useEffect(() => {
-        if (isHovered || prefersReducedMotion || games.length === 0) return;
+        if (!isInView || isHovered || prefersReducedMotion || games.length === 0) return;
 
         const interval = setInterval(() => {
             setCurrentIndex((prev) => prev + 1);
         }, 4000);
 
         return () => clearInterval(interval);
-    }, [isHovered, prefersReducedMotion, games.length]);
+    }, [isInView, isHovered, prefersReducedMotion, games.length]);
 
     const handleTransitionEnd = () => {
-        // If we've scrolled past the second set (to the right)
-        if (currentIndex >= totalItems * 2) {
+        if (currentIndex >= totalItems * (multiplier - 1)) {
             setIsTransitioning(false);
             setCurrentIndex(totalItems + (currentIndex % totalItems));
         }
-        // If we've scrolled past the first set (to the left)
-        else if (currentIndex < totalItems) {
+        else if (currentIndex < totalItems && multiplier === 3) {
             setIsTransitioning(false);
             setCurrentIndex(totalItems * 2 - (totalItems - currentIndex));
         }
     };
 
-    // Re-enable transition after instant jump
     useEffect(() => {
         if (!isTransitioning) {
-            // Force reflow
             containerRef.current?.getBoundingClientRect();
-            // Small timeout to ensure DOM update before re-enabling transition
             requestAnimationFrame(() => setIsTransitioning(true));
         }
     }, [isTransitioning]);
@@ -105,17 +101,16 @@ export default function EndlessCarousel({
 
     if (games.length === 0) return null;
 
-    // Calculate pixel-based width for each item (accounts for gap properly)
     const itemWidth = containerWidth / visibleCount;
     const translateX = -(currentIndex * itemWidth);
 
     return (
         <div
+            ref={sectionRef}
             className={`group relative py-8 ${className}`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
-            {/* Section Title */}
             <div className="mx-auto mb-6 flex max-w-[90rem] items-end justify-between px-4 lg:px-12">
                 <motion.h2
                     initial={{ opacity: 0, x: -20 }}
@@ -130,16 +125,14 @@ export default function EndlessCarousel({
                     {title}
                 </motion.h2>
                 <Link
-                    href={compareIndex().url}
+                    href={toUrl(compareIndex())}
                     className="text-[10px] font-bold tracking-[0.2em] text-white/50 uppercase transition-colors hover:text-white"
                 >
                     See All
                 </Link>
             </div>
 
-            {/* Carousel Container */}
             <div className="relative overflow-hidden">
-                {/* Left Arrow */}
                 <button
                     onClick={handlePrev}
                     aria-label="Previous slide"
@@ -152,20 +145,18 @@ export default function EndlessCarousel({
                     <ChevronLeftIcon className="h-8 w-8 text-white drop-shadow-lg" />
                 </button>
 
-                {/* Right Arrow */}
                 <button
                     onClick={handleNext}
                     aria-label="Next slide"
                     className={`absolute top-0 right-0 bottom-0 z-20 flex w-12 items-center justify-center bg-black/30 backdrop-blur-sm transition-all duration-300 hover:w-16 hover:bg-black/60 ${
                         isHovered || prefersReducedMotion
                             ? 'translate-x-0 opacity-100'
-                            : 'translate-x-full opacity-0'
+                            : '-translate-x-full opacity-0'
                     }`}
                 >
                     <ChevronRightIcon className="h-8 w-8 text-white drop-shadow-lg" />
                 </button>
 
-                {/* Games Track */}
                 <div className="w-full" ref={containerRef}>
                     <div
                         className="flex will-change-transform"
@@ -177,7 +168,7 @@ export default function EndlessCarousel({
                         }}
                         onTransitionEnd={handleTransitionEnd}
                     >
-                        {displayGames.map((game, index) => (
+                        {isInView ? displayGames.map((game, index) => (
                             <div
                                 key={`${game.id}-${index}`}
                                 className="flex-none px-2"
@@ -188,7 +179,9 @@ export default function EndlessCarousel({
                                     className="aspect-[3/4]"
                                 />
                             </div>
-                        ))}
+                        )) : (
+                            <div className="h-[400px] w-full" />
+                        )}
                     </div>
                 </div>
             </div>

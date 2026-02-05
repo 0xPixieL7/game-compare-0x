@@ -4,7 +4,7 @@ import Header from '@/components/Header';
 import IgdbAttribution from '@/components/igdb-attribution';
 import IntroSplash from '@/components/landing/IntroSplash';
 import { type GameRowData, type SharedData } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Deferred, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface WelcomeProps {
@@ -12,6 +12,7 @@ interface WelcomeProps {
     hero: any;
     spotlightGames?: any[];
     rows: GameRowData[];
+    landingStats?: any;
     cta: { pricing: string };
 }
 
@@ -19,6 +20,7 @@ export default function Welcome({
     hero,
     spotlightGames = [],
     rows,
+    landingStats,
 }: WelcomeProps) {
     const { props } = usePage<SharedData>();
     const [introComplete, setIntroComplete] = useState(true);
@@ -31,14 +33,6 @@ export default function Welcome({
                     href="https://fonts.bunny.net/css?family=inter:400,500,600,700,800&display=swap"
                     rel="stylesheet"
                 />
-                {hero?.background && (
-                    <link
-                        rel="preload"
-                        as="image"
-                        href={hero.background}
-                        type="image/webp"
-                    />
-                )}
                 {hero?.image && (
                     <link
                         rel="preload"
@@ -64,8 +58,24 @@ export default function Welcome({
                         id="rows"
                         className="relative z-20 mt-0 flex flex-col gap-8 border-t border-white/5 bg-[#050505] pt-12 pb-24 shadow-[0_-50px_100px_rgba(0,0,0,0.5)]"
                     >
-                        {Array.isArray(rows) &&
-                            rows.map((row) => (
+                        <Deferred 
+                            data="rows" 
+                            fallback={
+                                <div className="space-y-12 py-12">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="animate-pulse space-y-4 px-6 lg:px-12">
+                                            <div className="h-8 w-48 rounded-lg bg-white/5" />
+                                            <div className="flex gap-4 overflow-hidden">
+                                                {[1, 2, 3, 4].map((j) => (
+                                                    <div key={j} className="aspect-[3/4] w-64 flex-none rounded-2xl bg-white/5" />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            }
+                        >
+                            {rows && rows.map((row) => (
                                 <EndlessCarousel
                                     key={row.id}
                                     title={row.title}
@@ -73,11 +83,32 @@ export default function Welcome({
                                     className="pl-6 lg:pl-12"
                                 />
                             ))}
+                        </Deferred>
                     </section>
 
                     {/* Footer */}
                     <footer className="mt-auto border-t border-white/10 bg-black/90 py-12 backdrop-blur">
                         <div className="mx-auto max-w-7xl px-6 lg:px-8">
+                            
+                            <Deferred data="landingStats">
+                                {landingStats && (
+                                    <div className="mb-12 grid grid-cols-2 gap-8 border-b border-white/5 pb-12 md:grid-cols-3">
+                                        <div className="flex flex-col items-center gap-1 text-center">
+                                            <span className="text-2xl font-black text-blue-400">{(landingStats.active_prices / 1000).toFixed(0)}K+</span>
+                                            <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">Active Signals</span>
+                                        </div>
+                                        <div className="flex flex-col items-center gap-1 text-center">
+                                            <span className="text-2xl font-black text-cyan-400">{landingStats.priced_games}</span>
+                                            <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">Tracked Games</span>
+                                        </div>
+                                        <div className="hidden flex-col items-center gap-1 text-center md:flex">
+                                            <span className="text-2xl font-black text-indigo-400">{landingStats.markets}</span>
+                                            <span className="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">Global Markets</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </Deferred>
+
                             <div className="flex flex-col items-center justify-between gap-6 md:flex-row">
                                 <div className="flex items-center gap-3">
                                     <IgdbAttribution />
